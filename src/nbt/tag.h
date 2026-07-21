@@ -1,0 +1,50 @@
+
+#ifndef MCPSP_NBT_TAG_H
+#define MCPSP_NBT_TAG_H
+
+#include "util/data_io.h"
+#include <string>
+
+class Tag {
+public:
+    virtual ~Tag() {}
+
+    static const char TAG_End        = 0;
+    static const char TAG_Byte       = 1;
+    static const char TAG_Short      = 2;
+    static const char TAG_Int        = 3;
+    static const char TAG_Long       = 4;
+    static const char TAG_Float      = 5;
+    static const char TAG_Double     = 6;
+    static const char TAG_Byte_Array = 7;
+    static const char TAG_String     = 8;
+    static const char TAG_List       = 9;
+    static const char TAG_Compound   = 10;
+
+    static const std::string NullString;
+
+    virtual void write(IDataOutput* dos) = 0;
+    virtual void load(IDataInput* dis)   = 0;
+    virtual char getId() const           = 0;
+
+    virtual void deleteChildren() {}
+
+    Tag* setName(const std::string& n) { name = n; return this; }
+    const std::string& getName() const { return name; }
+
+    static Tag* readNamedTag(IDataInput* dis);
+    static void writeNamedTag(Tag* tag, IDataOutput* dos);
+    static Tag* newTag(char type, const std::string& name);
+
+    mutable int errorState;
+    static const int TAGERR_OUT_OF_BOUNDS = 1;
+    static const int TAGERR_BAD_TYPE      = 2;
+
+protected:
+    Tag(const std::string& n) : errorState(0), name(n) {}
+
+private:
+    std::string name;
+};
+
+#endif

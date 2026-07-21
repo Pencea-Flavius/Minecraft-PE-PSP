@@ -1,0 +1,7 @@
+# Language stats
+*.h linguist-language=C++
+
+# Generated pixel-data headers (huge byte-for-byte texture arrays) shouldn't
+# skew the language breakdown.
+data/images/terrain_*.h  linguist-generated=true
+data/images/terrain_*.raw linguist-generated=true

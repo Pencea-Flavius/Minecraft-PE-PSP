@@ -1,0 +1,9 @@
+*.o
+*.elf
+*.prx
+*.S
+EBOOT.PBP
+PARAM.SFO
+.DS_Store
+.vscode/
+.idea/
