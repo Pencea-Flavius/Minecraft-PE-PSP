@@ -666,7 +666,7 @@ void gameRender(MenuState& s) {
                 extern int g_autosaveTick; g_autosaveTick = 0;
                 particlesReset();
                 redstoneOreReset();
-                if (g_loadedFromDisk) {
+                if (g_loadedFromDisk && LevelStorage::loadedValidPlayerPos()) {
 
                     playerSpawnAt(g_level.player->y);
                 } else {

@@ -265,10 +265,13 @@ static SavedSlot g_loadedStorage[Inventory::SURVIVAL_SLOTS];
 static int       g_loadedLinks[Inventory::HOTBAR];
 static bool      g_loadedSurvival = false;
 
+static bool      g_loadedPlayerPos = false;
+
 static void clearLoadedHotbar() {
     for (int i = 0; i < Inventory::HOTBAR; i++) { g_loadedHotbar[i].used = false; g_loadedLinks[i] = -1; }
     for (int i = 0; i < Inventory::SURVIVAL_SLOTS; i++) g_loadedStorage[i].used = false;
     g_loadedSurvival = false;
+    g_loadedPlayerPos = false;
 }
 
 static void loadLevelDat(World* w, const char* absDir, long* outSeed, int* outGameType) {
@@ -298,7 +301,14 @@ static void loadLevelDat(World* w, const char* absDir, long* outSeed, int* outGa
                 if (p) {
                     ListTag* pos = p->getList("Pos");
                     ListTag* rot = p->getList("Rotation");
-                    if (pos->size() >= 3) { g_level.player->x = pos->getFloat(0); g_level.player->y = pos->getFloat(1); g_level.player->z = pos->getFloat(2); }
+                    if (pos->size() >= 3) {
+                        float px = pos->getFloat(0), py = pos->getFloat(1), pz = pos->getFloat(2);
+
+                        if (px == px && py == py && pz == pz && py >= 0.0f) {
+                            g_level.player->x = px; g_level.player->y = py; g_level.player->z = pz;
+                            g_loadedPlayerPos = true;
+                        }
+                    }
                     if (rot->size() >= 2) { g_level.player->yRot = rot->getFloat(0); g_level.player->xRot = rot->getFloat(1); }
                     if (p->contains("Health")) g_level.player->health = p->getShort("Health");
 
@@ -499,6 +509,8 @@ bool save(World* w, const char* absDir, long seed, int gameType, const char* lev
     saveEntities(w, absDir);
     return ok;
 }
+
+bool loadedValidPlayerPos() { return g_loadedPlayerPos; }
 
 void applyLoadedHotbar() {
     if (!g_inv.isCreative()) {

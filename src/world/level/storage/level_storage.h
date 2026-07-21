@@ -15,6 +15,8 @@ bool load(World* w, const char* absDir, long* outSeed, int* outGameType);
 
 void applyLoadedHotbar();
 
+bool loadedValidPlayerPos();
+
 bool readInfo(const char* absDir, char* nameOut, int nameCap, int* outGameType, long* outSeed);
 
 }
