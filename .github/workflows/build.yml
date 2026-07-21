@@ -1,0 +1,52 @@
+name: build
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write        # needed so the release step can upload assets
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: pspdev/pspdev:latest        # ships the PSPSDK toolchain
+    steps:
+      # The pspdev image is Alpine-based; the JS-based actions below need node,
+      # and checkout needs git. zip packages the release.
+      - name: Install helpers
+        run: apk add --no-cache nodejs git zip
+
+      - uses: actions/checkout@v4
+
+      - name: Build
+        run: |
+          export PSPDEV=/usr/local/pspdev
+          export PATH="$PSPDEV/bin:$PATH"
+          make clean && make
+
+      - name: Package (EBOOT.PBP + data/)
+        run: |
+          export PSPDEV=/usr/local/pspdev
+          export PATH="$PSPDEV/bin:$PATH"
+          make dist
+          mv build MCPSP
+          zip -r MCPSP.zip MCPSP
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MCPSP
+          path: MCPSP.zip
+
+      - name: Release
+        if: github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: MCPSP.zip
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'latest' }}
+          prerelease: ${{ !startsWith(github.ref, 'refs/tags/') }}
+          name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'Latest build' }}
