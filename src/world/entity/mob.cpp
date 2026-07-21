@@ -133,7 +133,18 @@ void Mob::move(float xa, float ya, float za) {
     if (zaOrg != za) zd = 0;
 
     if (onGround) {
-        if (fallDistance > 0.0f && !isInWater()) causeFallDamage(fallDistance);
+        if (fallDistance > 0.0f && !isInWater()) {
+            if (Entity::sharedRandom.nextFloat() < (fallDistance - 0.5f)) {
+                int fx = ifloor((c[0] + c[3]) * 0.5f), fz = ifloor((c[2] + c[5]) * 0.5f);
+                int fy = ifloor(c[1] - 0.01f);
+                if (worldBlock(&g_world, fx, fy, fz) == BLOCK_FARMLAND) {
+                    worldSetBlockAndData(&g_world, fx, fy, fz, BLOCK_DIRT, 0);
+                    worldNotifyNeighborsChanged(&g_world, fx, fy, fz);
+                    worldRebuildAroundNow(&g_world, fx, fy, fz);
+                }
+            }
+            causeFallDamage(fallDistance);
+        }
         fallDistance = 0.0f;
     } else if (yaOrg < 0.0f) {
         fallDistance -= yaOrg;
@@ -156,16 +167,6 @@ void Mob::move(float xa, float ya, float za) {
     }
 
     isInWater();
-
-    if (!wasOnGround && onGround && yaOrg < -0.08f) {
-        int fx = ifloor((c[0] + c[3]) * 0.5f), fz = ifloor((c[2] + c[5]) * 0.5f);
-        int fy = ifloor(c[1] - 0.01f);
-        if (worldBlock(&g_world, fx, fy, fz) == BLOCK_FARMLAND) {
-            worldSetBlockAndData(&g_world, fx, fy, fz, BLOCK_DIRT, 0);
-            worldNotifyNeighborsChanged(&g_world, fx, fy, fz);
-            worldRebuildAroundNow(&g_world, fx, fy, fz);
-        }
-    }
 
     int bx0 = ifloor(bb.x0), by0 = ifloor(bb.y0), bz0 = ifloor(bb.z0);
     int bx1 = ifloor(bb.x1), by1 = ifloor(bb.y1), bz1 = ifloor(bb.z1);
@@ -263,6 +264,7 @@ void Mob::travel(float xs, float yf) {
 
         bool ladder = onLadder();
         if (ladder) {
+            fallDistance = 0.0f;
             if (yd < -0.15f) yd = -0.15f;
         }
 

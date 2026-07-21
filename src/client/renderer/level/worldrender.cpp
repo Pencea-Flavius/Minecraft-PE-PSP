@@ -1,6 +1,6 @@
 
 #include "world/level/world.h"
-#include "platform/me/me.h"
+
 #include "gpu/texture.h"
 
 #include <stdlib.h>
@@ -11,7 +11,6 @@
 #include <math.h>
 
 #include "client/renderer/level/frustum.h"
-#include "client/renderer/level/mesh_async.h"
 
 static inline void streamFreeSection(ChunkSection* s) {
     if (s->mesh)   { free(s->mesh);   s->mesh = 0; }
@@ -56,8 +55,6 @@ void worldRebuildStep(const World* cw, float camX, float camY, float camZ, float
     extern int g_diagMode;
     if (g_diagMode == 3) {
 
-    } else if (chunkMeMeshingOn() && meActive()) {
-        worldAsyncStep(w, camX, camY, camZ, viewDist);
     } else {
 
     static const int MAX_CAND = 48;
@@ -119,9 +116,6 @@ void worldDraw(const World* cw, float camX, float camY, float camZ, float viewDi
 
     float maxD2 = drawCull(viewDist) * drawCull(viewDist);
 
-    static const float Y_CULL_MARGIN = 32.0f;
-    float yMaxD2 = (drawCull(viewDist) + Y_CULL_MARGIN) * (drawCull(viewDist) + Y_CULL_MARGIN);
-
     int resident = 0, vis = 0;
     for (int i = 0; i < WORLD_CHUNKS_X * WORLD_CHUNKS_Z; i++) {
         ChunkMesh* c = &w->chunks[i];
@@ -130,14 +124,7 @@ void worldDraw(const World* cw, float camX, float camY, float camZ, float viewDi
         for (int si = 0; si < N_SECTIONS; si++) {
             ChunkSection* s = &c->sec[si];
             if (s->mesh || s->water || s->leaves || s->noMip) resident++;
-
-            bool yOff = false;
-            if (!off) {
-                float y0 = (float)(si * SECTION_SY), y1 = y0 + SECTION_SY;
-                float dy = (camY < y0) ? (y0 - camY) : (camY > y1 ? camY - y1 : 0.0f);
-                yOff = (dx * dx + dy * dy + dz * dz > yMaxD2);
-            }
-            s->visible = (off || yOff) ? false : sectionVisible(c, s);
+            s->visible = off ? false : sectionVisible(c, s);
             if (s->visible) vis++;
         }
     }

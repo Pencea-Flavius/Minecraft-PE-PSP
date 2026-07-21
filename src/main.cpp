@@ -22,7 +22,7 @@
 #include "client/gui/screens/menu.h"
 #include "client/player/player.h"
 #include "client/renderer/render.h"
-#include "platform/me/me.h"
+
 #include "platform/time.h"
 #include "world/level/level.h"
 #include "world/entity/entity.h"
@@ -189,8 +189,6 @@ int main(int argc, char* argv[]) {
 
     s.statusMsg[0] = '\0';
 
-    bool meOk = false;
-
     SceCtrlData initPad;
     sceCtrlReadBufferPositive(&initPad, 1);
     unsigned int lastBtn = initPad.Buttons;
@@ -335,62 +333,6 @@ int main(int argc, char* argv[]) {
 
             gameHintsDraw(s);
 
-            static int meStage = 0, hold = 0;
-            static int pingRes = -999;
-            static int blkAme = -999, blkAcpu = -999, blkBme = -999, blkBcpu = -999;
-            static int testY0 = -1, testN = -1, emitOk = -1, meCnt = -1, diffK = -1;
-            static ChunkVertex cvx = {}, mvx = {};
-            if (meOk && g_worldBuilt && meStage < 4) {
-                if (hold == 0) {
-                    if (meStage == 0) {
-                        pingRes = mePing(111, 222);
-                    } else if (meStage == 1) {
-                        blkAcpu = (int)worldBlock(&g_world, 128, -1, 128);
-                        blkAme  = meReadBlock(&g_world, 128, -1, 128);
-                    } else if (meStage == 2) {
-                        blkBcpu = (int)worldBlock(&g_world, 128, 5, 128);
-                        blkBme  = meReadBlock(&g_world, 128, 5, 128);
-                    } else if (meStage == 3) {
-                        const int ox = 128, oz = 128;
-                        int bestY0 = 0, bestCount = -1;
-                        for (int si = 0; si < N_SECTIONS; si++) {
-                            int y0 = si * SECTION_SY;
-                            int c = meshPass(&g_world, ox, oz, y0, y0 + SECTION_SY, NULL, 0);
-                            if (c > bestCount) { bestCount = c; bestY0 = y0; }
-                        }
-                        testY0 = bestY0; testN = bestCount;
-                        if (bestCount > 0) {
-                            meCnt = meMeshCount(&g_world, ox, oz, bestY0, bestY0 + SECTION_SY, 0);
-                            if (meCnt != bestCount) {
-                                emitOk = 2;
-                            } else {
-                                size_t bytes = (size_t)bestCount * sizeof(ChunkVertex);
-                                ChunkVertex* cpuBuf = (ChunkVertex*)memalign(16, bytes);
-                                ChunkVertex* meBuf  = (ChunkVertex*)memalign(16, bytes);
-                                if (cpuBuf && meBuf) {
-                                    meshPass(&g_world, ox, oz, bestY0, bestY0 + SECTION_SY, cpuBuf, 0);
-                                    meMeshEmit(&g_world, ox, oz, bestY0, bestY0 + SECTION_SY, 0, meBuf, bestCount);
-                                    if (memcmp(cpuBuf, meBuf, bytes) == 0) {
-                                        emitOk = 1;
-                                    } else {
-                                        emitOk = 0;
-                                        for (int k = 0; k < bestCount; k++)
-                                            if (memcmp(&cpuBuf[k], &meBuf[k], sizeof(ChunkVertex)) != 0) {
-                                                diffK = k; cvx = cpuBuf[k]; mvx = meBuf[k]; break;
-                                            }
-                                    }
-                                }
-                                if (cpuBuf) free(cpuBuf);
-                                if (meBuf)  free(meBuf);
-                            }
-                        }
-                    }
-                }
-                if (++hold >= 60) { meStage++; hold = 0; }
-            }
-
-            (void)emitOk; (void)testN; (void)meCnt; (void)diffK; (void)pingRes;
-            (void)blkAme; (void)blkAcpu; (void)blkBme; (void)blkBcpu; (void)cvx; (void)mvx;
             sceGuEnable(GU_DEPTH_TEST);
 
             {
@@ -439,7 +381,7 @@ int main(int argc, char* argv[]) {
     if (s.haveLogo)  textureFree(&s.logo);
     if (s.haveBg) textureFree(&s.dirtBg);
     if (s.haveTouch) textureFree(&s.touchGui);
-    meShutdown();
+
     guTerm();
     sceKernelExitGame();
     return 0;

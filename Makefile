@@ -128,7 +128,6 @@ OBJS = \
 	src/client/renderer/tile/mesh_partial.o \
 	src/client/renderer/tile/mesh_liquid.o \
 	src/client/renderer/level/frustum.o \
-	src/client/renderer/level/mesh_async.o \
 	src/world/level/world.o \
 	src/world/level/dirty.o \
 	src/world/level/raycast.o \
@@ -163,8 +162,7 @@ OBJS = \
 	src/world/level/levelgen/feature_spring.o \
 	src/world/level/levelgen/feature_lake.o \
 	src/world/level/levelgen/feature_snow.o \
-	src/world/level/levelgen/caves.o \
-	src/platform/me/me.o
+	src/world/level/levelgen/caves.o
 
 INCDIR = src
 CFLAGS = -O2 -G0 -Wall

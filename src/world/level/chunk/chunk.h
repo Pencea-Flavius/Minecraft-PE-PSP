@@ -277,9 +277,6 @@ int meshSection(const World* w, int ox, int oz, int y0, int y1,
 
 DrawVertex* chunkPack(const ChunkVertex* src, int n, int ox, int oy, int oz);
 
-void chunkEnableMeMeshing(bool on);
-bool chunkMeMeshingOn();
-
 void chunkBuildMesh(ChunkMesh* c, const World* w, int ox, int oz);
 
 void chunkInitLazy(ChunkMesh* c, int ox, int oz);

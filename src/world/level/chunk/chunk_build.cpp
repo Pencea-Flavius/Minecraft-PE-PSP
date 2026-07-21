@@ -59,10 +59,6 @@ static void buildLayer(const World* w, int ox, int oz, int y0, int y1, int layer
     *outMesh = d; *outCount = count;
 }
 
-static bool g_meMesh = false;
-void chunkEnableMeMeshing(bool on) { g_meMesh = on; }
-bool chunkMeMeshingOn() { return g_meMesh; }
-
 static unsigned short g_visGen = 0;
 static unsigned short g_visited[16 * 16 * 16];
 void computeSectionVis(const World* w, int ox, int y0, int oz, unsigned char vis[6]) {

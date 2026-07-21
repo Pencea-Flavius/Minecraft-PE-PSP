@@ -8,7 +8,7 @@
 #include "world/level/storage/level_storage.h"
 #include "world/level/storage/worldlist.h"
 #include "platform/audio/sound.h"
-#include "platform/me/me.h"
+
 #include "platform/path.h"
 #include "platform/time.h"
 #include "client/renderer/item_hand.h"
@@ -113,8 +113,8 @@ static void runTicks(MenuState& s, unsigned int btn, unsigned char lx, unsigned 
 
     for (int i = 0; i < ticks; i++) {
         if (g_level.player) g_level.player->aiStep(btn, lx, ly);
-
-        if (g_worldBuilt && !meBusy()) worldTick(&g_world);
+        if (g_worldBuilt)
+            worldTick(&g_world);
         if (g_worldBuilt) g_level.tickEntities();
         if (g_worldBuilt) g_level.tickTileEntities();
         if (g_worldBuilt && g_level.player) particlesTick(&g_world, g_level.player->x, g_level.player->y, g_level.player->z);
@@ -323,7 +323,7 @@ void playerSpawnEnsure() {
         g_level.player->x = WORLD_W * 0.5f;
         g_level.player->z = WORLD_D * 0.5f;
         g_level.player->yRot = 45.0f;
-        g_level.player->xRot = -35.0f;
+        g_level.player->xRot = 0.0f;
 
         g_level.player->health = g_level.player->getMaxHealth();
     }

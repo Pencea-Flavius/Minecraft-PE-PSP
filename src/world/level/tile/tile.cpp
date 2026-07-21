@@ -354,8 +354,9 @@ struct BedTile : Tile { BedTile(unsigned char i) : Tile(i) {}
     bool mayPlace(World* w, int x, int y, int z, int data) { return supportCanSurvive(w, id, x, y, z, data); } };
 
 struct FarmTile : Tile { FarmTile(unsigned char i) : Tile(i) { randomTicks = true; }
+
     int getAABB(const World*, int x, int y, int z, BlockAABB out[3]) {
-        out[0] = { (float)x, (float)y, (float)z, x + 1.0f, y + 15.0f/16.0f, z + 1.0f }; return 1; }
+        out[0] = { (float)x, (float)y, (float)z, x + 1.0f, y + 1.0f, z + 1.0f }; return 1; }
     void randomTick(World* w, int x, int y, int z) { tickFarmland(w, x, y, z); } };
 
 struct SlabTile : Tile { SlabTile(unsigned char i) : Tile(i) {}
