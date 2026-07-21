@@ -256,25 +256,24 @@ void textureBindLastBoundReset() { s_lastBound = nullptr; }
 static float s_mipBias = -1.5f;
 
 void textureBind(const Texture* tex) {
-
     if (!tex || !tex->data || tex->texW <= 0 || tex->texH <= 0) return;
-    if (tex == s_lastBound) return;
-    s_lastBound = tex;
+    if (tex != s_lastBound) {
+        s_lastBound = tex;
 
-    sceGuTexMode(tex->psm, tex->mipCount, 0, tex->swizzled ? 1 : 0);
-    sceGuTexImage(0, tex->texW, tex->texH, tex->texW, tex->data);
-    int w = tex->texW, h = tex->texH;
-    for (int i = 0; i < tex->mipCount; i++) {
-        w /= 2; h /= 2;
-        sceGuTexImage(i + 1, w, h, w, tex->mip[i]);
+        sceGuTexMode(tex->psm, tex->mipCount, 0, tex->swizzled ? 1 : 0);
+        sceGuTexImage(0, tex->texW, tex->texH, tex->texW, tex->data);
+        int w = tex->texW, h = tex->texH;
+        for (int i = 0; i < tex->mipCount; i++) {
+            w /= 2; h /= 2;
+            sceGuTexImage(i + 1, w, h, w, tex->mip[i]);
+        }
+        sceGuTexFunc(GU_TFX_MODULATE, GU_TCC_RGBA);
+
+        sceGuTexFilter(tex->mipCount ? GU_NEAREST_MIPMAP_LINEAR : GU_NEAREST, GU_NEAREST);
+        if (tex->mipCount) sceGuTexLevelMode(GU_TEXTURE_AUTO, s_mipBias);
+        sceGuTexWrap(GU_CLAMP, GU_CLAMP);
     }
-    sceGuTexFunc(GU_TFX_MODULATE, GU_TCC_RGBA);
-
-    sceGuTexFilter(tex->mipCount ? GU_NEAREST_MIPMAP_LINEAR : GU_NEAREST, GU_NEAREST);
-    if (tex->mipCount) sceGuTexLevelMode(GU_TEXTURE_AUTO, s_mipBias);
-    sceGuTexWrap(GU_CLAMP, GU_CLAMP);
     sceGuEnable(GU_TEXTURE_2D);
-
     sceGuTexFlush();
 }
 
