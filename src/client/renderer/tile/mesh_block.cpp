@@ -148,8 +148,10 @@ int emitMelonStem(const World* w, ChunkVertex* out, int n, int gx, int y, int gz
 int emitLadder(ChunkVertex* out, int n, int gx, int y, int gz, unsigned char id, unsigned char data, unsigned int bright) {
     int col, row; unsigned int tint;
     tileForBlock(id, data, 0, &col, &row, &tint);
-    float u0 = col * TILE_UV, v0 = row * TILE_UV;
-    float u1 = (col + 1) * TILE_UV, v1 = (row + 1) * TILE_UV;
+
+    const float HT = TILE_UV / 128.0f;
+    float u0 = col * TILE_UV + HT, v0 = row * TILE_UV + HT;
+    float u1 = (col + 1) * TILE_UV - HT, v1 = (row + 1) * TILE_UV - HT;
     float x0 = gx, x1 = gx + 1.0f;
     float z0 = gz, z1 = gz + 1.0f;
     float yb = (float)y, yt = (float)y + 1.0f;

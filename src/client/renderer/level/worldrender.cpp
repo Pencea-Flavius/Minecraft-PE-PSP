@@ -194,6 +194,7 @@ void worldDraw(const World* cw, float camX, float camY, float camZ, float viewDi
     bool distMip = !g_noMipmap && terrain && terrain->mipCount > 0;
     float maxLvl = distMip ? (float)terrain->mipCount : 0.0f;
     s_terrainMipCount = terrain ? terrain->mipCount : 0;
+
     if (terrain) {
         if (g_noMipmap) textureBindNoMip(terrain);
         else            textureBind(terrain);

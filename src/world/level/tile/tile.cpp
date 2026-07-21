@@ -603,6 +603,16 @@ struct TrapdoorTile : Tile { TrapdoorTile(unsigned char i) : Tile(i) {}
     bool mayPlace(World* w, int x, int y, int z, int data) { return supportCanSurvive(w, id, x, y, z, data); } };
 
 struct LadderTile : Tile { LadderTile(unsigned char i) : Tile(i) {}
+
+    int getAABB(const World* w, int x, int y, int z, BlockAABB out[3]) {
+        unsigned char data = worldData(w, x, y, z);
+        const float r = 2.0f / 16.0f;
+        if (data == 2)      out[0] = { x + 0.0f,     y + 0.0f, z + 1.0f - r, x + 1.0f, y + 1.0f, z + 1.0f };
+        else if (data == 3) out[0] = { x + 0.0f,     y + 0.0f, z + 0.0f,     x + 1.0f, y + 1.0f, z + r    };
+        else if (data == 4) out[0] = { x + 1.0f - r, y + 0.0f, z + 0.0f,     x + 1.0f, y + 1.0f, z + 1.0f };
+        else if (data == 5) out[0] = { x + 0.0f,     y + 0.0f, z + 0.0f,     x + r,    y + 1.0f, z + 1.0f };
+        else return 0;
+        return 1; }
     bool mayPlace(World* w, int x, int y, int z, int data) { return supportCanSurvive(w, id, x, y, z, data); } };
 
 struct FenceGateTile : Tile { FenceGateTile(unsigned char i) : Tile(i) {}
