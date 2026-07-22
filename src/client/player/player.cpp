@@ -84,6 +84,20 @@ void playerRespawn() {
 }
 
 void quitToMenuNoSave(MenuState& s) {
+    g_saveRequested = false;
+    g_quitAfterSave = false;
+    g_invOpen = false;
+    g_craftOpen = false;
+    g_armorOpen = false;
+    g_furnaceOpen = false;
+    g_chestOpen = false;
+    g_signEditing = 0;
+    g_deadScreen = false;
+    g_paused = false;
+    g_terrainProgress = 0;
+    extern MiningState g_mining;
+    g_mining.active = false; g_mining.progress = 0.0f;
+
     worldFree(&g_world);
     g_level.removeAllEntities();
     g_level.removeAllTileEntities();

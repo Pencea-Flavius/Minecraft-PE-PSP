@@ -114,7 +114,7 @@ void Item::initItems() {
     new SimpleItem(ITEM_CLOCK,          ic(6, 4));
     new SimpleItem(ITEM_GLOWSTONE_DUST, ic(9, 4));
     new SimpleItem(ITEM_BONE,           ic(12, 1), 64, 0, true);
-    new SimpleItem(ITEM_SUGAR,          ic(13, 0), 64, 0, true);
+    new SimpleItem(ITEM_SUGAR,          ic(13, 0));
     new SimpleItem(ITEM_NETHER_BRICK,   ic(5, 9));
     new SimpleItem(ITEM_NETHER_QUARTZ,  ic(5, 10));
 
@@ -153,7 +153,7 @@ void Item::initItems() {
             { BLOCK_TNT, 2 }, { BLOCK_TORCH, 2 },
 
             { ITEM_APPLE, 4 }, { ITEM_BOWL, 4 }, { ITEM_MUSHROOM_STEW, 4 },
-            { ITEM_WHEAT, 4 }, { ITEM_BREAD, 4 }, { ITEM_SUGAR, 4 },
+            { ITEM_WHEAT, 4 }, { ITEM_BREAD, 4 }, { ITEM_SUGAR, 4 }, { ITEM_REEDS, 4 },
             { ITEM_SEEDS_WHEAT, 4 }, { ITEM_SEEDS_MELON, 4 }, { ITEM_MELON, 4 },
             { ITEM_PORKCHOP_RAW, 4 }, { ITEM_PORKCHOP_COOKED, 4 },
             { ITEM_HELMET_CLOTH, 4 }, { ITEM_CHESTPLATE_CLOTH, 4 }, { ITEM_LEGGINGS_CLOTH, 4 }, { ITEM_BOOTS_CLOTH, 4 },

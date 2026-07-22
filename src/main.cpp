@@ -38,16 +38,15 @@ SceInt64 g_timeBootUs = 0;
 
 PSP_MODULE_INFO("MinecraftPSP", 0, 0, 1);
 PSP_MAIN_THREAD_ATTR(THREAD_ATTR_USER | THREAD_ATTR_VFPU);
-PSP_HEAP_SIZE_KB(-1024);
+#ifndef PSP_LARGE_MEMORY
+#define PSP_LARGE_MEMORY(flag) int psp_large_memory = (flag)
+#endif
+PSP_LARGE_MEMORY(1);
 
 int g_lowMemPsp = 0;
 static void detectLowMemPsp(void) {
-    enum { MAX_BLOCKS = 64 };
-    void* blocks[MAX_BLOCKS];
-    int n = 0;
-    while (n < MAX_BLOCKS) { void* p = malloc(1024 * 1024); if (!p) break; blocks[n++] = p; }
-    for (int i = 0; i < n; i++) free(blocks[i]);
-    g_lowMemPsp = (n < 32);
+    size_t freeMem = sceKernelMaxFreeMemSize();
+    g_lowMemPsp = (freeMem < 28 * 1024 * 1024);
 }
 
 static volatile int g_exitRequested = 0;

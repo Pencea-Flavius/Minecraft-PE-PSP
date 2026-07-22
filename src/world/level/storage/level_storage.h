@@ -19,6 +19,12 @@ bool loadedValidPlayerPos();
 
 bool readInfo(const char* absDir, char* nameOut, int nameCap, int* outGameType, long* outSeed);
 
+void setActiveWorld(const char* absDir, long seed, int gameType, const char* levelName);
+const char* getActiveDir();
+long getActiveSeed();
+int getActiveGameType();
+const char* getActiveName();
+
 }
 
 #endif

@@ -9,6 +9,7 @@
 #include "world/level/chunk/chunk.h"
 #include "world/level/world.h"
 #include "client/player/player_state.h"
+#include "client/renderer/render.h"
 #include "gpu/texture.h"
 #include "util/mth.h"
 #include "world/level/levelgen/Random.h"
@@ -105,7 +106,7 @@ void ItemRenderer::render(Entity* entity, float x, float y, float z, float , flo
         const float s = 0.5f;
         ScePspFVector3 sc = { s, s, s };
         sceGumScale(&sc);
-        float bill = atan2f(g_level.player->x - x, g_level.player->z - z);
+        float bill = atan2f(g_camX - x, g_camZ - z);
 
         for (int i = 0; i < count; ++i) {
             sceGumPushMatrix();

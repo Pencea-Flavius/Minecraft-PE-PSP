@@ -905,6 +905,7 @@ void GameMode::handleInput(unsigned int pressed, unsigned int held) {
                 if (pid == ITEM_BED_ITEM)            pid = BLOCK_BED;
                 else if (pid == ITEM_DOOR_WOOD_ITEM) pid = BLOCK_DOOR_WOOD;
                 else if (pid == ITEM_DOOR_IRON_ITEM) pid = BLOCK_DOOR_IRON;
+                else if (pid == ITEM_REEDS)          pid = BLOCK_REEDS;
 
                 if (pid >= 256) return;
                 bool upperHalf = (hit.face == F_DOWN) || (hit.face != F_TOP && hit.clickY > 0.5f);

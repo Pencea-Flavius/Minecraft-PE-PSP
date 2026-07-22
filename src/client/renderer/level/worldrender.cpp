@@ -28,7 +28,7 @@ static int cmpOpaqueAsc(const void* a, const void* b) {
     return (da > db) - (da < db);
 }
 
-float g_camX = 0.0f, g_camY = 0.0f, g_camZ = 0.0f;
+extern float g_camX, g_camY, g_camZ;
 
 volatile int g_meshOOM = 0;
 int g_oomCount = 0;
@@ -97,7 +97,6 @@ void worldRebuildStep(const World* cw, float camX, float camY, float camZ, float
 
 void worldDraw(const World* cw, float camX, float camY, float camZ, float viewDist, const Texture* terrain) {
     World* w = (World*)cw;
-    g_camX = camX; g_camY = camY; g_camZ = camZ;
 
     if (g_meshOOM) { g_oomCount++; g_meshOOM = 0; }
 

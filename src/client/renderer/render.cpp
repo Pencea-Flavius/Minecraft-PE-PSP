@@ -87,6 +87,8 @@ static bool loadTex16(Texture* out, const char* rel, int psm) {
     return textureLoad16(assetPath(rel), out, psm) || textureLoad16(rel, out, psm);
 }
 
+float g_camX = 0.0f, g_camY = 0.0f, g_camZ = 0.0f;
+
 enum WorldGenStage { GS_IDLE, GS_SHOW, GS_TERRAIN, GS_TERRAIN_WAIT, GS_MESHING };
 static WorldGenStage g_genStage = GS_IDLE;
 #define MESH_CHUNKS_PER_FRAME 8
@@ -525,16 +527,26 @@ void gameRender(MenuState& s) {
         static SaveArgs sArgs;
         static volatile bool g_saveThreadDone = false;
         if (saveStage == 0) {
-            bool sel = (s.worldSelected >= 0 && s.worldSelected < s.worlds.count);
             sArgs.w = &g_world;
-            sArgs.seed = sel ? s.worlds.seeds[s.worldSelected] : 0;
-            sArgs.gamemode = sel ? s.worlds.gameModes[s.worldSelected] : 1;
-            char rel[320];
-            snprintf(rel, sizeof(rel), "saves/%s", sel ? s.worlds.names[s.worldSelected] : "world");
-            strncpy(sArgs.dir, assetPath(rel), sizeof(sArgs.dir) - 1);
-            sArgs.dir[sizeof(sArgs.dir) - 1] = '\0';
-            strncpy(sArgs.name, sel ? s.worlds.displayNames[s.worldSelected] : "World", sizeof(sArgs.name) - 1);
-            sArgs.name[sizeof(sArgs.name) - 1] = '\0';
+            const char* actDir = LevelStorage::getActiveDir();
+            if (actDir && actDir[0] != '\0') {
+                strncpy(sArgs.dir, actDir, sizeof(sArgs.dir) - 1);
+                sArgs.dir[sizeof(sArgs.dir) - 1] = '\0';
+                sArgs.seed = LevelStorage::getActiveSeed();
+                sArgs.gamemode = LevelStorage::getActiveGameType();
+                strncpy(sArgs.name, LevelStorage::getActiveName(), sizeof(sArgs.name) - 1);
+                sArgs.name[sizeof(sArgs.name) - 1] = '\0';
+            } else {
+                bool sel = (s.worldSelected >= 0 && s.worldSelected < s.worlds.count);
+                sArgs.seed = sel ? s.worlds.seeds[s.worldSelected] : 0;
+                sArgs.gamemode = sel ? s.worlds.gameModes[s.worldSelected] : 1;
+                char rel[320];
+                snprintf(rel, sizeof(rel), "saves/%s", sel ? s.worlds.names[s.worldSelected] : "world");
+                strncpy(sArgs.dir, assetPath(rel), sizeof(sArgs.dir) - 1);
+                sArgs.dir[sizeof(sArgs.dir) - 1] = '\0';
+                strncpy(sArgs.name, sel ? s.worlds.displayNames[s.worldSelected] : "World", sizeof(sArgs.name) - 1);
+                sArgs.name[sizeof(sArgs.name) - 1] = '\0';
+            }
             g_terrainProgress = 0;
             g_saveThreadDone = false;
             int thid = sceKernelCreateThread("world_save", [](SceSize, void* argp) -> int {
@@ -552,6 +564,9 @@ void gameRender(MenuState& s) {
         drawGeneratingScreen(s, g_terrainProgress, "Saving chunks");
         if (g_saveThreadDone) {
             g_saveRequested = false; saveStage = 0;
+            g_terrainProgress = 0;
+            extern MiningState g_mining;
+            g_mining.active = false; g_mining.progress = 0.0f;
 
             if (g_quitAfterSave) {
                 g_quitAfterSave = false;
@@ -586,6 +601,7 @@ void gameRender(MenuState& s) {
             tArgs.dir[sizeof(tArgs.dir) - 1] = '\0';
             strncpy(tArgs.name, sel ? s.worlds.displayNames[s.worldSelected] : "World", sizeof(tArgs.name) - 1);
             tArgs.name[sizeof(tArgs.name) - 1] = '\0';
+            LevelStorage::setActiveWorld(tArgs.dir, tArgs.seed, tArgs.gamemode, tArgs.name);
             worldListTouch(tArgs.dir);
 
             playerSpawnEnsure();
@@ -878,6 +894,7 @@ void gameRender(MenuState& s) {
 
     float ex = ix - ifx * camBack + dpCamX, ey = iy - ify * camBack + dpCamY, ez = iz - ifz * camBack + dpCamZ;
     float ctrX = ix + ifx, ctrY = iy + ify, ctrZ = iz + ifz;
+    g_camX = ex; g_camY = ey; g_camZ = ez;
 
     extern float g_relBaseX, g_relBaseY, g_relBaseZ;
     g_relBaseX = floorf(ix); g_relBaseY = floorf(iy); g_relBaseZ = floorf(iz);

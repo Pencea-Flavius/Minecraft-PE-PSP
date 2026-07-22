@@ -8,6 +8,7 @@
 #include "world/level/world.h"
 #include "world/level/chunk/chunk.h"
 #include "client/player/player_state.h"
+#include "client/renderer/render.h"
 #include "gpu/texture.h"
 #include "util/mth.h"
 #include <math.h>
@@ -47,7 +48,7 @@ void ThrowableRenderer::render(Entity* entity, float x, float y, float z, float 
     ScePspFVector3 sc = { s, s, s };
     sceGumScale(&sc);
 
-    float dpx = g_level.player->x - x, dpy = g_level.player->y - y, dpz = g_level.player->z - z;
+    float dpx = g_camX - x, dpy = g_camY - y, dpz = g_camZ - z;
     float dhoriz = sqrtf(dpx * dpx + dpz * dpz);
     sceGumRotateY(atan2f(dpx, dpz));
     sceGumRotateX(-atan2f(dpy, dhoriz));

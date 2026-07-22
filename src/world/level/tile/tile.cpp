@@ -61,6 +61,7 @@ Drop Tile::getResource(int data) {
 
         case BLOCK_TALLGRASS:           return { ITEM_SEEDS_WHEAT, 1, 0 };
         case BLOCK_SIGN: case BLOCK_WALL_SIGN: return { ITEM_SIGN, 1, 0 };
+        case BLOCK_REEDS:               return { ITEM_REEDS, 1, 0 };
         case BLOCK_WOOL:                return { BLOCK_WOOL, 1, (short)data };
 
         case BLOCK_WHEAT:               return (data == 7) ? Drop{ ITEM_WHEAT, 1, 0 } : Drop{ 0, 0, 0 };

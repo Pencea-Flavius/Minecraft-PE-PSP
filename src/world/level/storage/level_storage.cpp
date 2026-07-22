@@ -588,4 +588,23 @@ bool readInfo(const char* absDir, char* nameOut, int nameCap, int* outGameType, 
     return ok;
 }
 
+static char s_activeDir[320] = "";
+static char s_activeName[64] = "World";
+static long s_activeSeed = 0;
+static int  s_activeGameType = 1;
+
+void setActiveWorld(const char* absDir, long seed, int gameType, const char* levelName) {
+    if (absDir) strncpy(s_activeDir, absDir, sizeof(s_activeDir) - 1);
+    s_activeDir[sizeof(s_activeDir) - 1] = '\0';
+    if (levelName) strncpy(s_activeName, levelName, sizeof(s_activeName) - 1);
+    s_activeName[sizeof(s_activeName) - 1] = '\0';
+    s_activeSeed = seed;
+    s_activeGameType = gameType;
+}
+
+const char* getActiveDir() { return s_activeDir; }
+long getActiveSeed() { return s_activeSeed; }
+int getActiveGameType() { return s_activeGameType; }
+const char* getActiveName() { return s_activeName; }
+
 }
