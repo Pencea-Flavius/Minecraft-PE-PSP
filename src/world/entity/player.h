@@ -5,9 +5,14 @@
 #include "world/entity/mob.h"
 #include "world/item/item_instance.h"
 
+class Inventory;
+
 class Player : public Mob {
 public:
     Player(Level* level);
+    virtual ~Player();
+
+    Inventory* inventory;
 
     static const int NUM_ARMOR = 4;
     ItemInstance armor[NUM_ARMOR];

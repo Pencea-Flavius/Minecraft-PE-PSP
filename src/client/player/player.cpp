@@ -209,11 +209,11 @@ void gameUpdate(MenuState& s, unsigned int pressed, const SceCtrlData& pad) {
     if (g_invOpen) {
 
         if (pressed & PSP_CTRL_LEFT)  { if (g_invCursor > 0) g_invCursor--; }
-        if (pressed & PSP_CTRL_RIGHT) { if (g_invCursor < g_inv.gridSize() - 1) g_invCursor++; }
+        if (pressed & PSP_CTRL_RIGHT) { if (g_invCursor < g_level.player->inventory->gridSize() - 1) g_invCursor++; }
         if (pressed & PSP_CTRL_UP) { if (g_invCursor >= INV_COLS) g_invCursor -= INV_COLS; }
-        if (pressed & PSP_CTRL_DOWN)  { if (g_invCursor + INV_COLS < g_inv.gridSize()) g_invCursor += INV_COLS; }
+        if (pressed & PSP_CTRL_DOWN)  { if (g_invCursor + INV_COLS < g_level.player->inventory->gridSize()) g_invCursor += INV_COLS; }
 
-        if (!g_inv.isCreative()) {
+        if (!g_level.player->inventory->isCreative()) {
             if (pressed & PSP_CTRL_SQUARE) {
                 g_invOpen = false;
                 craftOpen(Recipe::SIZE_2X2, CRAFT_WORKBENCH);
@@ -240,15 +240,15 @@ void gameUpdate(MenuState& s, unsigned int pressed, const SceCtrlData& pad) {
                 if (nowA - lastMove > 0.14f) {
                     lastMove = nowA;
                     if (dx < 0 && g_invCursor > 0) g_invCursor--;
-                    if (dx > 0 && g_invCursor < g_inv.gridSize() - 1) g_invCursor++;
+                    if (dx > 0 && g_invCursor < g_level.player->inventory->gridSize() - 1) g_invCursor++;
                     if (dy < 0 && g_invCursor >= INV_COLS) g_invCursor -= INV_COLS;
-                    if (dy > 0 && g_invCursor + INV_COLS < g_inv.gridSize()) g_invCursor += INV_COLS;
+                    if (dy > 0 && g_invCursor + INV_COLS < g_level.player->inventory->gridSize()) g_invCursor += INV_COLS;
                 }
             } else lastMove = 0.0f;
         }
         if (pressed & PSP_CTRL_CROSS) {
 
-            g_inv.pickToHotbar(g_invCursor);
+            g_level.player->inventory->pickToHotbar(g_invCursor);
             soundPlay("random.pop2", 1.0f, 0.3f);
             g_flashSlotStartTime = nowSeconds();
             g_invFlashCursor = g_invCursor;
@@ -269,7 +269,7 @@ void gameUpdate(MenuState& s, unsigned int pressed, const SceCtrlData& pad) {
         return;
     }
 
-    if ((pressed & PSP_CTRL_START) && g_level.player && g_inv.isCreative()) {
+    if ((pressed & PSP_CTRL_START) && g_level.player && g_level.player->inventory->isCreative()) {
         static float lastJumpPress = -1.0f;
         float nowP = nowSeconds();
         if (lastJumpPress >= 0.0f && nowP - lastJumpPress < 0.3f) {
@@ -281,8 +281,8 @@ void gameUpdate(MenuState& s, unsigned int pressed, const SceCtrlData& pad) {
         }
     }
 
-    if (pressed & PSP_CTRL_LEFT)  { if (g_inv.selected > 0) g_inv.selected--; else g_inv.selected = HOTBAR_SLOTS; }
-    if (pressed & PSP_CTRL_RIGHT) { if (g_inv.selected < HOTBAR_SLOTS) g_inv.selected++; else g_inv.selected = 0; }
+    if (pressed & PSP_CTRL_LEFT)  { if (g_level.player->inventory->selected > 0) g_level.player->inventory->selected--; else g_level.player->inventory->selected = HOTBAR_SLOTS; }
+    if (pressed & PSP_CTRL_RIGHT) { if (g_level.player->inventory->selected < HOTBAR_SLOTS) g_level.player->inventory->selected++; else g_level.player->inventory->selected = 0; }
 
     {
         const float DROP_TAP = 0.22f;
@@ -290,8 +290,8 @@ void gameUpdate(MenuState& s, unsigned int pressed, const SceCtrlData& pad) {
         static float dropStart = -1.0f;
         static bool  dropFired = false;
 
-        bool up = (pad.Buttons & PSP_CTRL_UP) != 0 && !g_inv.isCreative()
-                  && g_inv.selected < HOTBAR_SLOTS;
+        bool up = (pad.Buttons & PSP_CTRL_UP) != 0 && !g_level.player->inventory->isCreative()
+                  && g_level.player->inventory->selected < HOTBAR_SLOTS;
         float nowD = nowSeconds();
         if (up) {
             if (dropStart < 0.0f) { dropStart = nowD; dropFired = false; }
@@ -313,14 +313,14 @@ void gameUpdate(MenuState& s, unsigned int pressed, const SceCtrlData& pad) {
             g_dropCharge = -1.0f;
         }
     }
-    if ((pressed & PSP_CTRL_LTRIGGER) && g_inv.selected == HOTBAR_SLOTS) {
+    if ((pressed & PSP_CTRL_LTRIGGER) && g_level.player->inventory->selected == HOTBAR_SLOTS) {
         g_invOpen = true;
         soundPlay("random.click", 1.0f, 1.0f);
-        int tgt = (g_inv.selected < HOTBAR_SLOTS) ? g_inv.selected : 0;
+        int tgt = (g_level.player->inventory->selected < HOTBAR_SLOTS) ? g_level.player->inventory->selected : 0;
         g_invCursor = 0;
-        ItemInstance* sel = g_inv.getLinked(tgt);
-        for (int i = 0; sel && i < g_inv.gridSize(); i++) {
-            ItemInstance* it = g_inv.getItem(i);
+        ItemInstance* sel = g_level.player->inventory->getLinked(tgt);
+        for (int i = 0; sel && i < g_level.player->inventory->gridSize(); i++) {
+            ItemInstance* it = g_level.player->inventory->gridItem(i);
             if (it && it->id == sel->id && it->data == sel->data) { g_invCursor = i; break; }
         }
         return;

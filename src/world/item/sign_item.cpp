@@ -1,4 +1,6 @@
 
+#include "world/entity/player.h"
+#include "world/inventory/inventory.h"
 #include "world/item/sign_item.h"
 #include "world/level/level.h"
 #include "world/entity/local_player.h"
@@ -24,8 +26,8 @@ SignItem::SignItem(short id, int icon) : Item(id), icon(icon) {
     maxStackSize = 16;
 }
 
-bool SignItem::useOn(ItemInstance* item, Player* , World* world,
-                     int x, int y, int z, int face) {
+bool SignItem::useOn(ItemInstance* item, Player* player, World* world,
+                     int x, int y, int z, int face, float, float, float) {
     if (face == F_DOWN) return false;
 
     if (!isSolidMaterial(worldBlock(world, x, y, z))) return false;
@@ -56,7 +58,7 @@ bool SignItem::useOn(ItemInstance* item, Player* , World* world,
     SignTileEntity* ste = new SignTileEntity();
     g_level.setTileEntity(nx, ny, nz, ste);
 
-    if (item) item->count--;
+    if (player) player->inventory->consumeSelected();
     signStartEdit(ste);
     return true;
 }

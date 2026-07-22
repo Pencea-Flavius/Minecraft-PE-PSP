@@ -106,7 +106,8 @@ void Item::initItems() {
     new SimpleItem(ITEM_LEATHER,        ic(7, 6));
     new SimpleItem(ITEM_BRICK,          ic(6, 1));
     new SimpleItem(ITEM_CLAY,           ic(9, 3));
-    new SimpleItem(ITEM_REEDS,          ic(11, 1));
+    new SlabItem(BLOCK_SLAB);
+    new TileItem(ITEM_REEDS, BLOCK_REEDS, ic(11, 1));
     new SimpleItem(ITEM_PAPER,          ic(10, 3));
     new SimpleItem(ITEM_BOOK,           ic(11, 3));
     new SimpleItem(ITEM_SLIMEBALL,      ic(14, 1));
@@ -118,13 +119,13 @@ void Item::initItems() {
     new SimpleItem(ITEM_NETHER_BRICK,   ic(5, 9));
     new SimpleItem(ITEM_NETHER_QUARTZ,  ic(5, 10));
 
-    new SimpleItem(ITEM_FLINT_AND_STEEL, ic(5, 0),  1, 64);
+    new FlintAndSteelItem(ITEM_FLINT_AND_STEEL, ic(5, 0));
     new SimpleItem(ITEM_SHEARS,          ic(13, 5), 1, 238);
     new SimpleItem(ITEM_EGG,             ic(12, 0), 16);
     new SimpleItem(ITEM_SNOWBALL,        ic(14, 0), 16);
-    new SimpleItem(ITEM_DOOR_WOOD_ITEM,  ic(11, 2), 1);
-    new SimpleItem(ITEM_DOOR_IRON_ITEM,  ic(12, 2), 1);
-    new SimpleItem(ITEM_BED_ITEM,        ic(13, 2), 1);
+    new DoorItem(ITEM_DOOR_WOOD_ITEM, BLOCK_DOOR_WOOD, ic(11, 2));
+    new DoorItem(ITEM_DOOR_IRON_ITEM, BLOCK_DOOR_IRON, ic(12, 2));
+    new BedItem (ITEM_BED_ITEM,       BLOCK_BED,       ic(13, 2));
     new SimpleItem(ITEM_CAMERA,          ic(0, 14), 1);
 
     new SeedItem(ITEM_SEEDS_WHEAT, BLOCK_WHEAT, ic(9, 0));

@@ -138,7 +138,7 @@ static void spawnMonsters(Level* level) {
 }
 
 void populateInitial(Level* level) {
-    if (g_inv.isCreative()) return;
+    if (g_level.player->inventory->isCreative()) return;
     const float CREATURE_PROBABILITY = 0.10f;
     const int   cap = MobCategory::creature.maxPerLevel;
     for (int cz = 0; cz < WORLD_D / 16; cz++)
@@ -172,7 +172,7 @@ void populateInitial(Level* level) {
 
 void tick(Level* level, bool spawnEnemies, bool spawnFriendlies) {
 
-    if (g_inv.isCreative()) return;
+    if (g_level.player->inventory->isCreative()) return;
 
     if (spawnFriendlies) spawnCreatures(level);
     if (spawnEnemies)    spawnMonsters(level);

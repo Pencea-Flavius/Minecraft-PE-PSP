@@ -67,8 +67,8 @@ void worldSetDataNoUpdate(World* w, int x, int y, int z, unsigned char data) {
     worldDataPut(w, worldIndex(x, y, z), data);
 }
 
-void worldSetBlockAndData(World* w, int x, int y, int z, unsigned char id, unsigned char data) {
-    if (y < 0 || y >= WORLD_H || x < 0 || x >= WORLD_W || z < 0 || z >= WORLD_D) return;
+bool worldSetBlockAndData(World* w, int x, int y, int z, unsigned char id, unsigned char data) {
+    if (y < 0 || y >= WORLD_H || x < 0 || x >= WORLD_W || z < 0 || z >= WORLD_D) return false;
     int idx = worldIndex(x, y, z);
     unsigned char was = w->blocks[idx];
     w->blocks[idx] = id;
@@ -79,6 +79,7 @@ void worldSetBlockAndData(World* w, int x, int y, int z, unsigned char id, unsig
 
         if (lightEmit(was) > 0 && lightEmit(id) == 0) worldRemoveBlockLight(w, x, y, z);
     }
+    return true;
 }
 
 void worldRebuildAroundNow(World* w, int x, int y, int z) {

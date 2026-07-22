@@ -73,7 +73,7 @@ Entity* Monster::findAttackTarget() {
     LocalPlayer* p = level->player;
     if (!p || !p->isAlive()) return 0;
 
-    if (g_inv.isCreative()) return 0;
+    if (g_level.player->inventory->isCreative()) return 0;
     if (distanceTo((Entity*)p) > 16.0f) return 0;
     if (!canSee((Entity*)p)) return 0;
     return (Entity*)p;

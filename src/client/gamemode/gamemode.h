@@ -1,10 +1,15 @@
 #pragma once
 
+struct BlockHit;
+struct ItemInstance;
+
 class GameMode {
 public:
     virtual ~GameMode() {}
     virtual bool isCreative() = 0;
     virtual void handleInput(unsigned int pressed, unsigned int held);
+
+    virtual bool useItemOn(ItemInstance* item, const BlockHit& hit);
 };
 
 class CreativeMode : public GameMode {

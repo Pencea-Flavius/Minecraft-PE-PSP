@@ -85,7 +85,8 @@ static inline void worldDataPut(World* w, int i, unsigned char v) {
     b = (i & 1) ? (unsigned char)((b & 0x0F) | (unsigned char)((v & 0x0F) << 4))
                 : (unsigned char)((b & 0xF0) | (v & 0x0F));
 }
-void worldSetBlockAndData(World* w, int x, int y, int z, unsigned char id, unsigned char data);
+
+bool worldSetBlockAndData(World* w, int x, int y, int z, unsigned char id, unsigned char data);
 void worldSetData(World* w, int x, int y, int z, unsigned char data);
 
 void worldSetDataNoUpdate(World* w, int x, int y, int z, unsigned char data);
@@ -186,7 +187,7 @@ void worldExplode(World* w, float x, float y, float z, float r);
 
 void worldPrimeTnt(World* w, int x, int y, int z, int fuseTicks);
 
-bool tileMayPlace(World* w, unsigned char id, int x, int y, int z, int data = -1);
+bool tileMayPlace(World* w, unsigned char id, int x, int y, int z, int face);
 void tileNeighborChanged(World* w, int x, int y, int z);
 void tileRandomTick(World* w);
 

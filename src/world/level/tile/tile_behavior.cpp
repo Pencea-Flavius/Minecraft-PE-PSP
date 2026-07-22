@@ -18,22 +18,21 @@ void heavyTileTick(World* w, int x, int y, int z, unsigned char id) {
     }
 }
 
-bool tileMayPlace(World* w, unsigned char id, int x, int y, int z, int data) {
-    return Tile::tiles[id]->mayPlace(w, x, y, z, data);
+bool tileMayPlace(World* w, unsigned char id, int x, int y, int z, int face) {
+    Tile* t = Tile::tiles[id];
+    BlockAABB boxes[3];
+    int n = t->getAABB(w, x, y, z, boxes);
+    for (int i = 0; i < n; i++) {
+        AABB box(boxes[i].x0, boxes[i].y0, boxes[i].z0,
+                 boxes[i].x1, boxes[i].y1, boxes[i].z1);
+        if (!g_level.isUnobstructed(box)) return false;
+    }
+    return t->mayPlace(w, x, y, z, face);
 }
 
 void tileNeighborChanged(World* w, int x, int y, int z) {
-    unsigned char id = worldBlock(w, x, y, z);
-    if (id == BLOCK_ORE_REDSTONE) {
-        extern void redstoneOreInteract(World* w, int x, int y, int z);
-        redstoneOreInteract(w, x, y, z);
-    }
 
-    if (isHeavyTile(id)) { worldScheduleTick(w, x, y, z, id, 2); return; }
-    if (Tile::tiles[id]->mayPlace(w, x, y, z, -1)) return;
-    worldSpawnResources(w, x, y, z, id, worldData(w, x, y, z));
-    worldSetBlockAndData(w, x, y, z, BLOCK_AIR, 0);
-    worldNotifyNeighborsChanged(w, x, y, z);
+    Tile::tiles[worldBlock(w, x, y, z)]->neighborChanged(w, x, y, z);
 }
 
 void tileRandomTick(World* w) {

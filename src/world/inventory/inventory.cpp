@@ -1,8 +1,6 @@
 #include "world/inventory/inventory.h"
 #include "world/item/item.h"
 
-Inventory g_inv(true);
-
 static const short kPalette[] = {
 
     BLOCK_COBBLESTONE, BLOCK_STONE_BRICKS, BLOCK_STONE_BRICKS, BLOCK_STONE_BRICKS, BLOCK_MOSSY_COBBLE, BLOCK_PLANKS, BLOCK_BRICKS,
@@ -32,9 +30,9 @@ static const short kPalette[] = {
     BLOCK_LADDER,
     BLOCK_TORCH,
     BLOCK_GLASS_PANE,
-    BLOCK_DOOR_WOOD, BLOCK_TRAPDOOR, BLOCK_FENCE, BLOCK_FENCE_GATE,
+    ITEM_DOOR_WOOD_ITEM, BLOCK_TRAPDOOR, BLOCK_FENCE, BLOCK_FENCE_GATE,
 
-    BLOCK_BED,
+    ITEM_BED_ITEM,
     BLOCK_BOOKSHELF,
     ITEM_PAINTING,
     BLOCK_CRAFTING_TABLE, BLOCK_STONECUTTER, BLOCK_CHEST, BLOCK_FURNACE, BLOCK_TNT,
@@ -92,7 +90,7 @@ static_assert((sizeof(kStarter) / sizeof(kStarter[0])) == Inventory::HOTBAR,
               "starter set must fill the hotbar");
 
 Inventory::Inventory(bool creative)
-    : FillingContainer(MAX_SLOTS, HOTBAR, ContainerType::INVENTORY, creative),
+    : FillingContainer(MAX_SLOTS + HOTBAR, HOTBAR, ContainerType::INVENTORY, creative),
       selected(0), mainCount(0) {
     setupDefault();
 }
@@ -110,17 +108,17 @@ void Inventory::setupDefault() {
     }
 
     for (int i = 0; i < HOTBAR; i++) {
-        int found = 0;
+        int found = firstGridSlot();
         for (int s = 0; s < mainCount; s++) {
-            ItemInstance* it = getItem(s);
-            if (it && it->id == kStarter[i] && it->data == 0) { found = s; break; }
+            ItemInstance* it = gridItem(s);
+            if (it && it->id == kStarter[i] && it->data == 0) { found = s + firstGridSlot(); break; }
         }
         linkSlot(i, found);
     }
 }
 
 void Inventory::reinit(bool creative) {
-    reconfigure(creative ? MAX_SLOTS : SURVIVAL_SLOTS, creative);
+    reconfigure((creative ? MAX_SLOTS : SURVIVAL_SLOTS) + HOTBAR, creative);
     selected = 0;
     mainCount = 0;
     setupDefault();
@@ -182,14 +180,16 @@ void Inventory::ensureHotbar(short id, short data) {
 
 bool Inventory::linkHotbarTo(int slot, short id, unsigned char data) {
     if (slot < 0 || slot >= HOTBAR) return false;
+
     for (int s = 0; s < mainCount; s++) {
-        ItemInstance* it = getItem(s);
-        if (it && it->id == id && it->data == data) return linkSlot(slot, s);
+        ItemInstance* it = gridItem(s);
+        if (it && it->id == id && it->data == data) return linkSlot(slot, s + firstGridSlot());
     }
     return false;
 }
 
-void Inventory::pickToHotbar(int invSlot) {
+void Inventory::pickToHotbar(int gridIndex) {
+    int invSlot = gridIndex + firstGridSlot();
     ItemInstance* picked = getItem(invSlot);
     if (!picked) return;
 

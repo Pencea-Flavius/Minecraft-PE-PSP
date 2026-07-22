@@ -8,7 +8,7 @@ class SpawnEggItem : public Item {
 public:
     SpawnEggItem();
     virtual int  getIcon(short data) const;
-    virtual bool useOn(ItemInstance* item, Player* player, World* world, int x, int y, int z, int face);
+    virtual bool useOn(ItemInstance* item, Player* player, World* world, int x, int y, int z, int face, float, float, float);
 };
 
 #endif

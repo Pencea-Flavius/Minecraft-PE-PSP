@@ -1,6 +1,9 @@
 #include "client/gui/inventory_ui.h"
 #include "client/gui/hud.h"
 #include "client/player/player.h"
+#include "world/level/level.h"
+#include "world/entity/local_player.h"
+#include "world/inventory/inventory.h"
 #include "gpu/gu.h"
 #include "gpu/texture.h"
 #include "gpu/sprite.h"
@@ -54,7 +57,7 @@ void inventoryDraw(MenuState& s) {
     #define G(v) ((v) * HUD_S)
     const int   cols   = INV_COLS;
     const int   Bx = 10, By = 6, ItemSize = 32, BlockBorder = 4, clipBottom = 0;
-    const int   rows   = 1 + (g_inv.gridSize() - 1) / cols;
+    const int   rows   = 1 + (g_level.player->inventory->gridSize() - 1) / cols;
     const float realW  = (float)(cols * ItemSize);
     const float realBx = (240.0f - realW) * 0.5f;
     const float paneX = realBx, paneY = 24.0f + By;
@@ -90,7 +93,7 @@ void inventoryDraw(MenuState& s) {
     int firstRow = (int)floorf(scrollY / (float)ItemSize) - 1; if (firstRow < 0) firstRow = 0;
     int lastRow  = (int)floorf((scrollY + paneH) / (float)ItemSize) + 1;
     int iStart = firstRow * cols;
-    int iEnd   = (lastRow + 1) * cols; if (iEnd > g_inv.gridSize()) iEnd = g_inv.gridSize();
+    int iEnd   = (lastRow + 1) * cols; if (iEnd > g_level.player->inventory->gridSize()) iEnd = g_level.player->inventory->gridSize();
 
     textureBind(&s.guiAtlas);
     for (int i = iStart; i < iEnd; i++) {
@@ -99,7 +102,7 @@ void inventoryDraw(MenuState& s) {
         spriteDraw(&s.guiAtlas, G(cx), G(cy), G(ItemSize), G(ItemSize), GA_SLOT_BG, 0xFFFFFFFFu);
     }
     for (int i = iStart; i < iEnd; i++) {
-        ItemInstance* it = g_inv.getItem(i);
+        ItemInstance* it = g_level.player->inventory->gridItem(i);
         if (!it) continue;
         float cx = paneX + (i % cols) * ItemSize;
         float cy = paneY + (i / cols) * ItemSize - scrollY;
@@ -110,7 +113,7 @@ void inventoryDraw(MenuState& s) {
             iconTint = 0xFF000000u | (gv << 16) | (gv << 8) | gv;
         }
         drawBlockIcon(it->id, it->data, G(cx + BlockBorder + 4), G(cy + BlockBorder + 4), G(16), iconTint);
-        if (!g_inv.isCreative() && it->count > 1)
+        if (!g_level.player->inventory->isCreative() && it->count > 1)
             drawStackCount(s.font, it->count, G(cx + BlockBorder + 4), G(cy + BlockBorder + 4), G(16));
     }
     sceGuScissor(0, 0, 480, 272);

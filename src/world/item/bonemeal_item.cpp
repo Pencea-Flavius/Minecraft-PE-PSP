@@ -1,3 +1,5 @@
+#include "world/entity/player.h"
+#include "world/inventory/inventory.h"
 #include "world/item/bonemeal_item.h"
 #include "world/level/world.h"
 #include "world/level/tile/tile_behavior.h"
@@ -31,7 +33,7 @@ static bool bonemealReed(World* w, int x, int y, int z) {
     return true;
 }
 
-bool BonemealItem::useOn(ItemInstance* item, Player* player, World* world, int x, int y, int z, int face) {
+bool BonemealItem::useOn(ItemInstance* item, Player* player, World* world, int x, int y, int z, int face, float, float, float) {
 
     if (item->data != DYE_WHITE) return false;
     switch (worldBlock(world, x, y, z)) {
@@ -39,16 +41,21 @@ bool BonemealItem::useOn(ItemInstance* item, Player* player, World* world, int x
             saplingGrow(world, x, y, z);
             worldUpdateLights(world);
             worldRebuildAroundNow(world, x, y, z);
+            if (player) player->inventory->consumeSelected();
             return true;
         case BLOCK_WHEAT:
         case BLOCK_MELON_STEM:
             worldSetData(world, x, y, z, 7);
+            if (player) player->inventory->consumeSelected();
             return true;
         case BLOCK_GRASS:
             bonemealGrass(world, x, y, z);
+            if (player) player->inventory->consumeSelected();
             return true;
         case BLOCK_REEDS:
-            return bonemealReed(world, x, y, z);
+            if (!bonemealReed(world, x, y, z)) return false;
+            if (player) player->inventory->consumeSelected();
+            return true;
     }
     return false;
 }

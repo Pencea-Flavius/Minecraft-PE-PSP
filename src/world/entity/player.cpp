@@ -1,4 +1,5 @@
 #include "world/entity/player.h"
+#include "world/inventory/inventory.h"
 #include "world/entity/entity_types.h"
 #include "world/level/level.h"
 #include "world/difficulty.h"
@@ -7,8 +8,11 @@
 #include <cmath>
 
 Player::Player(Level* level)
-    : Mob(level), bob(0), oBob(0), tilt(0), oTilt(0), bowPull(0), bowTimeHeld(0),
+    : Mob(level), inventory(new Inventory(true)),
+      bob(0), oBob(0), tilt(0), oTilt(0), bowPull(0), bowTimeHeld(0),
       eatAnim(0), sleeping(false), sleepCounter(0), bedX(0), bedY(0), bedZ(0) {}
+
+Player::~Player() { delete inventory; }
 
 int  Player::getEntityTypeId() const { return EntityTypes::IdLocalPlayer; }
 

@@ -1,4 +1,5 @@
 
+#include "world/entity/local_player.h"
 #include <pspctrl.h>
 #include <pspgu.h>
 #include <pspkernel.h>
@@ -29,7 +30,7 @@ static unsigned int s_chargeStart = 0;
 static float       s_barShare     = 0.0f;
 
 static FillingContainer* paneContainer(int pane) {
-    return pane == 0 ? (FillingContainer*)&g_inv : &s_chest->container;
+    return pane == 0 ? (FillingContainer*)g_level.player->inventory : &s_chest->container;
 }
 
 bool chestCursorOnChest() { return s_pane == 1; }
@@ -40,7 +41,7 @@ static int paneSize(int pane) {
 
 static void moveAcross(int n) {
 
-    if (g_inv.isCreative()) return;
+    if (g_level.player->inventory->isCreative()) return;
     FillingContainer* from = paneContainer(s_pane);
     FillingContainer* to   = paneContainer(1 - s_pane);
     int slot = s_cursor[s_pane];
@@ -101,7 +102,7 @@ void chestHandleInput(MenuState& s, unsigned int pressed, unsigned int held) {
         moveAcross((count + 1) / 2);
         s_chargeKey = -1; s_barShare = 0.0f;
     }
-    if ((held & PSP_CTRL_CROSS) && !g_inv.isCreative() && count > 0) {
+    if ((held & PSP_CTRL_CROSS) && !g_level.player->inventory->isCreative() && count > 0) {
         unsigned int now = sceKernelGetSystemTimeLow();
         if (s_chargeKey != curKey) { s_chargeKey = curKey; s_chargeStart = now; }
         int heldMs = (int)((now - s_chargeStart) / 1000);

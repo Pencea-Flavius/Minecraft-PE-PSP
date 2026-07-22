@@ -5,6 +5,8 @@
 #include "client/player/physics.h"
 
 class Random;
+class Player;
+class Entity;
 
 struct Drop { short id; int count; short aux; };
 
@@ -55,8 +57,23 @@ public:
 
     virtual void getTexture(unsigned char data, int face, int* col, int* row, unsigned int* tint);
 
-    virtual bool mayPlace(World* w, int x, int y, int z, int data);
+    virtual bool mayPlace(World* w, int x, int y, int z, int face);
+    virtual bool mayPlace(World* w, int x, int y, int z);
+    virtual bool canSurvive(World* w, int x, int y, int z);
+
+    virtual void neighborChanged(World* w, int x, int y, int z);
+
+    virtual void entityInside(World* w, int x, int y, int z, Entity* e);
     virtual void randomTick(World* w, int x, int y, int z);
+
+    virtual bool use(World* w, int x, int y, int z, Player* player) { return false; }
+
+    virtual int getPlacedOnFaceDataValue(World* w, int x, int y, int z, int face,
+                                         float clickX, float clickY, float clickZ, int itemValue) {
+        return itemValue;
+    }
+
+    virtual void setPlacedBy(World* w, int x, int y, int z, Player* placer) {}
 
     virtual Drop getResource(int data);
     virtual int  getResourceCount(int data, Random& rng);

@@ -232,14 +232,14 @@ void LocalPlayer::die(Entity* source) {
         e->yd = 0.2f;
         g_level.addEntity(e);
     };
-    if (!g_inv.isCreative()) {
+    if (!inventory->isCreative()) {
 
-        for (int i = 0; i < g_inv.getContainerSize(); ++i) {
-            ItemInstance* it = g_inv.getItem(i);
+        for (int i = 0; i < inventory->getContainerSize(); ++i) {
+            ItemInstance* it = inventory->getItem(i);
             if (it && !it->isNull()) dropOnDeath(*it);
-            g_inv.clearSlot(i);
+            inventory->clearSlot(i);
         }
-        for (int i = 0; i < Inventory::HOTBAR; ++i) g_inv.linkSlot(i, -1);
+        for (int i = 0; i < Inventory::HOTBAR; ++i) inventory->linkSlot(i, -1);
 
         for (int i = 0; i < NUM_ARMOR; ++i) {
             ItemInstance* it = getArmor(i);

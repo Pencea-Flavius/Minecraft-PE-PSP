@@ -1,4 +1,6 @@
 
+#include "world/entity/player.h"
+#include "world/inventory/inventory.h"
 #include "world/item/hanging_entity_item.h"
 #include "world/item/item_instance.h"
 #include "world/entity/hanging_entity.h"
@@ -25,8 +27,8 @@ HangingEntity* HangingEntityItem::createEntity(Level* level, int x, int y, int z
     return 0;
 }
 
-bool HangingEntityItem::useOn(ItemInstance* item, Player* , World* ,
-                              int x, int y, int z, int face) {
+bool HangingEntityItem::useOn(ItemInstance* item, Player* player, World* ,
+                              int x, int y, int z, int face, float, float, float) {
     int facing = (face >= 0 && face < 6) ? kPortFaceToFacing[face] : Facing::DOWN;
     if (facing == Facing::DOWN) return false;
     if (facing == Facing::UP)   return false;
@@ -37,6 +39,7 @@ bool HangingEntityItem::useOn(ItemInstance* item, Player* , World* ,
     if (entity && entity->survives()) {
         g_level.addEntity(entity);
 
+        if (player) player->inventory->consumeSelected();
         return true;
     }
     if (entity) delete entity;

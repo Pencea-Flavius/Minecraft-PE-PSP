@@ -31,8 +31,14 @@ enum TileMaterial {
 
 inline TileMaterial tileMaterial(unsigned char id) {
     switch (id) {
+        case BLOCK_AIR: return MAT_AIR;
+
+        case BLOCK_GRASS:
         case BLOCK_DIRT: case BLOCK_FARMLAND: case BLOCK_UPDATE1: case BLOCK_UPDATE2:
             return MAT_DIRT;
+
+        case BLOCK_LEAVES:
+            return MAT_LEAVES;
         case BLOCK_PLANKS: case BLOCK_LOG: case BLOCK_BOOKSHELF: case BLOCK_STAIRS_PLANKS:
         case BLOCK_CHEST: case BLOCK_CRAFTING_TABLE: case BLOCK_SIGN: case BLOCK_DOOR_WOOD:
         case BLOCK_WALL_SIGN: case BLOCK_FENCE: case BLOCK_TRAPDOOR: case BLOCK_FENCE_GATE:

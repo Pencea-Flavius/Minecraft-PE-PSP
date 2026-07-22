@@ -9,7 +9,7 @@ public:
         maxStackSize = 64;
         maxDamage = 0;
     }
-    virtual bool useOn(ItemInstance* item, Player* player, World* world, int x, int y, int z, int face);
+    virtual bool useOn(ItemInstance* item, Player* player, World* world, int x, int y, int z, int face, float, float, float);
 
     virtual int  getIcon(short data) const {
         int c = data; if (c < 0) c = 0; if (c > 15) c = 15;

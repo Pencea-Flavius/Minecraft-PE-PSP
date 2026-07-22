@@ -1,3 +1,5 @@
+#include "world/entity/player.h"
+#include "world/inventory/inventory.h"
 #include "world/item/spawn_egg_item.h"
 #include "world/item/item_instance.h"
 #include "world/entity/entity_types.h"
@@ -16,8 +18,8 @@ SpawnEggItem::SpawnEggItem() : Item(ITEM_SPAWN_EGG) {
 
 int SpawnEggItem::getIcon(short ) const { return II_SPAWN_EGG_BASE; }
 
-bool SpawnEggItem::useOn(ItemInstance* item, Player* , World* ,
-                         int x, int y, int z, int face) {
+bool SpawnEggItem::useOn(ItemInstance* item, Player* player, World* ,
+                         int x, int y, int z, int face, float, float, float) {
     if (face < 0 || face > 5) return true;
     int nx = x + kFaceNeighbor[face][0];
     int ny = y + kFaceNeighbor[face][1];
@@ -28,6 +30,6 @@ bool SpawnEggItem::useOn(ItemInstance* item, Player* , World* ,
     if (!m) return true;
     m->moveTo(nx + 0.5f, (float)ny, nz + 0.5f, (float)(rand() % 360), 0.0f);
     g_level.addEntity(m);
-    if (item) item->count--;
+    if (player) player->inventory->consumeSelected();
     return true;
 }

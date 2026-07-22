@@ -8,7 +8,41 @@
 #include "world/entity/item_entity.h"
 #include "world/item/item.h"
 #include "world/level/levelgen/Random.h"
+#include "world/entity/player.h"
+#include "world/entity/entity.h"
+#include "world/inventory/inventory.h"
+#include "world/level/tile/tile_gui_hooks.h"
+#include "world/level/tile/entity/tile_entity.h"
+#include "world/level/tile/entity/chest_tile_entity.h"
+#include "world/level/tile/entity/furnace_tile_entity.h"
+#include "world/level/tile/entity/sign_tile_entity.h"
+#include "world/level/tile/entity/reactor_tile_entity.h"
+#include "world/level/tile/nether_reactor_pattern.h"
+#include "world/level/tile/redstone_ore.h"
+#include "client/gamemode/gamemode.h"
 #include <stdlib.h>
+#include <math.h>
+
+static void playDoorSound(int x, int y, int z, bool opened) {
+    g_level.playSound(x + 0.5f, y + 0.5f, z + 0.5f,
+                      opened ? "random.door_open" : "random.door_close",
+                      1.0f, (rand() / (float)RAND_MAX) * 0.1f + 0.9f);
+}
+
+static int facingQuadrant(Player* p) {
+    if (!p) return 0;
+    float yaw = p->yRot;
+    while (yaw < 0.0f)    yaw += 360.0f;
+    while (yaw >= 360.0f) yaw -= 360.0f;
+    int q = ((int)floorf(yaw * 4.0f / 360.0f + 0.5f)) & 3;
+    return (4 - q) & 3;
+}
+
+static int facingFromYaw(float yawDeg) {
+    static const int kQuadrantFace[4] = { F_BACK, F_LEFT, F_FORWARD, F_RIGHT };
+    int q = ((int)floorf(yawDeg / 90.0f + 0.5f)) & 3;
+    return kQuadrantFace[q];
+}
 
 Tile* Tile::tiles[256] = { 0 };
 
@@ -33,7 +67,19 @@ int Tile::getAABB(const World* , int x, int y, int z, BlockAABB out[3]) {
     return 1;
 }
 
-bool Tile::mayPlace(World*, int, int, int, int) { return true; }
+bool Tile::mayPlace(World* w, int x, int y, int z, int ) { return mayPlace(w, x, y, z); }
+bool Tile::mayPlace(World* w, int x, int y, int z) {
+
+    return isReplaceable(worldBlock(w, x, y, z));
+}
+bool Tile::canSurvive(World*, int, int, int) { return true; }
+void Tile::entityInside(World*, int, int, int, Entity*) {}
+void Tile::neighborChanged(World* w, int x, int y, int z) {
+    if (canSurvive(w, x, y, z)) return;
+    worldSpawnResources(w, x, y, z, id, worldData(w, x, y, z));
+    worldSetBlockAndData(w, x, y, z, BLOCK_AIR, 0);
+    worldNotifyNeighborsChanged(w, x, y, z);
+}
 void Tile::randomTick(World*, int, int, int) {}
 
 Drop Tile::getResource(int data) {
@@ -79,9 +125,13 @@ Drop Tile::getResource(int data) {
         case BLOCK_BEDROCK:
         case BLOCK_WATER: case BLOCK_CALM_WATER: case BLOCK_LAVA: case BLOCK_CALM_LAVA:
             return { 0, 0, 0 };
-        case BLOCK_DOOR_WOOD: case BLOCK_DOOR_IRON:
+
+        case BLOCK_DOOR_WOOD:
+            return (data & 8) ? Drop{ 0, 0, 0 } : Drop{ ITEM_DOOR_WOOD_ITEM, 1, 0 };
+        case BLOCK_DOOR_IRON:
+            return (data & 8) ? Drop{ 0, 0, 0 } : Drop{ ITEM_DOOR_IRON_ITEM, 1, 0 };
         case BLOCK_BED:
-            return (data & 8) ? Drop{ 0, 0, 0 } : Drop{ (short)id, 1, 0 };
+            return (data & 8) ? Drop{ 0, 0, 0 } : Drop{ ITEM_BED_ITEM, 1, 0 };
         default:
             return { (short)id, 1, 0 };
     }
@@ -353,9 +403,35 @@ void Tile::getTexture(unsigned char data, int f, int* col, int* row, unsigned in
 }
 
 struct BedTile : Tile { BedTile(unsigned char i) : Tile(i) {}
+
+    bool use(World* w, int x, int y, int z, Player* p) {
+        if (!p) return true;
+        int bx = x, by = y, bz = z;
+        unsigned char bdata = worldData(w, bx, by, bz);
+        if (!(bdata & 8)) {
+            int dir = bdata & 3;
+            bx += BED_HEAD_OFF[dir][0];
+            bz += BED_HEAD_OFF[dir][1];
+            if (worldBlock(w, bx, by, bz) != BLOCK_BED) return true;
+            bdata = worldData(w, bx, by, bz);
+        }
+
+        if ((bdata & 4) && !p->isSleeping())
+            worldSetData(w, bx, by, bz, (unsigned char)(bdata & ~4));
+        int r = p->startSleepInBed(bx, by, bz);
+        if (r == Player::BED_OK)
+            worldSetData(w, bx, by, bz, (unsigned char)(worldData(w, bx, by, bz) | 4));
+        else if (r == Player::BED_NOT_POSSIBLE_NOW)
+            guiChatMessage("You can only sleep at night");
+        else if (r == Player::BED_NOT_SAFE)
+            guiChatMessage("You may not rest now, there are monsters nearby");
+        return true;
+    }
     int getAABB(const World*, int x, int y, int z, BlockAABB out[3]) {
         out[0] = { (float)x, (float)y, (float)z, x + 1.0f, y + 9.0f/16.0f, z + 1.0f }; return 1; }
-    bool mayPlace(World* w, int x, int y, int z, int data) { return supportCanSurvive(w, id, x, y, z, data); } };
+    bool canSurvive(World* w, int x, int y, int z) { return supportCanSurvive(w, id, x, y, z, -1); }
+
+};
 
 struct FarmTile : Tile { FarmTile(unsigned char i) : Tile(i) { randomTicks = true; }
 
@@ -370,7 +446,13 @@ struct SlabTile : Tile { SlabTile(unsigned char i) : Tile(i) {}
         out[0].z0 = (float)z; out[0].z1 = z + 1.0f;
         out[0].y0 = y + ((data & SLAB_TOP_SLOT_BIT) ? 0.5f : 0.0f);
         out[0].y1 = y + ((data & SLAB_TOP_SLOT_BIT) ? 1.0f : 0.5f);
-        return 1; } };
+        return 1; }
+
+    int getPlacedOnFaceDataValue(World*, int, int, int, int face,
+                                 float, float clickY, float, int itemValue) {
+        bool upperHalf = (face == F_DOWN) || (face != F_TOP && clickY > 0.5f);
+        return (itemValue & DSLAB_MAT_MASK) | (upperHalf ? SLAB_TOP_SLOT_BIT : 0);
+    } };
 
 static bool stairLockAttached(const World* w, int x, int y, int z, unsigned char myData) {
     unsigned char nb = worldBlock(w, x, y, z);
@@ -515,7 +597,19 @@ struct StairTile : Tile { StairTile(unsigned char i) : Tile(i) {}
             out[i].x0 = x + b[i][0]; out[i].y0 = y + b[i][1]; out[i].z0 = z + b[i][2];
             out[i].x1 = x + b[i][3]; out[i].y1 = y + b[i][4]; out[i].z1 = z + b[i][5];
         }
-        return n; } };
+        return n; }
+
+    int getPlacedOnFaceDataValue(World*, int, int, int, int face, float, float clickY, float, int) {
+        bool upperHalf = (face == F_DOWN) || (face != F_TOP && clickY > 0.5f);
+        return upperHalf ? STAIR_UPSIDEDOWN_BIT : 0;
+    }
+    void setPlacedBy(World* w, int x, int y, int z, Player* p) {
+        if (!p) return;
+        static const int kQuadrantDir[4] = { 2, 0, 3, 1 };
+        int q = ((int)floorf(p->yRot / 90.0f + 0.5f)) & 3;
+        unsigned char d = worldData(w, x, y, z);
+        worldSetData(w, x, y, z, (unsigned char)((d & ~STAIR_DIR_MASK) | kQuadrantDir[q]));
+    } };
 
 struct PaneTile : Tile { PaneTile(unsigned char i) : Tile(i) {}
     int getAABB(const World* w, int x, int y, int z, BlockAABB out[3]) {
@@ -586,7 +680,26 @@ struct DoorTile : Tile { DoorTile(unsigned char i) : Tile(i) {}
         out[0].y0 = y + y0; out[0].y1 = y + y1;
         out[0].z0 = z + z0; out[0].z1 = z + z1;
         return 1; }
-    bool mayPlace(World* w, int x, int y, int z, int data) { return supportCanSurvive(w, id, x, y, z, data); } };
+    bool canSurvive(World* w, int x, int y, int z) { return supportCanSurvive(w, id, x, y, z, -1); }
+
+    bool mayPlace(World* w, int x, int y, int z, int ) {
+        if (y >= WORLD_H - 1) return false;
+        return isSolidPhys(worldBlock(w, x, y - 1, z))
+            && Tile::mayPlace(w, x, y, z)
+            && Tile::mayPlace(w, x, y + 1, z);
+    }
+
+    bool use(World* w, int x, int y, int z, Player*) {
+        unsigned char data = worldData(w, x, y, z);
+        int lowerY = (data & 8) ? y - 1 : y;
+        int upperY = (data & 8) ? y : y + 1;
+        unsigned char lowerData = worldData(w, x, lowerY, z);
+        worldSetBlockAndData(w, x, lowerY, z, worldBlock(w, x, lowerY, z), lowerData ^ 4);
+        worldRebuildAroundNow(w, x, lowerY, z);
+        worldRebuildAroundNow(w, x, upperY, z);
+        playDoorSound(x, y, z, ((lowerData ^ 4) & 4) != 0);
+        return true;
+    } };
 
 struct TrapdoorTile : Tile { TrapdoorTile(unsigned char i) : Tile(i) {}
     int getAABB(const World* w, int x, int y, int z, BlockAABB out[3]) {
@@ -604,7 +717,26 @@ struct TrapdoorTile : Tile { TrapdoorTile(unsigned char i) : Tile(i) {}
         out[0].y0 = y + y0; out[0].y1 = y + y1;
         out[0].z0 = z + z0; out[0].z1 = z + z1;
         return 1; }
-    bool mayPlace(World* w, int x, int y, int z, int data) { return supportCanSurvive(w, id, x, y, z, data); } };
+    bool canSurvive(World* w, int x, int y, int z) { return supportCanSurvive(w, id, x, y, z, -1); }
+    bool mayPlace(World* w, int x, int y, int z, int face) {
+        if (!Tile::mayPlace(w, x, y, z)) return false;
+
+        return supportCanSurvive(w, id, x, y, z,
+                                 getPlacedOnFaceDataValue(w, x, y, z, face, 0.0f, 0.0f, 0.0f, 0));
+    }
+
+    bool use(World* w, int x, int y, int z, Player*) {
+        unsigned char data = worldData(w, x, y, z);
+        worldSetBlockAndData(w, x, y, z, id, data ^ 4);
+        worldRebuildAroundNow(w, x, y, z);
+        playDoorSound(x, y, z, ((data ^ 4) & 4) != 0);
+        return true;
+    }
+
+    int getPlacedOnFaceDataValue(World*, int, int, int, int face, float, float, float, int) {
+        switch (face) { case F_BACK: return 0; case F_FORWARD: return 1;
+                        case F_LEFT: return 2; case F_RIGHT: return 3; default: return 0; }
+    } };
 
 struct LadderTile : Tile { LadderTile(unsigned char i) : Tile(i) {}
 
@@ -617,7 +749,18 @@ struct LadderTile : Tile { LadderTile(unsigned char i) : Tile(i) {}
         else if (data == 5) out[0] = { x + 0.0f,     y + 0.0f, z + 0.0f,     x + r,    y + 1.0f, z + 1.0f };
         else return 0;
         return 1; }
-    bool mayPlace(World* w, int x, int y, int z, int data) { return supportCanSurvive(w, id, x, y, z, data); } };
+    bool canSurvive(World* w, int x, int y, int z) { return supportCanSurvive(w, id, x, y, z, -1); }
+    bool mayPlace(World* w, int x, int y, int z, int face) {
+        if (!Tile::mayPlace(w, x, y, z)) return false;
+
+        return supportCanSurvive(w, id, x, y, z,
+                                 getPlacedOnFaceDataValue(w, x, y, z, face, 0.0f, 0.0f, 0.0f, 0));
+    }
+
+    int getPlacedOnFaceDataValue(World*, int, int, int, int face, float, float, float, int) {
+        switch (face) { case F_BACK: return 2; case F_FORWARD: return 3;
+                        case F_LEFT: return 4; case F_RIGHT: return 5; default: return 2; }
+    } };
 
 struct FenceGateTile : Tile { FenceGateTile(unsigned char i) : Tile(i) {}
     int getAABB(const World* w, int x, int y, int z, BlockAABB out[3]) {
@@ -634,7 +777,26 @@ struct FenceGateTile : Tile { FenceGateTile(unsigned char i) : Tile(i) {}
             out[0].y0 = (float)y; out[0].y1 = y + 1.5f;
             out[0].z0 = (float)z; out[0].z1 = z + 1.0f;
         }
-        return 1; } };
+        return 1; }
+
+    bool use(World* w, int x, int y, int z, Player* placer) {
+        unsigned char data = worldData(w, x, y, z);
+        bool isOpen = (data & 4) != 0;
+        if (isOpen) data = data & ~4;
+        else {
+            int pDir = facingQuadrant(placer);
+            if ((data & 3) == ((pDir + 2) % 4)) data = (data & ~3) | pDir;
+            data |= 4;
+        }
+        worldSetBlockAndData(w, x, y, z, id, data);
+        worldRebuildAroundNow(w, x, y, z);
+        playDoorSound(x, y, z, !isOpen);
+        return true;
+    }
+
+    void setPlacedBy(World* w, int x, int y, int z, Player* p) {
+        worldSetData(w, x, y, z, (unsigned char)facingQuadrant(p));
+    } };
 
 struct ChestTile : Tile { ChestTile(unsigned char i) : Tile(i) {}
     int getAABB(const World*, int x, int y, int z, BlockAABB out[3]) {
@@ -642,13 +804,95 @@ struct ChestTile : Tile { ChestTile(unsigned char i) : Tile(i) {}
         out[0] = { x + m, y + 0.0f, z + m, x + 1.0f - m, y + 1.0f - 2*m, z + 1.0f - m };
         return 1; }
 
-    bool mayPlace(World* w, int x, int y, int z, int data) {
-        if (data == -1) return true;
+    bool mayPlace(World* w, int x, int y, int z) {
+        if (!Tile::mayPlace(w, x, y, z)) return false;
         return worldBlock(w, x - 1, y, z) != BLOCK_CHEST && worldBlock(w, x + 1, y, z) != BLOCK_CHEST
-            && worldBlock(w, x, y, z - 1) != BLOCK_CHEST && worldBlock(w, x, y, z + 1) != BLOCK_CHEST; } };
+            && worldBlock(w, x, y, z - 1) != BLOCK_CHEST && worldBlock(w, x, y, z + 1) != BLOCK_CHEST; }
+
+    void setPlacedBy(World* w, int x, int y, int z, Player* p) {
+        if (p) worldSetData(w, x, y, z, (unsigned char)facingFromYaw(p->yRot));
+        if (!g_level.getTileEntity(x, y, z)) g_level.setTileEntity(x, y, z, new ChestTileEntity());
+    }
+
+    bool use(World* w, int x, int y, int z, Player*) {
+        if (g_gameMode && !g_gameMode->isCreative() && !isOpaque(worldBlock(w, x, y + 1, z))) {
+            TileEntity* te = g_level.getTileEntity(x, y, z);
+            if (!te) {
+                g_level.setTileEntity(x, y, z, new ChestTileEntity());
+                te = g_level.getTileEntity(x, y, z);
+            }
+            if (te && te->type == TE_CHEST) guiOpenChest((ChestTileEntity*)te);
+        }
+        return true;
+    } };
+
+struct FurnaceTile : Tile { FurnaceTile(unsigned char i) : Tile(i) {}
+    void setPlacedBy(World* w, int x, int y, int z, Player* p) {
+        if (p) worldSetData(w, x, y, z, (unsigned char)facingFromYaw(p->yRot));
+        if (!g_level.getTileEntity(x, y, z)) g_level.setTileEntity(x, y, z, new FurnaceTileEntity());
+    }
+
+    bool use(World*, int x, int y, int z, Player*) {
+        if (g_gameMode && !g_gameMode->isCreative()) {
+            TileEntity* te = g_level.getTileEntity(x, y, z);
+            if (!te) { g_level.setTileEntity(x, y, z, new FurnaceTileEntity());
+                       te = g_level.getTileEntity(x, y, z); }
+            if (te && te->type == TE_FURNACE) guiOpenFurnace((FurnaceTileEntity*)te);
+        }
+        return true;
+    } };
+
+struct WorkbenchTile : Tile { WorkbenchTile(unsigned char i) : Tile(i) {}
+    bool use(World*, int, int, int, Player*) {
+        if (g_gameMode && !g_gameMode->isCreative()) guiOpenCrafting(id == BLOCK_STONECUTTER);
+        return true;
+    } };
+
+struct ReactorTile : Tile { ReactorTile(unsigned char i) : Tile(i) {}
+    void setPlacedBy(World*, int x, int y, int z, Player*) {
+        if (!g_level.getTileEntity(x, y, z)) g_level.setTileEntity(x, y, z, new ReactorTileEntity());
+    }
+    bool use(World*, int x, int y, int z, Player* p) {
+        if (g_gameMode && !g_gameMode->isCreative()) {
+            if (!g_level.getTileEntity(x, y, z))
+                g_level.setTileEntity(x, y, z, new ReactorTileEntity());
+            NetherReactor::use(&g_level, x, y, z, g_level.player);
+        }
+        return true;
+    } };
+
+struct HeavyTile : Tile { HeavyTile(unsigned char i) : Tile(i) {}
+    void neighborChanged(World* w, int x, int y, int z) { worldScheduleTick(w, x, y, z, id, 2); } };
+
+struct RedStoneOreTile : Tile { RedStoneOreTile(unsigned char i) : Tile(i) {}
+    void neighborChanged(World* w, int x, int y, int z) { redstoneOreInteract(w, x, y, z); } };
+
+struct WebTile : Tile { WebTile(unsigned char i) : Tile(i) {}
+    void entityInside(World*, int, int, int, Entity* e) { if (e) e->makeStuckInWeb(); } };
 
 struct SupportTile : Tile { SupportTile(unsigned char i) : Tile(i) {}
-    bool mayPlace(World* w, int x, int y, int z, int data) { return supportCanSurvive(w, id, x, y, z, data); } };
+    bool canSurvive(World* w, int x, int y, int z) { return supportCanSurvive(w, id, x, y, z, -1); }
+    bool mayPlace(World* w, int x, int y, int z, int face) {
+        if (!Tile::mayPlace(w, x, y, z)) return false;
+
+        return supportCanSurvive(w, id, x, y, z,
+                                 getPlacedOnFaceDataValue(w, x, y, z, face, 0.0f, 0.0f, 0.0f, 0));
+    } };
+
+struct SignTile : SupportTile { SignTile(unsigned char i) : SupportTile(i) {}
+    bool use(World* w, int x, int y, int z, Player* p) {
+        if (p && p->inventory->getSelected() && !p->inventory->getSelected()->isNull())
+            return false;
+        TileEntity* te = g_level.getTileEntity(x, y, z);
+        if (te && te->type == TE_SIGN) { guiOpenSignEditor((SignTileEntity*)te); return true; }
+        return false;
+    } };
+
+struct TorchTile : SupportTile { TorchTile(unsigned char i) : SupportTile(i) {}
+    int getPlacedOnFaceDataValue(World*, int, int, int, int face, float, float, float, int) {
+        switch (face) { case F_TOP: return 5; case F_LEFT: return 2; case F_RIGHT: return 1;
+                        case F_BACK: return 4; case F_FORWARD: return 3; default: return 5; }
+    } };
 
 struct GrassTile : Tile { GrassTile(unsigned char i) : Tile(i) { randomTicks = true; }
     void randomTick(World* w, int x, int y, int z) {
@@ -668,12 +912,17 @@ struct GrassTile : Tile { GrassTile(unsigned char i) : Tile(i) { randomTicks = t
         } } };
 
 struct LeafTile : Tile { LeafTile(unsigned char i) : Tile(i) { randomTicks = true; }
+
+    void setPlacedBy(World* w, int x, int y, int z, Player* p) {
+        if (p) worldSetData(w, x, y, z, (unsigned char)(worldData(w, x, y, z) | LEAF_PERSISTENT_BIT));
+    }
     void randomTick(World* w, int x, int y, int z) { leafDecayTick(w, x, y, z); } };
 
 struct GrowerTile : Tile { GrowerTile(unsigned char i) : Tile(i) { randomTicks = true; }
     virtual void grow(World* w, int x, int y, int z) = 0;
     void randomTick(World* w, int x, int y, int z) {
-        if (!mayPlace(w, x, y, z, -1)) {
+
+        if (!canSurvive(w, x, y, z)) {
             worldSpawnResources(w, x, y, z, id, worldData(w, x, y, z));
             worldSetBlockAndData(w, x, y, z, BLOCK_AIR, 0);
             worldNotifyNeighborsChanged(w, x, y, z);
@@ -682,7 +931,8 @@ struct GrowerTile : Tile { GrowerTile(unsigned char i) : Tile(i) { randomTicks =
         grow(w, x, y, z); } };
 
 struct BushTile : GrowerTile { BushTile(unsigned char i) : GrowerTile(i) {}
-    bool mayPlace(World* w, int x, int y, int z, int) { return bushFamilyCanSurvive(w, id, x, y, z); }
+    bool canSurvive(World* w, int x, int y, int z) { return bushFamilyCanSurvive(w, id, x, y, z); }
+    bool mayPlace(World* w, int x, int y, int z) { return Tile::mayPlace(w, x, y, z) && canSurvive(w, x, y, z); }
     void grow(World* w, int x, int y, int z) {
         if (id == BLOCK_WHEAT)              cropTick(w, x, y, z);
         else if (id == BLOCK_MELON_STEM)    stemTick(w, x, y, z);
@@ -701,7 +951,8 @@ struct BushTile : GrowerTile { BushTile(unsigned char i) : GrowerTile(i) {}
     } };
 
 struct ReedTile : GrowerTile { ReedTile(unsigned char i) : GrowerTile(i) {}
-    bool mayPlace(World* w, int x, int y, int z, int) { return reedCanSurvive(w, x, y, z); }
+    bool canSurvive(World* w, int x, int y, int z) { return reedCanSurvive(w, x, y, z); }
+    bool mayPlace(World* w, int x, int y, int z) { return Tile::mayPlace(w, x, y, z) && canSurvive(w, x, y, z); }
     void grow(World* w, int x, int y, int z) { reedCactusGrow(w, x, y, z, id, 15); } };
 
 struct CactusTile : GrowerTile { CactusTile(unsigned char i) : GrowerTile(i) {}
@@ -713,8 +964,11 @@ struct CactusTile : GrowerTile { CactusTile(unsigned char i) : GrowerTile(i) {}
         out[0].z0 = z + r;       out[0].z1 = z + 1.0f - r;
         return 1;
     }
-    bool mayPlace(World* w, int x, int y, int z, int) { return cactusCanSurvive(w, x, y, z); }
-    void grow(World* w, int x, int y, int z) { reedCactusGrow(w, x, y, z, id, 10); } };
+    bool canSurvive(World* w, int x, int y, int z) { return cactusCanSurvive(w, x, y, z); }
+    bool mayPlace(World* w, int x, int y, int z) { return Tile::mayPlace(w, x, y, z) && canSurvive(w, x, y, z); }
+    void grow(World* w, int x, int y, int z) { reedCactusGrow(w, x, y, z, id, 10); }
+
+    void entityInside(World*, int, int, int, Entity* e) { if (e) e->hurt(nullptr, 1); } };
 
 static bool rawSolidPhys(unsigned char id) {
     if (id == BLOCK_AIR || isLiquidId(id)) return false;
@@ -846,6 +1100,10 @@ static Tile* makeTile(unsigned char id) {
 
     switch (id) {
         case BLOCK_FARMLAND: return new FarmTile(id);
+        case BLOCK_SAND: case BLOCK_GRAVEL: return new HeavyTile(id);
+        case BLOCK_COBWEB:                  return new WebTile(id);
+        case BLOCK_ORE_REDSTONE: case BLOCK_ORE_REDSTONE_LIT:
+            return new RedStoneOreTile(id);
         case BLOCK_GRASS:    return new GrassTile(id);
         case BLOCK_LEAVES:   return new LeafTile(id);
         case BLOCK_CACTUS:   return new CactusTile(id);
@@ -854,8 +1112,18 @@ static Tile* makeTile(unsigned char id) {
         case BLOCK_WHEAT: case BLOCK_MELON_STEM: case BLOCK_TALLGRASS:
         case BLOCK_MUSHROOM_BROWN: case BLOCK_MUSHROOM_RED:
             return new BushTile(id);
-        case BLOCK_TOPSNOW: case BLOCK_SIGN: case BLOCK_WALL_SIGN: case BLOCK_TORCH:
+        case BLOCK_TOPSNOW:
             return new SupportTile(id);
+        case BLOCK_SIGN: case BLOCK_WALL_SIGN:
+            return new SignTile(id);
+        case BLOCK_TORCH:
+            return new TorchTile(id);
+        case BLOCK_FURNACE: case BLOCK_FURNACE_LIT:
+            return new FurnaceTile(id);
+        case BLOCK_CRAFTING_TABLE: case BLOCK_STONECUTTER:
+            return new WorkbenchTile(id);
+        case BLOCK_NETHER_REACTOR:
+            return new ReactorTile(id);
         default: break;
     }
     switch (shapeOf(id)) {

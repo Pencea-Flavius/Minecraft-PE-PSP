@@ -79,8 +79,8 @@ static CraftItem* currentItem() {
 
 static void recheckRecipes() {
     ItemPack ip;
-    for (int i = 0; i < g_inv.getContainerSize(); ++i) {
-        ItemInstance* it = g_inv.getItem(i);
+    for (int i = 0; i < g_level.player->inventory->getContainerSize(); ++i) {
+        ItemInstance* it = g_level.player->inventory->getItem(i);
         if (it && !it->isNull())
             ip.add(ItemPack::getIdForItemInstance(it), it->count);
     }
@@ -122,14 +122,14 @@ static void craftSelectedItem() {
         ItemInstance toRemove = ci->needed[i].item;
         if (toRemove.id == BLOCK_SANDSTONE && toRemove.data == Recipe::ANY_AUX_VALUE) {
             toRemove.data = 0;
-            toRemove.count = (short)g_inv.removeResource(toRemove, true);
+            toRemove.count = (short)g_level.player->inventory->removeResource(toRemove, true);
             toRemove.data = Recipe::ANY_AUX_VALUE;
         }
-        if (toRemove.count > 0) g_inv.removeResource(toRemove);
+        if (toRemove.count > 0) g_level.player->inventory->removeResource(toRemove);
     }
 
     ItemInstance* res = new ItemInstance(result.id, result.count, result.data);
-    if (!g_inv.add(res)) {
+    if (!g_level.player->inventory->add(res)) {
         LocalPlayer* p = g_level.player;
         if (p) g_level.addEntity(new ItemEntity(&g_level, p->x, p->y, p->z, *res));
         delete res;

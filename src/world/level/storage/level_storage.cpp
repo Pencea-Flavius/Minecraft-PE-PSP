@@ -162,9 +162,9 @@ static CompoundTag* buildPlayerTag(World* w) {
     p->putInt("BedPositionZ", g_level.player->bedZ);
 
     ListTag* inv = new ListTag();
-    if (g_inv.isCreative()) {
+    if (g_level.player->inventory->isCreative()) {
         for (int i = 0; i < Inventory::HOTBAR; i++) {
-            ItemInstance* it = g_inv.getLinked(i);
+            ItemInstance* it = g_level.player->inventory->getLinked(i);
             if (!it || it->isNull()) continue;
             CompoundTag* slot = new CompoundTag();
             slot->putByte("Slot", (char)i);
@@ -177,16 +177,16 @@ static CompoundTag* buildPlayerTag(World* w) {
 
         const int LINKS = 9;
         for (int i = 0; i < LINKS; i++) {
-            int link = (i < Inventory::HOTBAR) ? g_inv.linkedSlots[i].inventorySlot : -1;
+            int link = (i < Inventory::HOTBAR) ? g_level.player->inventory->linkedSlots[i].inventorySlot : -1;
             CompoundTag* slot = new CompoundTag();
             slot->putByte("Slot", (char)i);
             slot->putShort("id", 255);
             slot->putByte("Count", (char)255);
-            slot->putShort("Damage", (short)(link < 0 ? -1 : link + LINKS));
+            slot->putShort("Damage", (short)(link < 0 ? -1 : link - Inventory::HOTBAR + LINKS));
             inv->add(slot);
         }
         for (int s = 0; s < Inventory::SURVIVAL_SLOTS; s++) {
-            ItemInstance* it = g_inv.getItem(s);
+            ItemInstance* it = g_level.player->inventory->gridItem(s);
             if (!it || it->isNull()) continue;
             CompoundTag* slot = new CompoundTag();
             slot->putByte("Slot", (char)(s + LINKS));
@@ -513,22 +513,26 @@ bool save(World* w, const char* absDir, long seed, int gameType, const char* lev
 bool loadedValidPlayerPos() { return g_loadedPlayerPos; }
 
 void applyLoadedHotbar() {
-    if (!g_inv.isCreative()) {
+    if (!g_level.player->inventory->isCreative()) {
 
         for (int s = 0; s < Inventory::SURVIVAL_SLOTS; s++) {
-            if (!g_loadedStorage[s].used) continue;
-            g_inv.setItem(s, new ItemInstance(g_loadedStorage[s].id,
-                                              g_loadedStorage[s].count,
-                                              g_loadedStorage[s].damage));
+
+            if (!g_loadedStorage[s].used ||
+                g_loadedStorage[s].count <= 0 || g_loadedStorage[s].id == 0) continue;
+
+            g_level.player->inventory->setItem(s + g_level.player->inventory->firstGridSlot(),
+                          new ItemInstance(g_loadedStorage[s].id,
+                                           g_loadedStorage[s].count,
+                                           g_loadedStorage[s].damage));
         }
         for (int i = 0; i < Inventory::HOTBAR; i++)
-            if (g_loadedLinks[i] >= 0) g_inv.linkSlot(i, g_loadedLinks[i]);
+            if (g_loadedLinks[i] >= 0) g_level.player->inventory->linkSlot(i, g_loadedLinks[i] + g_level.player->inventory->firstGridSlot());
         return;
     }
     for (int i = 0; i < Inventory::HOTBAR; i++) {
         if (!g_loadedHotbar[i].used) continue;
 
-        g_inv.linkHotbarTo(i, g_loadedHotbar[i].id, (unsigned char)g_loadedHotbar[i].damage);
+        g_level.player->inventory->linkHotbarTo(i, g_loadedHotbar[i].id, (unsigned char)g_loadedHotbar[i].damage);
     }
 }
 

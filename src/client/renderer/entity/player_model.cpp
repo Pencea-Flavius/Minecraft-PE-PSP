@@ -230,7 +230,7 @@ void playerModelRender(float a) {
     parts[P_ARM1].xRot = tcos0; parts[P_ARM1].yRot = parts[P_ARM1].zRot = 0.0f;
     parts[P_LEG0].xRot = tcos0 * 1.4f; parts[P_LEG1].xRot = tcos1 * 1.4f;
 
-    ItemInstance* selHeld = g_inv.getSelected();
+    ItemInstance* selHeld = g_level.player->inventory->getSelected();
     bool holding = selHeld && !selHeld->isNull();
     bool aiming = holding && selHeld->id == ITEM_BOW && p->bowPull > 0.0f;
     int  bowStage = aiming ? bowStageIcon(p->bowTimeHeld) : -1;
@@ -333,7 +333,7 @@ void playerModelRender(float a) {
     drawArmorLayers(brCol);
 
     if (g_haveTerrain) {
-        ItemInstance* held = g_inv.getSelected();
+        ItemInstance* held = g_level.player->inventory->getSelected();
         if (held && !held->isNull()) {
             short id = held->id; unsigned char data = held->data;
             static ItemModelRenderer model;

@@ -33,8 +33,8 @@ static float       s_barShare     = 0.0f;
 
 static void updateItems() {
     s_list.clear();
-    for (int i = 0; i < g_inv.getContainerSize(); ++i) {
-        ItemInstance* it = g_inv.getItem(i);
+    for (int i = 0; i < g_level.player->inventory->getContainerSize(); ++i) {
+        ItemInstance* it = g_level.player->inventory->getItem(i);
         if (!it || it->isNull()) continue;
         if (FurnaceTileEntity::getBurnDuration(*it) > 0 ||
             !FurnaceTileEntity::furnaceResult(it->id).isNull())
@@ -53,7 +53,7 @@ static bool allowedInSlot(const ItemInstance& it, int slot) {
 }
 
 static void moveToFurnace(int invSlot, int n) {
-    ItemInstance* src = g_inv.getItem(invSlot);
+    ItemInstance* src = g_level.player->inventory->getItem(invSlot);
     if (!src || src->isNull() || !s_furnace) return;
 
     int slot = s_slotSel;
@@ -76,7 +76,7 @@ static void moveToFurnace(int invSlot, int n) {
     }
     if (moved <= 0) return;
     src->count -= moved;
-    if (src->count <= 0) g_inv.clearSlot(invSlot);
+    if (src->count <= 0) g_level.player->inventory->clearSlot(invSlot);
     soundPlay("random.click", 1.0f, 1.0f);
     updateItems();
 }
@@ -88,7 +88,7 @@ static void takeSlot(int slot, int n = 0) {
     if (n <= 0 || n > it.count) n = it.count;
     ItemInstance* copy = new ItemInstance(it);
     copy->count = n;
-    if (!g_inv.add(copy)) {
+    if (!g_level.player->inventory->add(copy)) {
         LocalPlayer* p = g_level.player;
         if (p) g_level.addEntity(new ItemEntity(&g_level, p->x, p->y, p->z, *copy));
         delete copy;
@@ -101,7 +101,7 @@ static void takeSlot(int slot, int n = 0) {
 
 int furnaceTargetSlotForCursor() {
     if (s_focus != 0 || s_list.empty()) return -1;
-    ItemInstance* src = g_inv.getItem(s_list[s_cursor]);
+    ItemInstance* src = g_level.player->inventory->getItem(s_list[s_cursor]);
     if (!src || src->isNull()) return -1;
     if (allowedInSlot(*src, s_slotSel)) return s_slotSel;
     int other = (s_slotSel == FurnaceTileEntity::SLOT_FUEL)
@@ -135,9 +135,9 @@ void furnaceHandleInput(MenuState& s, unsigned int pressed, unsigned int held) {
         if ((pressed & PSP_CTRL_UP)   && s_cursor >= cols)    s_cursor -= cols;
         if ((pressed & PSP_CTRL_DOWN) && s_cursor + cols < n) s_cursor += cols;
 
-        ItemInstance* src = (n > 0) ? g_inv.getItem(s_list[s_cursor]) : nullptr;
+        ItemInstance* src = (n > 0) ? g_level.player->inventory->getItem(s_list[s_cursor]) : nullptr;
         int count = (src && !src->isNull()) ? src->count : 0;
-        if (g_inv.isCreative()) {
+        if (g_level.player->inventory->isCreative()) {
             if ((pressed & PSP_CTRL_CROSS) && n > 0) moveToFurnace(s_list[s_cursor], 1);
         } else if ((held & PSP_CTRL_CROSS) && count > 0) {
             unsigned int now = sceKernelGetSystemTimeLow();
@@ -251,7 +251,7 @@ void furnaceRender(MenuState& s) {
             textureBind(&s.guiAtlas);
             spriteDraw(&s.guiAtlas, G(cx), G(cy), G(ItemSize), G(ItemSize), GA_SLOT_BG, WHITE);
         }
-        ItemInstance* it = g_inv.getItem(s_list[i]);
+        ItemInstance* it = g_level.player->inventory->getItem(s_list[i]);
         if (it && !it->isNull()) {
             drawBlockIcon(it->id, (unsigned char)(it->data < 0 ? 0 : it->data),
                           G(cx + 8), G(cy + 8), G(16), WHITE);

@@ -1,5 +1,9 @@
 
+#include "world/entity/local_player.h"
+#include "world/level/level.h"
 #include "world/level/world.h"
+
+extern Level g_level;
 #include "world/level/tile/redstone_ore.h"
 #include "world/inventory/inventory.h"
 #include "client/renderer/particle.h"
@@ -375,7 +379,7 @@ void worldScheduleLoadedLiquids(World* w) {
 void worldTick(World* w) {
     w->time++;
 
-    if (!g_inv.isCreative()) w->dayTime++;
+    if (!g_level.player->inventory->isCreative()) w->dayTime++;
     else if (w->dayTime != 0) w->dayTime = 0;
     worldUpdateSkyDarken(w);
 

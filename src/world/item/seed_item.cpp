@@ -1,7 +1,9 @@
+#include "world/entity/player.h"
+#include "world/inventory/inventory.h"
 #include "world/item/seed_item.h"
 #include "world/level/world.h"
 
-bool SeedItem::useOn(ItemInstance* item, Player* player, World* world, int x, int y, int z, int face) {
+bool SeedItem::useOn(ItemInstance* item, Player* player, World* world, int x, int y, int z, int face, float, float, float) {
     if (face != F_TOP) return false;
     if (worldBlock(world, x, y, z) != BLOCK_FARMLAND) return false;
     if (worldBlock(world, x, y + 1, z) != BLOCK_AIR) return false;
@@ -9,5 +11,6 @@ bool SeedItem::useOn(ItemInstance* item, Player* player, World* world, int x, in
     worldSetBlockAndData(world, x, y + 1, z, resultTile, 0);
     worldUpdateLights(world);
     worldRebuildAroundNow(world, x, y + 1, z);
+    if (player) player->inventory->consumeSelected();
     return true;
 }

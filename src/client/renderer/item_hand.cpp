@@ -66,14 +66,14 @@ void itemHandTick(void) {
     short id = 0;
     unsigned char data = 0;
 
-    ItemInstance* held = g_inv.getSelected();
+    ItemInstance* held = g_level.player->inventory->getSelected();
     if (held) {
         id   = held->id;
         data = (unsigned char)held->data;
     }
 
     static int s_equippedSlot = -999;
-    int slot = g_inv.selected;
+    int slot = g_level.player->inventory->selected;
 
     bool matches = (id == s_equippedId) && (slot == s_equippedSlot || id == 0);
     float tHeight = matches ? 1.0f : 0.0f;

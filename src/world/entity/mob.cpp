@@ -1,4 +1,5 @@
 
+#include "world/level/tile/tile.h"
 #include "world/entity/mob.h"
 #include "world/level/world.h"
 #include "world/level/chunk/chunk.h"
@@ -175,7 +176,7 @@ void Mob::move(float xa, float ya, float za) {
             for (int iy = by0; iy <= by1; iy++)
                 for (int iz = bz0; iz <= bz1; iz++) {
                     int t = level->getTile(ix, iy, iz);
-                    if (t > 0) level->entityInsideTile(t, ix, iy, iz, this);
+                    if (t > 0) Tile::tiles[t]->entityInside(&g_world, ix, iy, iz, this);
                 }
     }
 }

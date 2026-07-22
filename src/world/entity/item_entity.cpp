@@ -147,10 +147,10 @@ void ItemEntity::tryPlayerPickup() {
         z >= g_level.player->z - r && z <= g_level.player->z + r &&
         y >= feet && y <= feet + PLAYER_H) {
 
-        if (!g_inv.isCreative()) {
+        if (!g_level.player->inventory->isCreative()) {
             ItemInstance* stack = new ItemInstance(item);
-            if (!g_inv.add(stack)) { delete stack; return; }
-            g_inv.ensureHotbar(item.id, item.data);
+            if (!g_level.player->inventory->add(stack)) { delete stack; return; }
+            g_level.player->inventory->ensureHotbar(item.id, item.data);
         }
 
         level->playSound(this, "random.pop", 0.3f,

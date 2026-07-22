@@ -1,3 +1,4 @@
+#include "world/entity/local_player.h"
 #include "world/item/hoe_item.h"
 #include "world/level/world.h"
 #include "world/level/level.h"
@@ -6,7 +7,7 @@
 #include "world/inventory/inventory.h"
 #include <stdlib.h>
 
-bool HoeItem::useOn(ItemInstance* item, Player* player, World* world, int x, int y, int z, int face) {
+bool HoeItem::useOn(ItemInstance* item, Player* player, World* world, int x, int y, int z, int face, float, float, float) {
     if (face == F_DOWN) return false;
 
     unsigned char targetId = worldBlock(world, x, y, z);
@@ -23,7 +24,7 @@ bool HoeItem::useOn(ItemInstance* item, Player* player, World* world, int x, int
         worldUpdateLights(world);
         worldRebuildAroundNow(world, x, y, z);
 
-        if (!g_inv.isCreative()) item->hurt(1);
+        g_level.player->inventory->hurtSelected(1);
 
         if (targetId == BLOCK_GRASS && rand() % 8 == 0) {
             const float s = 0.7f;

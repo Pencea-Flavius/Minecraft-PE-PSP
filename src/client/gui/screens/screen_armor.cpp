@@ -27,8 +27,8 @@ static int s_focus = 0;
 
 static void updateItems() {
     s_list.clear();
-    for (int i = 0; i < g_inv.getContainerSize(); ++i) {
-        ItemInstance* it = g_inv.getItem(i);
+    for (int i = 0; i < g_level.player->inventory->getContainerSize(); ++i) {
+        ItemInstance* it = g_level.player->inventory->getItem(i);
         if (!it || it->isNull()) continue;
         Item* item = it->getItem();
         if (item && item->isArmor()) s_list.push_back(i);
@@ -39,7 +39,7 @@ static void updateItems() {
 
 static void giveBack(const ItemInstance& item) {
     ItemInstance* copy = new ItemInstance(item);
-    if (!g_inv.add(copy)) {
+    if (!g_level.player->inventory->add(copy)) {
         LocalPlayer* p = g_level.player;
         if (p) g_level.addEntity(new ItemEntity(&g_level, p->x, p->y, p->z, *copy));
         delete copy;
@@ -50,7 +50,7 @@ static void equipSelected() {
     LocalPlayer* p = g_level.player;
     if (!p || s_cursor >= (int)s_list.size()) return;
     int slotIdx = s_list[s_cursor];
-    ItemInstance* inst = g_inv.getItem(slotIdx);
+    ItemInstance* inst = g_level.player->inventory->getItem(slotIdx);
     if (!inst || inst->isNull()) { updateItems(); return; }
     Item* item = inst->getItem();
     if (!item || !item->isArmor()) return;
@@ -61,7 +61,7 @@ static void equipSelected() {
     if (ItemInstance* o = p->getArmor(wornSlot)) { old = *o; hadOld = true; }
 
     p->setArmor(wornSlot, inst);
-    g_inv.clearSlot(slotIdx);
+    g_level.player->inventory->clearSlot(slotIdx);
     if (hadOld) giveBack(old);
 
     soundPlay("random.click", 1.0f, 1.0f);
@@ -172,7 +172,7 @@ void armorRender(MenuState& s) {
             textureBind(&s.guiAtlas);
             spriteDraw(&s.guiAtlas, G(cx), G(cy), G(ItemSize), G(ItemSize), GA_SLOT_BG, WHITE);
         }
-        ItemInstance* it = g_inv.getItem(s_list[i]);
+        ItemInstance* it = g_level.player->inventory->getItem(s_list[i]);
         if (it && !it->isNull()) {
             drawBlockIcon(it->id, 0, G(cx + 8), G(cy + 8), G(16), WHITE);
             durabilityBar(s, it, cx + 9, cy + 8);

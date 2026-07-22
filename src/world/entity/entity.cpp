@@ -1,9 +1,12 @@
 
+#include "world/level/tile/tile.h"
 #include "world/entity/entity.h"
 #include <cstdlib>
 #include "world/entity/item_entity.h"
 #include "world/item/item_instance.h"
 #include "world/level/level.h"
+#include "world/level/world.h"
+extern World g_world;
 #include "world/level/world.h"
 #include "nbt/compound_tag.h"
 #include "util/mth.h"
@@ -205,7 +208,7 @@ void Entity::move(float xa, float ya, float za) {
             for (int iy = by0; iy <= by1; iy++)
                 for (int iz = bz0; iz <= bz1; iz++) {
                     int t = level->getTile(ix, iy, iz);
-                    if (t > 0) level->entityInsideTile(t, ix, iy, iz, this);
+                    if (t > 0) Tile::tiles[t]->entityInside(&g_world, ix, iy, iz, this);
                 }
     }
 

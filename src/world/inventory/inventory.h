@@ -28,16 +28,17 @@ public:
     void          selectSlot(int slot) { selected = slot; }
     ItemInstance* getSelected() { return getLinked(selected); }
 
-    void pickToHotbar(int invSlot);
+    void pickToHotbar(int gridIndex);
 
     bool linkHotbarTo(int slot, short id, unsigned char data);
 
     int gridSize() const { return _isCreative ? mainCount : SURVIVAL_SLOTS; }
 
+    int           firstGridSlot() const { return numLinkedSlots; }
+    ItemInstance* gridItem(int gridIndex) { return getItem(gridIndex + numLinkedSlots); }
+
     int selected;
     int mainCount;
 };
-
-extern Inventory g_inv;
 
 #endif

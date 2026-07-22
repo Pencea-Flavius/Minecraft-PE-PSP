@@ -66,7 +66,6 @@ public:
     bool isInWater(Entity*) const;
     bool isInLava(Entity*) const;
     void addParticle(int, float,float,float, float,float,float) const {}
-    void entityInsideTile(int tileId, int x, int y, int z, Entity*) const;
 
     void playSound(Entity* e, const char* name, float volume, float pitch) const;
     void playSound(float x, float y, float z, const char* name, float volume, float pitch) const;

@@ -1,3 +1,5 @@
+#include "world/entity/player.h"
+#include "world/entity/local_player.h"
 #include "world/entity/animal/sheep.h"
 #include "world/entity/entity_types.h"
 #include "world/entity/item_entity.h"
@@ -11,7 +13,6 @@
 #include "client/gamemode/gamemode.h"
 #include <math.h>
 
-extern Inventory g_inv;
 extern World g_world;
 
 static const float MTH_PI = 3.14159265f;
@@ -47,7 +48,7 @@ void Sheep::dropDeathLoot() {
 }
 
 bool Sheep::playerInteract() {
-    ItemInstance* sel = g_inv.getSelected();
+    ItemInstance* sel = g_level.player->inventory->getSelected();
     if (!sel || sel->isNull()) return false;
 
     if (sel->id == ITEM_BONEMEAL && !isBaby()) {
@@ -55,10 +56,7 @@ bool Sheep::playerInteract() {
         if (!level->isClientSide && getColor() != newColor) {
             setColor(newColor);
 
-            if (g_gameMode && !g_gameMode->isCreative()) {
-                sel->count--;
-                if (sel->count <= 0) sel->setNull();
-            }
+            g_level.player->inventory->consumeSelected();
         }
         return true;
     }
@@ -71,7 +69,7 @@ bool Sheep::playerInteract() {
         for (int i = 0; i < count; i++) dropWool(level, x, y, z, woolColor);
     }
 
-    if (g_gameMode && !g_gameMode->isCreative()) sel->hurt(1);
+    g_level.player->inventory->hurtSelected(1);
     return true;
 
 }

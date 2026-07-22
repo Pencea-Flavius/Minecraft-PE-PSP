@@ -1,4 +1,5 @@
 
+#include "world/entity/local_player.h"
 #include "world/level/world.h"
 #include "world/level/level.h"
 #include "world/level/tile/tile.h"
@@ -10,7 +11,7 @@ void worldSpawnResources(World* w, int x, int y, int z, unsigned char id, int da
 
     if (g_level.isClientSide) return;
 
-    if (g_inv.isCreative()) return;
+    if (g_level.player->inventory->isCreative()) return;
     static Random rng((long)sceKernelGetSystemTimeLow());
     Tile::tiles[id]->spawnResources(w, x, y, z, data, rng);
 }

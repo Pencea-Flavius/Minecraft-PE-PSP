@@ -261,3 +261,15 @@ void menuHintsDraw(MenuState& s) {
     }
     buttonHintsDraw(s, hints, n);
 }
+
+#include "world/level/tile/tile_gui_hooks.h"
+#include "world/item/crafting/recipe.h"
+#include "client/gui/hud.h"
+
+void guiOpenSignEditor(SignTileEntity* te) { if (te) signStartEdit(te); }
+void guiOpenFurnace(FurnaceTileEntity* te) { if (te) furnaceOpen(te); }
+void guiOpenChest(ChestTileEntity* te)     { if (te) chestOpen(te); }
+void guiOpenCrafting(bool stonecutter) {
+    craftOpen(Recipe::SIZE_3X3, stonecutter ? CRAFT_STONECUTTER : CRAFT_WORKBENCH);
+}
+void guiChatMessage(const char* msg) { hudChatMessage(msg); }

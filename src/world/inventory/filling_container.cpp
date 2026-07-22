@@ -80,8 +80,8 @@ void FillingContainer::clearInventory() {
 }
 
 int FillingContainer::getFreeSlot() const {
-    for (int i = 0; i < (int)items.size(); i++)
-        if (!items[i]) return i;
+    for (int i = numLinkedSlots; i < (int)items.size(); i++)
+        if (!items[i] || items[i]->isNull()) return i;
     return -1;
 }
 
@@ -103,7 +103,7 @@ int FillingContainer::addItem(ItemInstance* item) {
 int FillingContainer::addResource(ItemInstance* item) {
     int max = item->getMaxStackSize();
     if (max < 1) max = 1;
-    for (int i = 0; i < (int)items.size() && item->count > 0; i++) {
+    for (int i = numLinkedSlots; i < (int)items.size() && item->count > 0; i++) {
         ItemInstance* pile = items[i];
         if (pile && pile->matches(item) && pile->count < max) {
             int space = max - pile->count;
@@ -143,8 +143,9 @@ int FillingContainer::removeResource(const ItemInstance& item, bool requireExact
                   (Recipe::isAnyAuxValue(&item) || item.data == Recipe::ANY_AUX_VALUE);
     int count = item.count;
     while (count > 0) {
+
         int slot = -1;
-        for (int i = 0; i < (int)items.size(); i++) {
+        for (int i = numLinkedSlots; i < (int)items.size(); i++) {
             ItemInstance* it = items[i];
             if (it && it->id == item.id && it->count > 0 &&
                 (anyAux || it->data == item.data)) { slot = i; break; }

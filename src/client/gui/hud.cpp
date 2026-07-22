@@ -693,7 +693,7 @@ void hotbarDraw(MenuState& s) {
 
     extern float g_dropCharge;
     unsigned int selTint = (g_dropCharge >= 0.0f) ? 0xFF40FF40u : HUD_WHITE;
-    spriteDraw(&s.guiAtlas, barX + (20.0f * g_inv.selected - 1.0f) * HB_S, barY - 1.0f * HB_S,
+    spriteDraw(&s.guiAtlas, barX + (20.0f * g_level.player->inventory->selected - 1.0f) * HB_S, barY - 1.0f * HB_S,
                24.0f * HB_S, 24.0f * HB_S, GA_SEL_FRAME, selTint);
 
     if (g_haveGuiBlocks) {
@@ -708,7 +708,7 @@ void hotbarDraw(MenuState& s) {
     extern float g_dropCharge;
     if (g_dropCharge >= 0.0f) {
         float frac = g_dropCharge; if (frac > 1.0f) frac = 1.0f;
-        float slotX = barX + (3.0f + 20.0f * g_inv.selected) * HB_S;
+        float slotX = barX + (3.0f + 20.0f * g_level.player->inventory->selected) * HB_S;
         float slotY = barY + 3.0f * HB_S;
         float full = 16.0f * HB_S;
         float h = full * frac;
@@ -736,10 +736,10 @@ void hotbarDraw(MenuState& s) {
             }
         }
 
-        ItemInstance* it = g_inv.getLinked(i);
+        ItemInstance* it = g_level.player->inventory->getLinked(i);
         if (it) {
             drawBlockIcon(it->id, it->data, slotX, slotY, 16.0f * HB_S);
-            if (!g_inv.isCreative() && it->count > 1)
+            if (!g_level.player->inventory->isCreative() && it->count > 1)
                 drawStackCount(s.font, it->count, slotX, slotY, 16.0f * HB_S);
 
             Item* itm = (it->id > 0 && it->id < 4096) ? Item::items[it->id] : nullptr;
@@ -759,7 +759,7 @@ void hotbarDraw(MenuState& s) {
     bool overlayUp = g_invOpen || g_chestOpen || g_furnaceOpen ||
                      g_craftOpen || g_armorOpen || g_paused;
     extern int g_cloudTicks;
-    if (!overlayUp && !g_inv.isCreative() && s.haveGui && g_level.player) {
+    if (!overlayUp && !g_level.player->inventory->isCreative() && s.haveGui && g_level.player) {
         int hp = g_level.player->health; if (hp < 0) hp = 0;
         int hearts = g_level.player->getMaxHealth() / 2;
 
@@ -868,15 +868,15 @@ void hotbarDraw(MenuState& s) {
     static unsigned char lastData = 255;
     static float nameDisplayStartTime = -1.0f;
 
-    ItemInstance* selIt = g_inv.getSelected();
+    ItemInstance* selIt = g_level.player->inventory->getSelected();
     short curId = selIt ? selIt->id : 0;
     unsigned char curData = selIt ? (unsigned char)selIt->data : 0;
 
     if (curId > 0 && curId < 4096 && Item::items[curId] && Item::items[curId]->maxDamage > 0)
         curData = 0;
 
-    if (g_inv.selected != lastSelSlot || curId != lastId || curData != lastData) {
-        lastSelSlot = g_inv.selected;
+    if (g_level.player->inventory->selected != lastSelSlot || curId != lastId || curData != lastData) {
+        lastSelSlot = g_level.player->inventory->selected;
         lastId = curId;
         lastData = curData;
 
@@ -975,7 +975,7 @@ void gameHintsDraw(MenuState& s) {
     } else if (g_chestOpen) {
 
         bool take = chestCursorOnChest();
-        if (!g_inv.isCreative())
+        if (!g_level.player->inventory->isCreative())
             h[n++] = (ButtonHint){ BTN_ICON_CROSS, PSP_CTRL_CROSS, take ? "Take" : "Move" };
         h[n++] = (ButtonHint){ BTN_ICON_TRIANGLE, PSP_CTRL_TRIANGLE, "Quick Move" };
         h[n++] = (ButtonHint){ BTN_ICON_SQUARE,   PSP_CTRL_SQUARE,
@@ -996,14 +996,14 @@ void gameHintsDraw(MenuState& s) {
         h[n++] = (ButtonHint){ BTN_ICON_CROSS,  PSP_CTRL_CROSS,  "Take" };
         h[n++] = (ButtonHint){ BTN_ICON_CIRCLE, PSP_CTRL_CIRCLE, "Exit" };
 
-        if (!g_inv.isCreative()) {
+        if (!g_level.player->inventory->isCreative()) {
             h[n++] = (ButtonHint){ BTN_ICON_SQUARE,   PSP_CTRL_SQUARE,   "Crafting" };
             h[n++] = (ButtonHint){ BTN_ICON_TRIANGLE, PSP_CTRL_TRIANGLE, "Armour" };
         }
     } else {
 
         CrosshairTarget t = gameModeCrosshairTarget();
-        if (g_inv.selected == HOTBAR_SLOTS)
+        if (g_level.player->inventory->selected == HOTBAR_SLOTS)
             h[n++] = (ButtonHint){ BTN_ICON_L, PSP_CTRL_LTRIGGER, "Inventory" };
         else if (t.useLabel)
             h[n++] = (ButtonHint){ BTN_ICON_L, PSP_CTRL_LTRIGGER, t.useLabel };

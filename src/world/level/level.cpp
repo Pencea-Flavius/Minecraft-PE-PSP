@@ -84,6 +84,8 @@ bool Level::isUnobstructed(const AABB& box) const {
         Entity* e = entities[i];
         if (e && !e->removed && e->blocksBuilding && e->bb.intersects(box)) return false;
     }
+
+    if (player && !player->removed && player->bb.intersects(box)) return false;
     return true;
 }
 
@@ -251,11 +253,6 @@ bool Level::isInLava(Entity* e) const {
             for (int z = z0; z < z1; z++)
                 if (isLavaId(worldBlock(w, x, y, z))) return true;
     return false;
-}
-
-void Level::entityInsideTile(int tileId, int , int , int , Entity* e) const {
-    if (tileId == BLOCK_COBWEB) e->makeStuckInWeb();
-    else if (tileId == BLOCK_CACTUS) e->hurt(nullptr, 1);
 }
 
 void Level::playSound(float x, float y, float z, const char* name, float volume, float pitch) const {
