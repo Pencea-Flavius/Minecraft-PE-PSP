@@ -16,6 +16,7 @@
 #include <cstdio>
 #include <cstring>
 #include "gpu/item_icons.h"
+#include "gpu/spawn_egg_colors.h"
 
 #define CHAT_LINES 4
 #define CHAT_SHOW_S 10.0f
@@ -192,7 +193,7 @@ int itemFlatIcon(short id, unsigned char data) {
     if (id < 256 || id >= 512) return -1;
     if (id == ITEM_COAL)      return kItemIconCoal[data & 0xF];
     if (id == ITEM_BONEMEAL)  return kItemIconDye[data & 0xF];
-    if (id == ITEM_SPAWN_EGG) return itemIconSpawnEgg(data);
+    if (id == ITEM_SPAWN_EGG) return II_SPAWN_EGG_BASE;
     return kItemIcon[id - 256];
 }
 
@@ -205,7 +206,14 @@ void drawFlatIcon(int icon, float x, float y, float sizePx, unsigned int tint) {
 
 void drawBlockIcon(short id, unsigned char data, float x, float y, float sizePx, unsigned int colorTint) {
     if (id >= 256) {
+        if (id == ITEM_SPAWN_EGG) {
 
+            unsigned int base, spot;
+            spawnEggColors(data, &base, &spot);
+            drawFlatIcon(II_SPAWN_EGG_BASE,    x, y, sizePx, eggMul(base, colorTint));
+            drawFlatIcon(II_SPAWN_EGG_OVERLAY, x, y, sizePx, eggMul(spot, colorTint));
+            return;
+        }
         drawFlatIcon(itemFlatIcon(id, data), x, y, sizePx, colorTint);
         return;
     }
@@ -230,12 +238,6 @@ void drawBlockIcon(short id, unsigned char data, float x, float y, float sizePx,
         textureBind(&g_terrain);
         spriteDraw(&g_terrain, x, y, sizePx, sizePx, col * 16.0f, row * 16.0f, 16.0f, 16.0f, tint);
     }
-}
-
-void drawArmorSlotGhost(int slot, float x, float y, float sizePx, unsigned int tint) {
-    static const short kGhost[4] = { II_SLOT_HELMET, II_SLOT_CHESTPLATE,
-                                     II_SLOT_LEGGINGS, II_SLOT_BOOTS };
-    if (slot >= 0 && slot < 4) drawFlatIcon(kGhost[slot], x, y, sizePx, tint);
 }
 
 const char* getBlockName(short id, unsigned char data) {

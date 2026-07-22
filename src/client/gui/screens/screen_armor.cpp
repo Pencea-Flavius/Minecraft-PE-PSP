@@ -198,9 +198,14 @@ void armorRender(MenuState& s) {
         if (worn) {
             drawBlockIcon(worn->id, 0, G(slotX + 2), G(sy + 2), G(16), WHITE);
             durabilityBar(s, worn, slotX + 3, sy + 3);
-        } else {
+        } else if (s.haveGui) {
 
-            drawArmorSlotGhost(i, G(slotX + 2), G(sy + 2), G(16), 0xFFFFFFFFu);
+            static const struct { float x, y, w, h; } kGhost[4] = {
+                { GA_SLOT_HELMET }, { GA_SLOT_CHESTPLATE },
+                { GA_SLOT_LEGGINGS }, { GA_SLOT_BOOTS } };
+            textureBind(&s.guiAtlas);
+            spriteDraw(&s.guiAtlas, G(slotX + 2), G(sy + 2), G(16), G(16),
+                       kGhost[i].x, kGhost[i].y, kGhost[i].w, kGhost[i].h, 0xFFFFFFFFu);
         }
     }
 

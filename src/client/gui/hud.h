@@ -12,6 +12,5 @@ const char* getBlockDescription(short id, unsigned char data);
 
 int  itemFlatIcon(short id, unsigned char data);
 void drawFlatIcon(int icon, float x, float y, float sizePx, unsigned int tint);
-void drawArmorSlotGhost(int slot, float x, float y, float sizePx, unsigned int tint);
 
 void hudChatMessage(const char* msg);

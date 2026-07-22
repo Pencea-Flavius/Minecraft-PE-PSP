@@ -18,6 +18,7 @@
 #include "gpu/gu.h"
 #include "client/renderer/item_model.h"
 #include "gpu/item_icons.h"
+#include "gpu/spawn_egg_colors.h"
 
 extern World g_world;
 extern bool g_worldBuilt;
@@ -240,6 +241,15 @@ int itemBuildFlatMesh(short id, unsigned char data, ChunkVertex* out, int bowSta
     const Texture* texPtr = itemFlatTexture(id, data);
     const int basex = (int)sx, basey = (int)sy;
 
+    const bool egg = (id == ITEM_SPAWN_EGG);
+    unsigned int eggBase = 0xFFFFFFFFu, eggSpot = 0xFFFFFFFFu;
+    int ovx0 = 0, ovy0 = 0;
+    if (egg) {
+        spawnEggColors(data, &eggBase, &eggSpot);
+        ovx0 = (II_SPAWN_EGG_OVERLAY & 31) * 16;
+        ovy0 = (27 + (II_SPAWN_EGG_OVERLAY >> 5)) * 16;
+    }
+
     int n = 0;
     #define FACE(c, ax,ay,az, bx,by,bz, cx,cy,cz, dx,dy,dz)   \
         do { if (n + 6 > cap) return n;                        \
@@ -263,17 +273,25 @@ int itemBuildFlatMesh(short id, unsigned char data, ChunkVertex* out, int bowSta
             const float x0 = x * T,       x1 = x0 + T;
             const float y0 = y * T,       y1 = y0 + T;
 
-            FACE(colFB, x0,y0,z0,  x1,y0,z0,  x1,y1,z0,  x0,y1,z0);
-            FACE(colFB, x0,y1,z1,  x1,y1,z1,  x1,y0,z1,  x0,y0,z1);
+            unsigned int cFB = colFB, cLR = colLR, cTB = colTB;
+            if (egg) {
+                unsigned int ec =
+                    !isTransparent(texPtr, ovx0 + (tx - basex), ovy0 + (ty - basey))
+                        ? eggSpot : eggBase;
+                cFB = eggMul(colFB, ec); cLR = eggMul(colLR, ec); cTB = eggMul(colTB, ec);
+            }
+
+            FACE(cFB, x0,y0,z0,  x1,y0,z0,  x1,y1,z0,  x0,y1,z0);
+            FACE(cFB, x0,y1,z1,  x1,y1,z1,  x1,y0,z1,  x0,y0,z1);
 
             if (isTransparent(texPtr, tx + 1, ty))
-                FACE(colLR, x0,y0,z1,  x0,y0,z0,  x0,y1,z0,  x0,y1,z1);
+                FACE(cLR, x0,y0,z1,  x0,y0,z0,  x0,y1,z0,  x0,y1,z1);
             if (isTransparent(texPtr, tx - 1, ty))
-                FACE(colLR, x1,y1,z1,  x1,y1,z0,  x1,y0,z0,  x1,y0,z1);
+                FACE(cLR, x1,y1,z1,  x1,y1,z0,  x1,y0,z0,  x1,y0,z1);
             if (isTransparent(texPtr, tx, ty + 1))
-                FACE(colTB, x1,y0,z0,  x0,y0,z0,  x0,y0,z1,  x1,y0,z1);
+                FACE(cTB, x1,y0,z0,  x0,y0,z0,  x0,y0,z1,  x1,y0,z1);
             if (isTransparent(texPtr, tx, ty - 1))
-                FACE(colTB, x0,y1,z0,  x1,y1,z0,  x1,y1,z1,  x0,y1,z1);
+                FACE(cTB, x0,y1,z0,  x1,y1,z0,  x1,y1,z1,  x0,y1,z1);
         }
     }
     #undef FACE

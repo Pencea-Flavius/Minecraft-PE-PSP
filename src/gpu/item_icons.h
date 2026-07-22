@@ -11,19 +11,8 @@
 #define II_EGG                113
 #define II_HELMET_CHAIN       109
 #define II_LEGGINGS_CHAIN     111
-#define II_SLOT_BOOTS         130
-#define II_SLOT_CHESTPLATE    128
-#define II_SLOT_HELMET        127
-#define II_SLOT_LEGGINGS      129
-#define II_SPAWN_CHICKEN      120
-#define II_SPAWN_COW          119
-#define II_SPAWN_CREEPER      123
-#define II_SPAWN_PIG          118
-#define II_SPAWN_PIGZOMBIE    126
-#define II_SPAWN_SHEEP        121
-#define II_SPAWN_SKELETON     124
-#define II_SPAWN_SPIDER       125
-#define II_SPAWN_ZOMBIE       122
+#define II_SPAWN_EGG_BASE     118
+#define II_SPAWN_EGG_OVERLAY  119
 
 static const short kItemIcon[256] = {
       46,   45,   47,  103,  106,   19,   62,   -1,
@@ -62,20 +51,5 @@ static const short kItemIcon[256] = {
 
 static const short kItemIconCoal[16] = { 102, 23, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
 static const short kItemIconDye[16] = { -1, 24, 26, -1, 65, 87, 88, -1, -1, 89, 90, 91, 92, 93, 94, 16 };
-
-static inline short itemIconSpawnEgg(short data) {
-    switch (data) {
-        case 10: return II_SPAWN_CHICKEN;
-        case 11: return II_SPAWN_COW;
-        case 12: return II_SPAWN_PIG;
-        case 13: return II_SPAWN_SHEEP;
-        case 32: return II_SPAWN_ZOMBIE;
-        case 33: return II_SPAWN_CREEPER;
-        case 34: return II_SPAWN_SKELETON;
-        case 35: return II_SPAWN_SPIDER;
-        case 36: return II_SPAWN_PIGZOMBIE;
-        default: return -1;
-    }
-}
 
 #endif

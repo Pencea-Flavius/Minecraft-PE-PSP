@@ -22,6 +22,10 @@
 #define GA_PSP_UP           238.0f,  36.0f,  13.0f,  17.0f
 #define GA_SEL_FRAME        212.0f,  33.0f,  24.0f,  24.0f
 #define GA_SLOT_BG          238.0f,   0.0f,  16.0f,  16.0f
+#define GA_SLOT_BOOTS       228.0f, 105.0f,  16.0f,  16.0f
+#define GA_SLOT_CHESTPLATE  228.0f,  88.0f,  16.0f,  16.0f
+#define GA_SLOT_HELMET      211.0f,  88.0f,  16.0f,  16.0f
+#define GA_SLOT_LEGGINGS    211.0f, 105.0f,  16.0f,  16.0f
 #define GA_SS_ARROW         212.0f,   0.0f,  22.0f,  31.0f
 #define GA_SS_CRAFTBTN      182.0f,   0.0f,  16.0f,  67.0f
 #define GA_SS_CRAFTICONS      0.0f,  24.0f,  96.0f,  64.0f

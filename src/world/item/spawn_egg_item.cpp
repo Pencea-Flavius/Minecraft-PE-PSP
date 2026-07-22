@@ -5,31 +5,16 @@
 #include "world/entity/mob_factory.h"
 #include "world/level/level.h"
 #include "world/level/chunk/chunk.h"
+#include "gpu/item_icons.h"
 #include <cstdlib>
 
 extern Level g_level;
-
-static const int EGG_ICON = 153;
 
 SpawnEggItem::SpawnEggItem() : Item(ITEM_SPAWN_EGG) {
     maxStackSize = 64;
 }
 
-int SpawnEggItem::getIcon(short data) const {
-    switch (data) {
-
-        case 12: return 225;
-        case 11: return 226;
-        case 10: return 227;
-        case 13: return 228;
-        case 32: return 229;
-        case 33: return 230;
-        case 34: return 231;
-        case 35: return 232;
-        case 36: return 233;
-        default: return EGG_ICON;
-    }
-}
+int SpawnEggItem::getIcon(short ) const { return II_SPAWN_EGG_BASE; }
 
 bool SpawnEggItem::useOn(ItemInstance* item, Player* , World* ,
                          int x, int y, int z, int face) {

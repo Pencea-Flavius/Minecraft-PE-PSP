@@ -385,6 +385,11 @@ Recipes::Recipes() {
                     "## ",
                     "###", { TILE('#', BLOCK_QUARTZ_BLOCK) });
 
+    addShapedRecipe(ItemInstance(BLOCK_STAIRS_SANDSTONE, 4, 0),
+                    "#  ",
+                    "## ",
+                    "###", { TILE('#', BLOCK_SANDSTONE) });
+
     addShapedRecipe(ItemInstance(ITEM_PAINTING, 1, 0),
                     "###",
                     "#X#",

@@ -34,13 +34,11 @@ bool HangingEntityItem::useOn(ItemInstance* item, Player* , World* ,
     int dir = Direction::FACING_DIRECTION[facing];
 
     HangingEntity* entity = createEntity(&g_level, x, y, z, dir);
-    if (entity) {
-        if (entity->survives()) {
-            g_level.addEntity(entity);
-            if (item) item->count--;
-        } else {
-            delete entity;
-        }
+    if (entity && entity->survives()) {
+        g_level.addEntity(entity);
+
+        return true;
     }
-    return true;
+    if (entity) delete entity;
+    return false;
 }
