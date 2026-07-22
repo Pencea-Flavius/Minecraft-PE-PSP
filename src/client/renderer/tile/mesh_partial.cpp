@@ -67,7 +67,12 @@ int emitPartialBox(const World* w, int gx, int y, int gz, unsigned char id, unsi
                 faceBr = lightRawAt(w, gx, y, gz);
             }
 
-            else if ((boundaryMask & (1 << f)) || f == F_DOWN) {
+            else if (f == F_DOWN) {
+                shade = kFaceShade[F_DOWN];
+                faceBr = (y0 > 0.0f) ? lightRawAt(w, gx, y, gz)
+                                     : lightRawAt(w, gx, y - 1, gz);
+            }
+            else if (boundaryMask & (1 << f)) {
                 int nx = gx + kFaceNeighbor[f][0];
                 int ny = y  + kFaceNeighbor[f][1];
                 int nz = gz + kFaceNeighbor[f][2];

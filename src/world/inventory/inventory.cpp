@@ -130,7 +130,7 @@ void Inventory::consumeSelected() {
     if (_isCreative) return;
     ItemInstance* held = getSelected();
     if (!held || held->isNull()) return;
-    if (--held->count <= 0) clearSlot(linkedSlots[selected].inventorySlot);
+    if (--held->count <= 0) clearSlot(selected);
 }
 
 ItemInstance Inventory::removeSelected(int n) {
@@ -138,7 +138,7 @@ ItemInstance Inventory::removeSelected(int n) {
     ItemInstance* held = getSelected();
     if (!held || held->isNull()) return ItemInstance();
     ItemInstance piece = held->remove(n);
-    if (held->count <= 0) clearSlot(linkedSlots[selected].inventorySlot);
+    if (held->count <= 0) clearSlot(selected);
     return piece;
 }
 
@@ -157,7 +157,8 @@ bool Inventory::hurtSelected(int amount) {
     Item* it = Item::items[held->id];
     if (!it || it->maxDamage <= 0) return false;
     held->hurt(amount);
-    if (held->count <= 0) { clearSlot(linkedSlots[selected].inventorySlot); return true; }
+
+    if (held->count <= 0) { clearSlot(selected); return true; }
     return false;
 }
 

@@ -36,11 +36,22 @@ ItemInstance FillingContainer::removeItem(int slot, int count) {
 }
 
 void FillingContainer::clearSlot(int slot) {
-    if (slot < 0 || slot >= (int)items.size()) return;
-    delete items[slot];
-    items[slot] = nullptr;
+    if (slot < 0) return;
 
-    compressLinkedSlotList(0);
+    if (slot < numLinkedSlots) {
+
+        int invSlot = linkedSlots[slot].inventorySlot;
+        if (invSlot >= 0 && invSlot < (int)items.size()) {
+            delete items[invSlot];
+            items[invSlot] = nullptr;
+        }
+        linkedSlots[slot].inventorySlot = -1;
+    } else {
+        if (slot >= (int)items.size()) return;
+        delete items[slot];
+        items[slot] = nullptr;
+    }
+    compressLinkedSlotList(slot);
 }
 
 bool FillingContainer::linkEmptySlot(int inventorySlot) {
