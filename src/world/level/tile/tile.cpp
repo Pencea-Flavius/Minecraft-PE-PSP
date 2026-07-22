@@ -56,6 +56,8 @@ Drop Tile::getResource(int data) {
 
         case BLOCK_ORE_COAL:            return { ITEM_COAL, 1, 0 };
         case BLOCK_ORE_EMERALD:         return { ITEM_DIAMOND, 1, 0 };
+
+        case BLOCK_GLOWSTONE:           return { ITEM_GLOWSTONE_DUST, 1, 0 };
         case BLOCK_CLAY:                return { ITEM_CLAY, 4, 0 };
         case BLOCK_BOOKSHELF:           return { ITEM_BOOK, 3, 0 };
 
@@ -91,6 +93,7 @@ int Tile::getResourceCount(int data, Random& rng) {
     if (id == BLOCK_CLAY) return 4;
     if (id == BLOCK_BOOKSHELF) return 3;
     if (id == BLOCK_MELON) return 3 + rng.nextInt(5);
+    if (id == BLOCK_GLOWSTONE) return 2 + rng.nextInt(3);
     if (id == BLOCK_TOPSNOW) return 0;
     return getResource(data).count;
 }

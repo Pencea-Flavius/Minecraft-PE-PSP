@@ -70,5 +70,17 @@ void signRender(MenuState& s) {
         }
     }
 
+    ButtonHint h[4];
+    int n = 0;
+    h[n++] = (ButtonHint){ BTN_ICON_CROSS,  PSP_CTRL_CROSS,  "Write" };
+    h[n++] = (ButtonHint){ BTN_ICON_CIRCLE, PSP_CTRL_CIRCLE, "Exit" };
+    int sel = ste->selectedLine;
+    bool canUp   = sel > 0;
+    bool canDown = sel >= 0 && sel < SignTileEntity::NUM_LINES - 1;
+    if (canUp)   h[n++] = (ButtonHint){ BTN_ICON_UP,   PSP_CTRL_UP,   canDown ? "" : "Move row" };
+    if (canDown) h[n++] = (ButtonHint){ BTN_ICON_DOWN, PSP_CTRL_DOWN, "Move row" };
+
+    buttonHintsDraw(s, h, n, 272.0f - 17.0f - 1.0f);
+
     sceGuEnable(GU_DEPTH_TEST);
 }

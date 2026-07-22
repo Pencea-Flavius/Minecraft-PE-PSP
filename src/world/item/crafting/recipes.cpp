@@ -191,6 +191,10 @@ Recipes::Recipes() {
                     "NN",
                     "NN", { ITEM('N', ITEM_NETHER_QUARTZ) });
 
+    addShapedRecipe(ItemInstance(BLOCK_QUARTZ_BLOCK, 2, QZ_PILLAR),
+                    "#",
+                    "#", { INST('#', BLOCK_QUARTZ_BLOCK, QZ_DEFAULT) });
+
     {
         static const char* const shapes[4][3] = {
             { "XXX", "X X", 0     },
@@ -375,6 +379,11 @@ Recipes::Recipes() {
                     "#  ",
                     "## ",
                     "###", { TILE('#', BLOCK_NETHER_BRICK) });
+
+    addShapedRecipe(ItemInstance(BLOCK_STAIRS_QUARTZ, 4, 0),
+                    "#  ",
+                    "## ",
+                    "###", { TILE('#', BLOCK_QUARTZ_BLOCK) });
 
     addShapedRecipe(ItemInstance(ITEM_PAINTING, 1, 0),
                     "###",

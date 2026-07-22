@@ -289,7 +289,9 @@ void gameUpdate(MenuState& s, unsigned int pressed, const SceCtrlData& pad) {
         const float DROP_FULL = 1.0f;
         static float dropStart = -1.0f;
         static bool  dropFired = false;
-        bool up = (pad.Buttons & PSP_CTRL_UP) != 0 && !g_inv.isCreative();
+
+        bool up = (pad.Buttons & PSP_CTRL_UP) != 0 && !g_inv.isCreative()
+                  && g_inv.selected < HOTBAR_SLOTS;
         float nowD = nowSeconds();
         if (up) {
             if (dropStart < 0.0f) { dropStart = nowD; dropFired = false; }
