@@ -118,7 +118,11 @@ static bool    g_haveChar = false;
 
 void loadCharIfNeeded(void) {
     if (g_haveChar) return;
-    g_haveChar = textureLoad("data/images/mob/char.png", &g_charTex);
+    if (!textureLoad("data/images/mob/skin.png", &g_charTex)) {
+        g_haveChar = textureLoad("data/images/mob/char.png", &g_charTex);
+    } else {
+        g_haveChar = true;
+    }
 }
 
 int itemBuildBlockMesh(short id, unsigned char data, ChunkVertex* out) {

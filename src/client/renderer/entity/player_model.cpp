@@ -38,8 +38,27 @@ enum { P_HEAD, P_BODY, P_ARM0, P_ARM1, P_LEG0, P_LEG1, P_COUNT };
 static Part parts[P_COUNT];
 static bool g_built = false;
 
+static Texture g_localSkinTex;
+static bool    g_haveLocalSkin = false;
+
 static Texture g_charTex;
 static bool    g_haveChar = false;
+
+static void loadLocalPlayerSkinIfNeeded(void) {
+    if (g_haveLocalSkin) return;
+    if (!textureLoad16("data/images/mob/skin.png", &g_localSkinTex, GU_PSM_5551)) {
+        if (!g_haveChar) g_haveChar = textureLoad16("data/images/mob/char.png", &g_charTex, GU_PSM_5551);
+        g_localSkinTex = g_charTex;
+        g_haveLocalSkin = g_haveChar;
+    } else {
+        g_haveLocalSkin = true;
+    }
+}
+
+static void loadCharTextureIfNeeded(void) {
+    if (g_haveChar) return;
+    g_haveChar = textureLoad16("data/images/mob/char.png", &g_charTex, GU_PSM_5551);
+}
 
 static void buildBox(SkinVertex* out,
                      float x0, float y0, float z0, float x1, float y1, float z1,
@@ -184,7 +203,8 @@ void playerModelRender(float a) {
     if (!p) return;
 
     if (p->health <= 0 && p->deathTime >= 20) return;
-    if (!g_haveChar) { g_haveChar = textureLoad16("data/images/mob/char.png", &g_charTex, GU_PSM_5551); if (!g_haveChar) return; }
+    loadLocalPlayerSkinIfNeeded();
+    if (!g_haveLocalSkin) return;
     buildParts();
 
     float ix = p->xo + (p->x - p->xo) * a;
@@ -262,7 +282,7 @@ void playerModelRender(float a) {
         sceKernelDcacheWritebackInvalidateRange(parts[i].mesh, sizeof(parts[i].mesh));
     }
 
-    textureBind(&g_charTex);
+    textureBind(&g_localSkinTex);
     sceGuDisable(GU_CULL_FACE);
 
     sceGumMatrixMode(GU_MODEL);
@@ -380,7 +400,8 @@ void playerModelRender(float a) {
 }
 
 void playerModelRenderPreview(float sx, float sy, float scale) {
-    if (!g_haveChar) { g_haveChar = textureLoad16("data/images/mob/char.png", &g_charTex, GU_PSM_5551); if (!g_haveChar) return; }
+    loadLocalPlayerSkinIfNeeded();
+    if (!g_haveLocalSkin) return;
     buildParts();
 
     float t = nowSeconds() * 20.0f;
@@ -428,7 +449,7 @@ void playerModelRenderPreview(float sx, float sy, float scale) {
     }
     sceGuEnable(GU_DEPTH_TEST);
 
-    textureBind(&g_charTex);
+    textureBind(&g_localSkinTex);
     sceGuDisable(GU_CULL_FACE);
     for (int i = 0; i < P_COUNT; i++) {
         sceGumPushMatrix();
