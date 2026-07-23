@@ -979,6 +979,27 @@ struct CactusTile : GrowerTile { CactusTile(unsigned char i) : GrowerTile(i) {}
 
     void entityInside(World*, int, int, int, Entity* e) { if (e) e->hurt(nullptr, 1); } };
 
+struct LavaTile : Tile { LavaTile(unsigned char i) : Tile(i) { randomTicks = true; }
+    void randomTick(World* w, int x, int y, int z) {
+        int h = rand() % 3;
+        for (int i = 0; i < h; i++) {
+            x += (rand() % 3) - 1;
+            y++;
+            z += (rand() % 3) - 1;
+            unsigned char t = worldBlock(w, x, y, z);
+            if (t == BLOCK_AIR) {
+                if (fireCanBurn(w, x - 1, y, z) || fireCanBurn(w, x + 1, y, z) ||
+                    fireCanBurn(w, x, y, z - 1) || fireCanBurn(w, x, y, z + 1) ||
+                    fireCanBurn(w, x, y - 1, z) || fireCanBurn(w, x, y + 1, z)) {
+                    firePlace(w, x, y, z);
+                    return;
+                }
+            } else if (Tile::tiles[t]->solidPhys) {
+                return;
+            }
+        }
+    } };
+
 static bool rawSolidPhys(unsigned char id) {
     if (id == BLOCK_AIR || isLiquidId(id)) return false;
 
@@ -1138,6 +1159,8 @@ static Tile* makeTile(unsigned char id) {
             return new WorkbenchTile(id);
         case BLOCK_NETHER_REACTOR:
             return new ReactorTile(id);
+        case BLOCK_LAVA: case BLOCK_CALM_LAVA:
+            return new LavaTile(id);
         default: break;
     }
     switch (shapeOf(id)) {

@@ -140,7 +140,9 @@ static inline bool worldIsDay() { return g_skyDarken < 4; }
 
 static inline int lightRawAtNoProp(const World* w, int x, int y, int z) {
 
-    if (y >= WORLD_H) return 15;
+    if (y >= WORLD_H + 8) return 15;
+
+    if (y >= WORLD_H) { int s = 15 - g_skyDarken; return s < 0 ? 0 : s; }
     if (y < 0 || x < 0 || x >= WORLD_W || z < 0 || z >= WORLD_D) return 0;
     unsigned char v = w->light[worldIndex(x, y, z)];
     int s = (v >> 4) - g_skyDarken, b = v & 0x0F;
