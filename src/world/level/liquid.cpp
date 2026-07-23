@@ -174,7 +174,8 @@ static void fizz(int x, int y, int z) {
 
     if (g_worldBuilt) {
         float pitch = 2.6f + ((rand() % 1000) / 1000.0f - (rand() % 1000) / 1000.0f) * 0.8f;
-        soundPlay("random.fizz", 0.5f, pitch);
+
+        g_level.playSound((float)x + 0.5f, (float)y + 0.5f, (float)z + 0.5f, "random.fizz", 0.5f, pitch);
     }
     for (int i = 0; i < 8; i++)
         particlesLargeSmoke((float)x + (rand() % 100) / 100.0f, (float)y + 1.2f, (float)z + (rand() % 100) / 100.0f);

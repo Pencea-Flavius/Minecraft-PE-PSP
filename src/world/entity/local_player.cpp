@@ -250,7 +250,7 @@ void LocalPlayer::die(Entity* source) {
     };
     if (!inventory->isCreative()) {
 
-        for (int i = 0; i < inventory->getContainerSize(); ++i) {
+        for (int i = inventory->firstGridSlot(); i < inventory->getContainerSize(); ++i) {
             ItemInstance* it = inventory->getItem(i);
             if (it && !it->isNull()) dropOnDeath(*it);
             inventory->clearSlot(i);
