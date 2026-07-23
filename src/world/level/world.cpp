@@ -74,6 +74,8 @@ bool worldAllocArrays(World* w) {
     w->time = 0;
     w->dayTime = 0;
     g_skyDarken = 0;
+
+    g_forceNight = false;
     w->tickNextTickList.clear();
     w->tickSet.clear();
     w->lightQueue.clear();
