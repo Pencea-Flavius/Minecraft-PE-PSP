@@ -402,7 +402,9 @@ void worldScheduleLoadedLiquids(World* w) {
 void worldTick(World* w) {
     w->time++;
 
-    if (!g_level.player->inventory->isCreative()) w->dayTime++;
+    if (worldNightModeTick(w)) {
+
+    } else if (!g_level.player->inventory->isCreative()) w->dayTime++;
     else if (w->dayTime != 0) w->dayTime = 0;
     worldUpdateSkyDarken(w);
 

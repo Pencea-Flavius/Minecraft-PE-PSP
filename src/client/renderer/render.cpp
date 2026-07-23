@@ -3,6 +3,7 @@
 #include "world/entity/local_player.h"
 #include "client/player/player.h"
 #include "client/gamemode/gamemode.h"
+#include "client/renderer/level/mesh_worker.h"
 
 #include "gpu/gu.h"
 #include "gpu/texture.h"
@@ -259,9 +260,10 @@ static void fireScreenEffect() {
     const float size = 1.0f, z0 = -0.5f;
     const float x0 = -size / 2, x1 = x0 + size, y0 = -size / 2, y1 = y0 + size;
 
+    const float TILE = 1.0f / 16.0f, HT = TILE / 32.0f;
     for (int i = 0; i < 2; i++) {
-        const float u0 = 15.0f / 16.0f, u1 = 16.0f / 16.0f;
-        const float v0 = (1 + i) / 16.0f, v1 = (2 + i) / 16.0f;
+        const float u0 = 15.0f / 16.0f + HT, u1 = 16.0f / 16.0f - HT;
+        const float v0 = (1 + i) / 16.0f + HT, v1 = (2 + i) / 16.0f - HT;
         sceGumMatrixMode(GU_MODEL);
         sceGumLoadIdentity();
         ScePspFVector3 tr = { -(i * 2 - 1) * 0.24f, -0.3f, 0.0f };
@@ -686,6 +688,8 @@ void gameRender(MenuState& s) {
 
             if (done >= total) {
                 g_worldBuilt = true; g_genStage = GS_IDLE;
+
+                MeshWorker::start();
                 extern int g_autosaveTick; g_autosaveTick = 0;
                 particlesReset();
                 if (g_loadedFromDisk && LevelStorage::loadedValidPlayerPos()) {

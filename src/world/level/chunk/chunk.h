@@ -259,6 +259,10 @@ struct ChunkSection {
 
     unsigned char vis[6];
     bool          reachable;
+
+    unsigned short meshSeq;
+
+    bool           skyLit;
 };
 
 void computeSectionVis(const World* w, int ox, int y0, int oz, unsigned char vis[6]);
@@ -283,6 +287,30 @@ void chunkBuildMesh(ChunkMesh* c, const World* w, int ox, int oz);
 void chunkInitLazy(ChunkMesh* c, int ox, int oz);
 
 void chunkBuildSection(ChunkMesh* c, const World* w, int si);
+
+struct SectionMeshResult {
+    DrawVertex*   mesh;
+    DrawVertex*   water;
+    DrawVertex*   leaves;
+    DrawVertex*   noMip;
+    int           vertexCount, waterCount, leavesCount, noMipCount;
+    float         by0, by1, lby0, lby1, wby0, wby1;
+    unsigned char vis[6];
+    bool          leavesOpaqueBand, leavesCullBand;
+    bool          skyLit;
+    bool          oom;
+};
+
+struct MeshScratch;
+
+MeshScratch* meshScratchCreate(int capOpaque, int capWaterLeaves);
+
+void chunkComputeSection(const ChunkMesh* c, const World* w, int si,
+                         MeshScratch* sc, SectionMeshResult* out);
+
+void chunkApplySection(ChunkMesh* c, int si, const SectionMeshResult* r);
+
+void sectionMeshResultFree(SectionMeshResult* r);
 void chunkDrawSection(const ChunkSection* s);
 void chunkDrawWaterSection(const ChunkSection* s);
 void chunkDrawLeavesSection(const ChunkSection* s);

@@ -11,6 +11,7 @@
 #include <math.h>
 
 #include "client/renderer/level/frustum.h"
+#include "client/renderer/level/mesh_worker.h"
 
 static inline void streamFreeSection(ChunkSection* s) {
     if (s->mesh)   { free(s->mesh);   s->mesh = 0; }
@@ -52,6 +53,8 @@ void worldRebuildStep(const World* cw, float camX, float camY, float camZ, float
     worldUpdateLights(w);
     worldDrainPlayerEdits(w, 6);
 
+    MeshWorker::drain();
+
     extern int g_diagMode;
     if (g_diagMode == 3) {
 
@@ -86,10 +89,26 @@ void worldRebuildStep(const World* cw, float camX, float camY, float camZ, float
             }
         }
     }
-    unsigned int tStart = sceKernelGetSystemTimeLow();
-    for (int k = 0; k < nc; k++) {
-        chunkBuildSection(cand[k].c, w, cand[k].si);
-        if (sceKernelGetSystemTimeLow() - tStart >= TIME_BUDGET_US) break;
+
+    if (MeshWorker::isRunning()) {
+        int k = 0;
+        for (; k < nc; k++)
+            if (!MeshWorker::enqueue(cand[k].c, w, cand[k].si)) break;
+
+        if (k < nc) {
+            unsigned int tStart = sceKernelGetSystemTimeLow();
+            for (; k < nc; k++) {
+                if (!cand[k].c->sec[cand[k].si].dirty) continue;
+                chunkBuildSection(cand[k].c, w, cand[k].si);
+                if (sceKernelGetSystemTimeLow() - tStart >= TIME_BUDGET_US) break;
+            }
+        }
+    } else {
+        unsigned int tStart = sceKernelGetSystemTimeLow();
+        for (int k = 0; k < nc; k++) {
+            chunkBuildSection(cand[k].c, w, cand[k].si);
+            if (sceKernelGetSystemTimeLow() - tStart >= TIME_BUDGET_US) break;
+        }
     }
     }
 
@@ -236,7 +255,8 @@ void worldDraw(const World* cw, float camX, float camY, float camZ, float viewDi
         ChunkMesh* c = &w->chunks[i];
         for (int si = 0; si < N_SECTIONS; si++) {
             ChunkSection* s = &c->sec[si];
-            if ((s->leavesCount == 0 && s->noMipCount == 0) || !s->visible || s->dirty) continue;
+            if (!s->visible || s->dirty) continue;
+            if (s->leavesCount == 0 && s->noMipCount == 0) continue;
             int y0 = si * SECTION_SY, y1 = y0 + SECTION_SY;
             bool wantOpaque = leafOpaqueBand(c, y0, y1, camX, camY, camZ, g_fancyGraphics != 0);
             bool wantCull   = leafCullBand(c, y0, y1, camX, camY, camZ, g_fancyGraphics != 0);

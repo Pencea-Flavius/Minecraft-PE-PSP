@@ -1,5 +1,6 @@
 #include "world/level/world.h"
 #include "world/level/chunk/chunk.h"
+#include "client/renderer/level/mesh_worker.h"
 #include <pspkernel.h>
 
 unsigned int g_editWorstUs = 0, g_drainWorstUs = 0;
@@ -113,7 +114,10 @@ void worldDrainPlayerEdits(World* w, int maxSections) {
         g_editQueueN--;
         g_inEditQueue[ci][si] = false;
         ChunkMesh* c = &w->chunks[ci];
-        if (c->sec[si].dirty) chunkBuildSection(c, w, si);
+        if (c->sec[si].dirty) {
+
+            if (!MeshWorker::enqueue(c, w, si)) chunkBuildSection(c, w, si);
+        }
         if (sceKernelGetSystemTimeLow() - tStart >= TIME_BUDGET_US) break;
     }
 

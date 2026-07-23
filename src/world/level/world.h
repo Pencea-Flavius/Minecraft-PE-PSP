@@ -136,6 +136,8 @@ void worldSetNightMode(World* w, bool night);
 
 void worldUpdateSkyDarken(World* w);
 
+bool worldNightModeTick(World* w);
+
 static inline bool worldIsDay() { return g_skyDarken < 4; }
 
 static inline int lightRawAtNoProp(const World* w, int x, int y, int z) {

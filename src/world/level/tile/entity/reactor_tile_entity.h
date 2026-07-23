@@ -45,6 +45,10 @@ private:
     void turnGlowingObsidianLayerToObsidian(int layer);
 
     void buildDome(int x, int y, int z);
+
+    void relightDomeColumns(int x, int y, int z, int radius);
+
+    void settleDomeEdit(int x, int y, int z, int radius);
     void buildHollowedVolume(int x, int y, int z, int expandWidth, int height, int wallTileId, int clearTileId);
     void buildFloorVolume(int x, int y, int z, int expandWidth, int height, int tileId);
     void buildCrockedRoofVolume(bool inverted, int x, int y, int z, int expandWidth, int height, int tileId);

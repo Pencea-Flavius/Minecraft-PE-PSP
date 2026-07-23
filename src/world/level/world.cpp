@@ -36,20 +36,39 @@ static int calcSkyDarken(long dayTime) {
     return (int)(br * 11.0f);
 }
 
-static bool g_forceNight = false;
+static const long MIDDLE_OF_NIGHT_TIME = 12000;
+static bool g_nightMode = false;
+static long g_nightSavedTime = 0;
+static long g_nightTicks = 0;
+
 void worldSetNightMode(World* w, bool night) {
-    if (g_forceNight == night) return;
-    g_forceNight = night;
+    if (g_nightMode == night) return;
+    if (night) {
+        g_nightSavedTime = w->dayTime;
+        g_nightTicks = 0;
+        w->dayTime = MIDDLE_OF_NIGHT_TIME;
+    } else {
+        w->dayTime = (g_nightSavedTime + g_nightTicks) % TICKS_PER_DAY;
+    }
+    g_nightMode = night;
     worldUpdateSkyDarken(w);
 }
 
+bool worldNightModeTick(World* w) {
+    if (!g_nightMode) return false;
+    g_nightTicks++;
+    w->dayTime = MIDDLE_OF_NIGHT_TIME;
+    return true;
+}
+
 void worldUpdateSkyDarken(World* w) {
-    int nd = g_forceNight ? 8 : calcSkyDarken(w->dayTime);
+    int nd = calcSkyDarken(w->dayTime);
     if (nd == g_skyDarken) return;
     g_skyDarken = nd;
     for (int ci = 0; ci < WORLD_CHUNKS_X * WORLD_CHUNKS_Z; ci++)
         for (int si = 0; si < N_SECTIONS; si++)
-            w->chunks[ci].sec[si].dirty = true;
+            if (w->chunks[ci].sec[si].skyLit)
+                w->chunks[ci].sec[si].dirty = true;
 }
 
 volatile int g_terrainProgress = 0;
@@ -75,7 +94,7 @@ bool worldAllocArrays(World* w) {
     w->dayTime = 0;
     g_skyDarken = 0;
 
-    g_forceNight = false;
+    g_nightMode = false; g_nightSavedTime = 0; g_nightTicks = 0;
     w->tickNextTickList.clear();
     w->tickSet.clear();
     w->lightQueue.clear();

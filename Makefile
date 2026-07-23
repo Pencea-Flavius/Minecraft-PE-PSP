@@ -134,6 +134,7 @@ OBJS = \
 	src/world/level/explosion.o \
 	src/world/level/light.o \
 	src/client/renderer/level/worldrender.o \
+	src/client/renderer/level/mesh_worker.o \
 	src/world/level/liquid.o \
 	src/world/level/leafdecay.o \
 	src/world/level/tile/tile_behavior.o \

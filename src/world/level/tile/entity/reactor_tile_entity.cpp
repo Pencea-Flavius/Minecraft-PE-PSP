@@ -84,8 +84,9 @@ void ReactorTileEntity::lightItUp(int x, int y, int z) {
     curLevel = 0;
     NetherReactor::setPhase(level, x, y, z, 1);
     isInitialized = true;
-    buildDome(x, y, z);
+
     level->setNightMode(true);
+    buildDome(x, y, z);
 }
 
 void ReactorTileEntity::tick() {
@@ -265,13 +266,46 @@ void ReactorTileEntity::turnGlowingObsidianLayerToObsidian(int layer) {
                 level->setTile(x + cx, y - 1 + layer, z + cz, BLOCK_OBSIDIAN);
 }
 
+void ReactorTileEntity::relightDomeColumns(int x, int y, int z, int radius) {
+    World* w = level->w;
+    for (int cx = x - radius; cx <= x + radius; ++cx)
+        for (int cz = z - radius; cz <= z + radius; ++cz) {
+            if (cx < 0 || cx >= WORLD_W || cz < 0 || cz >= WORLD_D) continue;
+            lightOnBlockChanged(w, cx, y, cz);
+        }
+}
+
+void ReactorTileEntity::settleDomeEdit(int x, int y, int z, int radius) {
+    World* w = level->w;
+    relightDomeColumns(x, y - 3, z, radius);
+
+    while (!w->lightQueue.empty()) worldUpdateLights(w);
+
+    int yBottom = y - 3, yTop = y + 31;
+    if (yBottom < 0) yBottom = 0;
+    if (yTop > WORLD_H) yTop = WORLD_H;
+    int siFirst = yBottom / SECTION_SY, siLast = (yTop - 1) / SECTION_SY;
+    if (siLast >= N_SECTIONS) siLast = N_SECTIONS - 1;
+    for (int cz = (z - radius) >> 4; cz <= ((z + radius) >> 4); ++cz)
+        for (int cx = (x - radius) >> 4; cx <= ((x + radius) >> 4); ++cx) {
+            if (cx < 0 || cx >= WORLD_CHUNKS_X || cz < 0 || cz >= WORLD_CHUNKS_Z) continue;
+            ChunkMesh* c = &w->chunks[cz * WORLD_CHUNKS_X + cx];
+            for (int si = siFirst; si <= siLast; ++si) chunkBuildSection(c, w, si);
+        }
+}
+
 void ReactorTileEntity::buildDome(int x, int y, int z) {
+    World* w = level->w;
+    bool wasLightReady = w->lightReady;
+    w->lightReady = false;
     buildFloorVolume(x, y - 3, z, 8, 2, BLOCK_NETHERRACK);
     buildHollowedVolume(x, y - 1, z, 8, 4, BLOCK_NETHERRACK, 0);
     buildFloorVolume(x, y - 1 + 4, z, 8, 1, BLOCK_NETHERRACK);
     buildCrockedRoofVolume(false, x, y - 1 + 5, z, 8, 1, BLOCK_NETHERRACK);
     buildCrockedRoofVolume(true,  x, y - 1 + 6, z, 5, 8, BLOCK_NETHERRACK);
     buildCrockedRoofVolume(false, x, y - 1 + 12, z, 3, 14, BLOCK_NETHERRACK);
+    w->lightReady = wasLightReady;
+    if (wasLightReady) settleDomeEdit(x, y, z, 8);
 }
 
 void ReactorTileEntity::buildHollowedVolume(int x, int y, int z, int expandWidth, int height, int wallTileId, int clearTileId) {
@@ -309,10 +343,16 @@ bool ReactorTileEntity::isEdge(int curX, int expandWidth, int curZ) {
 }
 
 void ReactorTileEntity::deterioateDome(int x, int y, int z) {
+
+    World* w = level->w;
+    bool wasLightReady = w->lightReady;
+    w->lightReady = false;
     deterioateHollowedVolume(x, y - 1, z, 8, 5, 0);
     deterioateCrockedRoofVolume(false, x, y - 1 + 5, z, 8, 1, 0);
     deterioateCrockedRoofVolume(true,  x, y - 1 + 6, z, 5, 8, 0);
     deterioateCrockedRoofVolume(false, x, y - 1 + 12, z, 3, 14, 0);
+    w->lightReady = wasLightReady;
+    if (wasLightReady) settleDomeEdit(x, y, z, 8);
 }
 
 void ReactorTileEntity::deterioateCrockedRoofVolume(bool inverted, int x, int y, int z, int expandWidth, int height, int tileId) {
