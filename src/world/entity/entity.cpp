@@ -10,6 +10,7 @@ extern World g_world;
 #include "world/level/world.h"
 #include "nbt/compound_tag.h"
 #include "util/mth.h"
+#include "platform/audio/sound.h"
 #include <cmath>
 #include <pspkernel.h>
 
@@ -221,7 +222,12 @@ void Entity::move(float xa, float ya, float za) {
     } else {
         if (onFire <= 0) onFire = -flameTime;
     }
-    if (water && onFire > 0) onFire = -flameTime;
+    if (water && onFire > 0) {
+
+        float pitch = 1.6f + ((rand() % 1000) / 1000.0f - (rand() % 1000) / 1000.0f) * 0.4f;
+        soundPlay("random.fizz", 0.7f, pitch);
+        onFire = -flameTime;
+    }
 }
 
 void Entity::makeStuckInWeb() { isStuckInWeb = true; fallDistance = 0; }

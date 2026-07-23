@@ -103,7 +103,7 @@ void worldExplode(World* w, float x, float y, float z, float r) {
             worldPrimeTnt(w, bx, by, bz, rand() % 20 + 10);
         } else {
 
-            if (frand() < 1.0f / r)
+            if (frand() < 0.3f)
                 worldSpawnResources(w, bx, by, bz, id, worldData(w, bx, by, bz));
             worldSetBlockAndData(w, bx, by, bz, BLOCK_AIR, 0);
             worldNotifyNeighborsChanged(w, bx, by, bz);

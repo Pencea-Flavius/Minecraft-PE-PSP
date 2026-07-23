@@ -8,6 +8,7 @@ extern Level g_level;
 #include "world/level/tile/fire.h"
 #include "world/inventory/inventory.h"
 #include "client/renderer/particle.h"
+#include "platform/audio/sound.h"
 
 #include <stdlib.h>
 #include <math.h>
@@ -169,6 +170,8 @@ static void wakeLiquid(World* w, int x, int y, int z, unsigned char liquidId) {
 }
 
 static void fizz(int x, int y, int z) {
+    float pitch = 2.6f + ((rand() % 1000) / 1000.0f - (rand() % 1000) / 1000.0f) * 0.8f;
+    soundPlay("random.fizz", 0.5f, pitch);
     for (int i = 0; i < 8; i++)
         particlesLargeSmoke((float)x + (rand() % 100) / 100.0f, (float)y + 1.2f, (float)z + (rand() % 100) / 100.0f);
 }
@@ -200,25 +203,33 @@ static void checkHarden(World* w, int x, int y, int z) {
         hardenLava(w, x + nb6[d][0], y + nb6[d][1], z + nb6[d][2]);
 }
 
+static void neighborChanged(World* w, int x, int y, int z) {
+    unsigned char nb = worldBlock(w, x, y, z);
+    if (isLiquidId(nb)) wakeLiquid(w, x, y, z, dynOf(nb));
+    tileNeighborChanged(w, x, y, z);
+    farmlandCheckDry(w, x, y, z);
+}
+
 void worldUpdateNeighbors(World* w, int x, int y, int z, unsigned char liquidId) {
-    wakeLiquid(w, x - 1, y, z, liquidId);
-    wakeLiquid(w, x + 1, y, z, liquidId);
-    wakeLiquid(w, x, y, z - 1, liquidId);
-    wakeLiquid(w, x, y, z + 1, liquidId);
-    wakeLiquid(w, x, y - 1, z, liquidId);
-    wakeLiquid(w, x, y + 1, z, liquidId);
+    (void)liquidId;
+    neighborChanged(w, x - 1, y, z);
+    neighborChanged(w, x + 1, y, z);
+    neighborChanged(w, x, y - 1, z);
+    neighborChanged(w, x, y + 1, z);
+    neighborChanged(w, x, y, z - 1);
+    neighborChanged(w, x, y, z + 1);
     checkHarden(w, x, y, z);
 }
 
 void worldNotifyNeighborsChanged(World* w, int x, int y, int z) {
-    static const signed char nb6[6][3] = {{-1,0,0},{1,0,0},{0,-1,0},{0,1,0},{0,0,-1},{0,0,1}};
-    for (int d = 0; d < 6; d++) {
-        int nx = x + nb6[d][0], ny = y + nb6[d][1], nz = z + nb6[d][2];
-        unsigned char nb = worldBlock(w, nx, ny, nz);
-        if (isLiquidId(nb)) wakeLiquid(w, nx, ny, nz, dynOf(nb));
-        tileNeighborChanged(w, nx, ny, nz);
-        farmlandCheckDry(w, nx, ny, nz);
-    }
+    neighborChanged(w, x - 1, y, z);
+    neighborChanged(w, x + 1, y, z);
+    neighborChanged(w, x, y - 1, z);
+    neighborChanged(w, x, y + 1, z);
+    neighborChanged(w, x, y, z - 1);
+    neighborChanged(w, x, y, z + 1);
+    leafFlagNeighbors(w, x, y, z);
+
     leafFlagNeighbors(w, x, y, z);
 
     unsigned char here = worldBlock(w, x, y, z);
@@ -299,6 +310,10 @@ static void tickLiquid(World* w, int x, int y, int z, unsigned char id) {
             } else {
 
                 worldScheduleTick(w, x, y, z, id, 30);
+
+                static const signed char nb6[6][3] = {{-1,0,0},{1,0,0},{0,-1,0},{0,1,0},{0,0,-1},{0,0,1}};
+                for (int i = 0; i < 6; i++)
+                    wakeLiquid(w, x + nb6[i][0], y + nb6[i][1], z + nb6[i][2], id);
             }
         }
     } else {
