@@ -56,6 +56,11 @@ void LocalPlayer::aiStep(unsigned int btn, unsigned char lx, unsigned char ly) {
         unsigned char feet = worldBlock(&g_world, efx, efy, efz);
         if (isWaterId(feet)) { fallDistance = 0.0f; onFire = 0; }
         if (isLavaId(feet))  { fallDistance = 0.0f; lavaHurt(); }
+
+        if (feet == BLOCK_FIRE || worldBlock(&g_world, efx, efy + 1, efz) == BLOCK_FIRE) {
+            onFire = 160;
+            hurt(0, 1);
+        }
         if (onFire > 0) { if (onFire % 20 == 0) hurt(0, 1); onFire--; }
 
         if (isAlive() && isInWall()) hurt(0, 1);

@@ -2,6 +2,8 @@
 #define MCPSP_WORLD_ITEM_INSTANCE_H
 
 class Item;
+struct World;
+class Player;
 
 struct ItemInstance {
     short id;
@@ -12,6 +14,9 @@ struct ItemInstance {
     ItemInstance(short id, short count, short data) : id(id), count(count), data(data) {}
 
     Item* getItem() const;
+
+    bool useOn(Player* player, World* world, int x, int y, int z, int face,
+               float clickX, float clickY, float clickZ);
 
     bool isNull() const { return id == 0 || count <= 0; }
     void setNull() { id = 0; count = 0; data = 0; }

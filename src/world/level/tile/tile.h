@@ -15,7 +15,7 @@ enum TileShape {
     SHAPE_CACTUS, SHAPE_TOPSNOW, SHAPE_REEDS, SHAPE_WHEAT, SHAPE_MELON_STEM,
     SHAPE_SLAB, SHAPE_STAIRS, SHAPE_PANE, SHAPE_FENCE, SHAPE_FENCEGATE,
     SHAPE_DOOR, SHAPE_TRAPDOOR, SHAPE_LADDER, SHAPE_TORCH, SHAPE_BED,
-    SHAPE_SIGN, SHAPE_CHEST
+    SHAPE_SIGN, SHAPE_CHEST, SHAPE_FIRE
 };
 
 enum TileSound {
@@ -67,6 +67,8 @@ public:
     virtual void randomTick(World* w, int x, int y, int z);
 
     virtual bool use(World* w, int x, int y, int z, Player* player) { return false; }
+
+    virtual void attack(World* w, int x, int y, int z, Player* player) {}
 
     virtual int getPlacedOnFaceDataValue(World* w, int x, int y, int z, int face,
                                          float clickX, float clickY, float clickZ, int itemValue) {

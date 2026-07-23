@@ -62,7 +62,7 @@ void ItemRenderer::render(Entity* entity, float x, float y, float z, float , flo
         ScePspFVector3 sc = { s, s, s };
         sceGumScale(&sc);
 
-        if (!isPlant(id)) { sceGuEnable(GU_CULL_FACE); sceGuFrontFace(GU_CCW); }
+        if (!isCrossShaped(id)) { sceGuEnable(GU_CULL_FACE); sceGuFrontFace(GU_CCW); }
         unsigned int lc = dropLight(x, y, z);
         for (int i = 0; i < count; ++i) {
             sceGumPushMatrix();

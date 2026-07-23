@@ -1,6 +1,7 @@
 
 #include "world/level/chunk/chunk.h"
 #include "world/level/world.h"
+#include "world/level/tile/fire.h"
 
 static const unsigned char kFaceUV[6][4][2] = {
 
@@ -40,6 +41,80 @@ static int writeQuadDouble(ChunkVertex* out, int n, const float P[4][3],
             n++;
         }
     }
+    return n;
+}
+
+static int writeQuadSingle(ChunkVertex* out, int n, const float P[4][3],
+                           const float UV[4][2], unsigned int color) {
+    static const int tri[6] = { 0, 1, 2, 2, 3, 0 };
+    for (int t = 0; t < 6; t++) {
+        int k = tri[t];
+        out[n].u = UV[k][0]; out[n].v = UV[k][1]; out[n].color = color;
+        out[n].x = P[k][0]; out[n].y = P[k][1]; out[n].z = P[k][2];
+        n++;
+    }
+    return n;
+}
+
+static inline int fireQuad(ChunkVertex* out, int n, unsigned int color,
+    float ax,float ay,float az,float au,float av, float bx,float by,float bz,float bu,float bv,
+    float cx,float cy,float cz,float cu,float cv, float dx,float dy,float dz,float du,float dv) {
+    if (!out) return n + 6;
+    const float P[4][3]  = { {ax,ay,az}, {bx,by,bz}, {cx,cy,cz}, {dx,dy,dz} };
+    const float UV[4][2] = { {au,av},    {bu,bv},    {cu,cv},    {du,dv} };
+    return writeQuadSingle(out, n, P, UV, color);
+}
+
+int emitFire(ChunkVertex* out, int n, const World* w, int gx, int y, int gz, unsigned int c) {
+    int col, row; unsigned int tint;
+    tileForBlock(BLOCK_FIRE, 0, 0, &col, &row, &tint);
+    const float HT = TILE_UV / 32.0f;
+    float u0 = col * TILE_UV + HT, v0 = row * TILE_UV + HT;
+    float u1 = (col + 1) * TILE_UV - HT, v1 = (row + 1) * TILE_UV - HT;
+    float x = (float)gx, z = (float)gz, yb = (float)y, h = 1.4f;
+#define FQ(a...) n = fireQuad(out, n, c, a)
+
+    if (isSolidBlocking(worldBlock(w, gx, y - 1, gz)) || fireCanBurn(w, gx, y - 1, gz)) {
+
+        float x0 = x+0.7f, x1 = x+0.3f, z0 = z+0.7f, z1 = z+0.3f;
+        float x0_ = x+0.2f, x1_ = x+0.8f, z0_ = z+0.2f, z1_ = z+0.8f;
+        FQ(x0_,yb+h,z+1,u1,v0,  x0,yb,z+1,u1,v1,  x0,yb,z,u0,v1,   x0_,yb+h,z,u0,v0);
+        FQ(x1_,yb+h,z,u1,v0,    x1,yb,z,u1,v1,    x1,yb,z+1,u0,v1, x1_,yb+h,z+1,u0,v0);
+        FQ(x+1,yb+h,z1_,u1,v0,  x+1,yb,z1,u1,v1,  x,yb,z1,u0,v1,   x,yb+h,z1_,u0,v0);
+        FQ(x,yb+h,z0_,u1,v0,    x,yb,z0,u1,v1,    x+1,yb,z0,u0,v1, x+1,yb+h,z0_,u0,v0);
+        x0 = x; x1 = x+1; z0 = z; z1 = z+1;
+        x0_ = x+0.1f; x1_ = x+0.9f; z0_ = z+0.1f; z1_ = z+0.9f;
+        FQ(x0_,yb+h,z,u0,v0,    x0,yb,z,u0,v1,    x0,yb,z+1,u1,v1, x0_,yb+h,z+1,u1,v0);
+        FQ(x1_,yb+h,z+1,u0,v0,  x1,yb,z+1,u0,v1,  x1,yb,z,u1,v1,   x1_,yb+h,z,u1,v0);
+        FQ(x,yb+h,z1_,u0,v0,    x,yb,z1,u0,v1,    x+1,yb,z1,u1,v1, x+1,yb+h,z1_,u1,v0);
+        FQ(x+1,yb+h,z0_,u0,v0,  x+1,yb,z0,u0,v1,  x,yb,z0,u1,v1,   x,yb+h,z0_,u1,v0);
+    } else {
+
+        const float r = 0.2f, yo = 1.0f / 16.0f;
+        float b = yb + yo, t = yb + h + yo;
+        if (fireCanBurn(w, gx - 1, y, gz)) {
+            FQ(x+r,t,z+1,u1,v0,  x,b,z+1,u1,v1,  x,b,z,u0,v1,    x+r,t,z,u0,v0);
+            FQ(x+r,t,z,u0,v0,    x,b,z,u0,v1,    x,b,z+1,u1,v1,  x+r,t,z+1,u1,v0);
+        }
+        if (fireCanBurn(w, gx + 1, y, gz)) {
+            FQ(x+1-r,t,z,u0,v0,  x+1,b,z,u0,v1,  x+1,b,z+1,u1,v1, x+1-r,t,z+1,u1,v0);
+            FQ(x+1-r,t,z+1,u1,v0,x+1,b,z+1,u1,v1,x+1,b,z,u0,v1,   x+1-r,t,z,u0,v0);
+        }
+        if (fireCanBurn(w, gx, y, gz - 1)) {
+            FQ(x,t,z+r,u1,v0,    x,b,z,u1,v1,    x+1,b,z,u0,v1,   x+1,t,z+r,u0,v0);
+            FQ(x+1,t,z+r,u0,v0,  x+1,b,z,u0,v1,  x,b,z,u1,v1,     x,t,z+r,u1,v0);
+        }
+        if (fireCanBurn(w, gx, y, gz + 1)) {
+            FQ(x+1,t,z+1-r,u0,v0,x+1,b,z+1,u0,v1,x,b,z+1,u1,v1,   x,t,z+1-r,u1,v0);
+            FQ(x,t,z+1-r,u1,v0,  x,b,z+1,u1,v1,  x+1,b,z+1,u0,v1, x+1,t,z+1-r,u0,v0);
+        }
+        if (fireCanBurn(w, gx, y + 1, gz)) {
+            float yy = yb + 1.0f, hh = -0.2f, tt = yy + hh;
+            FQ(x,tt,z,u1,v0,     x+1,yy,z,u1,v1,   x+1,yy,z+1,u0,v1, x,tt,z+1,u0,v0);
+            FQ(x+1,tt,z+1,u1,v0, x,yy,z+1,u1,v1,   x,yy,z,u0,v1,     x+1,tt,z,u0,v0);
+        }
+    }
+#undef FQ
     return n;
 }
 
@@ -235,10 +310,16 @@ int meshPass(const World* w, int ox, int oz, int y0, int y1, ChunkVertex* out, i
             continue;
         }
 
-        if (layer == 0 && isPlant(id)) {
+        if (layer == 0 && isCrossShaped(id)) {
             if (out && n + 24 > cap) return -1;
             if (out) emitCross(out, n, gx, y, gz, id, worldData(w, gx, y, gz), g_brightColor[LLB(gx, y, gz)]);
             n += 24;
+            continue;
+        }
+
+        if (layer == 0 && id == BLOCK_FIRE) {
+            if (out && n + 60 > cap) return -1;
+            n = emitFire(out, n, w, gx, y, gz, out ? g_brightColor[LLB(gx, y, gz)] : 0);
             continue;
         }
 
@@ -445,10 +526,16 @@ int meshSection(const World* w, int ox, int oz, int y0, int y1,
             nn = emitCropRows(out3, nn, gx, y, gz, id, worldData(w, gx, y, gz), g_brightColor[llc[base]]);
             continue;
         }
-        if (isPlant(id)) {
+        if (isCrossShaped(id)) {
             if (nn + 24 > cap3) return -1;
             emitCross(out3, nn, gx, y, gz, id, worldData(w, gx, y, gz), g_brightColor[llc[base]]);
             nn += 24;
+            continue;
+        }
+
+        if (id == BLOCK_FIRE) {
+            if (nn + 60 > cap3) return -1;
+            nn = emitFire(out3, nn, w, gx, y, gz, g_brightColor[llc[base]]);
             continue;
         }
 

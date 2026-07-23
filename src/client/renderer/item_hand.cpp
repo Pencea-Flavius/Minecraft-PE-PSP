@@ -128,7 +128,7 @@ void loadCharIfNeeded(void) {
 
 int itemBuildBlockMesh(short id, unsigned char data, ChunkVertex* out) {
     if (id == BLOCK_AIR) return 0;
-    if (isPlant(id))
+    if (isCrossShaped(id))
         return emitCross(out, 0, 0, 150, 0, id, data, 0xFFFFFFFFu);
     if (isSlab(id))
         return emitSlab(&g_world, 0, 150, 0, id, data, out, 0);
@@ -418,7 +418,7 @@ void itemHandDraw(float a, float bs, float bc) {
     sceGuClear(GU_DEPTH_BUFFER_BIT);
     sceGuEnable(GU_DEPTH_TEST);
 
-    if (hasItem && !isFlat && !isPlant(id)) {
+    if (hasItem && !isFlat && !isCrossShaped(id)) {
         sceGuEnable(GU_CULL_FACE);
         sceGuFrontFace(GU_CCW);
     } else {

@@ -5,6 +5,7 @@
 
 extern Level g_level;
 #include "world/level/tile/redstone_ore.h"
+#include "world/level/tile/fire.h"
 #include "world/inventory/inventory.h"
 #include "client/renderer/particle.h"
 
@@ -28,7 +29,7 @@ static int getFlowDepth(const World* w, int x, int y, int z, unsigned char liqui
 }
 
 static inline bool blocksFlow(unsigned char id) {
-    return !(id == BLOCK_AIR || isLiquidId(id) || isPlant(id));
+    return !(id == BLOCK_AIR || isLiquidId(id) || isCrossShaped(id));
 }
 
 void liquidFlow(const World* w, int x, int y, int z, unsigned char id,
@@ -229,7 +230,9 @@ static void trySpreadTo(World* w, int x, int y, int z, int neighbor, unsigned ch
     if (canSpreadTo(w, x, y, z, liquidId)) {
 
         unsigned char flooded = worldBlock(w, x, y, z);
-        if (flooded != BLOCK_AIR && !isLiquidId(flooded))
+        if (flooded == BLOCK_FIRE && isWaterId(liquidId))
+            fireExtinguishFx(x, y, z);
+        else if (flooded != BLOCK_AIR && !isLiquidId(flooded))
             worldSpawnResources(w, x, y, z, flooded, worldData(w, x, y, z));
         worldSetBlockAndData(w, x, y, z, liquidId, neighbor);
         worldScheduleTick(w, x, y, z, liquidId, isWaterId(liquidId) ? 5 : 30);
@@ -384,7 +387,6 @@ void worldTick(World* w) {
     worldUpdateSkyDarken(w);
 
     tileRandomTick(w);
-    redstoneOreTick(w);
 
     int count = w->tickNextTickList.size();
     if (count == 0) return;
@@ -413,6 +415,8 @@ void worldTick(World* w) {
         if (currentId == td.tileId) {
             if (isLeaf(currentId))         leafDecayTick(w, td.x, td.y, td.z);
             else if (isHeavyTile(currentId)) heavyTileTick(w, td.x, td.y, td.z, currentId);
+            else if (currentId == BLOCK_ORE_REDSTONE_LIT) redstoneOreRevert(w, td.x, td.y, td.z);
+            else if (currentId == BLOCK_FIRE) fireTileTick(w, td.x, td.y, td.z);
             else                           tickLiquid(w, td.x, td.y, td.z, currentId);
         }
     }

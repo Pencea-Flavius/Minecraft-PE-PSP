@@ -18,7 +18,6 @@
 #include "client/renderer/item_hand.h"
 #include "client/renderer/entity/player_model.h"
 #include "client/renderer/particle.h"
-#include "world/level/tile/redstone_ore.h"
 #include "world/level/storage/level_storage.h"
 #include "world/entity/tripod_camera.h"
 #include <cstring>
@@ -254,7 +253,7 @@ static void fireScreenEffect() {
     sceGuEnable(GU_BLEND);
     sceGuBlendFunc(GU_ADD, GU_SRC_ALPHA, GU_ONE_MINUS_SRC_ALPHA, 0, 0);
     sceGuTexFunc(GU_TFX_MODULATE, GU_TCC_RGBA);
-    textureBind(&g_terrain);
+    textureBindNoMip(&g_terrain);
     struct V { float u, v; unsigned int c; float x, y, z; };
     const unsigned int col = 0xE6FFFFFFu;
     const float size = 1.0f, z0 = -0.5f;
@@ -617,6 +616,10 @@ void gameRender(MenuState& s) {
                     g_loadedFromDisk = true;
                 } else {
                     worldInitTerrain(a->w, a->seed);
+
+                    { int sx, sz, feetY; worldFindSpawn(a->w, &sx, &sz, &feetY);
+                      g_level.player->x = sx + 0.5f; g_level.player->z = sz + 0.5f;
+                      g_level.player->y = feetY + PLAYER_EYE; }
                     g_genPhase = 1;
                     g_saveShowProgress = false;
                     LevelStorage::save(a->w, a->dir, a->seed, a->gamemode, a->name, true);
@@ -637,6 +640,10 @@ void gameRender(MenuState& s) {
                     g_loadedFromDisk = true;
                 } else {
                     worldInitTerrain(&g_world, seedVal);
+
+                    { int sx, sz, feetY; worldFindSpawn(&g_world, &sx, &sz, &feetY);
+                      g_level.player->x = sx + 0.5f; g_level.player->z = sz + 0.5f;
+                      g_level.player->y = feetY + PLAYER_EYE; }
                     g_genPhase = 1;
                     g_saveShowProgress = false;
                     LevelStorage::save(&g_world, tArgs.dir, seedVal, tArgs.gamemode, tArgs.name, true);
@@ -681,7 +688,6 @@ void gameRender(MenuState& s) {
                 g_worldBuilt = true; g_genStage = GS_IDLE;
                 extern int g_autosaveTick; g_autosaveTick = 0;
                 particlesReset();
-                redstoneOreReset();
                 if (g_loadedFromDisk && LevelStorage::loadedValidPlayerPos()) {
 
                     playerSpawnAt(g_level.player->y);

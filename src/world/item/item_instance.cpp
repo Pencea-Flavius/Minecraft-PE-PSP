@@ -6,6 +6,12 @@ Item* ItemInstance::getItem() const {
     return nullptr;
 }
 
+bool ItemInstance::useOn(Player* player, World* world, int x, int y, int z, int face,
+                         float clickX, float clickY, float clickZ) {
+    Item* it = getItem();
+    return it && it->useOn(this, player, world, x, y, z, face, clickX, clickY, clickZ);
+}
+
 int ItemInstance::getMaxStackSize() const {
     Item* it = getItem();
     return it ? it->maxStackSize : 64;

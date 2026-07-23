@@ -1,5 +1,6 @@
 #include "world/level/world.h"
 #include "world/level/chunk/chunk.h"
+#include "world/level/tile/fire.h"
 #include <math.h>
 
 static inline int wpFloor(float v) { int i = (int)v; return (v < 0 && v != i) ? i - 1 : i; }
@@ -204,6 +205,19 @@ static int getSelectionAABBs(const World* w, int x, int y, int z, SelectionAABB 
 
         const float ss = 0.4f;
         out[0] = { x + 0.5f - ss, y + 0.0f, z + 0.5f - ss, x + 0.5f + ss, y + 0.8f, z + 0.5f + ss };
+        return 1;
+    } else if (id == BLOCK_FIRE) {
+
+        if (isSolidBlocking(worldBlock(w, x, y - 1, z)) || fireCanBurn(w, x, y - 1, z)) {
+            out[0] = { x + 0.0f, y + 0.0f, z + 0.0f, x + 1.0f, y + 1.0f, z + 1.0f };
+        } else {
+            const float r = 0.2f;
+            if      (fireCanBurn(w, x - 1, y, z)) out[0] = { x + 0.0f,     y + 0.0f, z + 0.0f,     x + r,      y + 1.0f, z + 1.0f };
+            else if (fireCanBurn(w, x + 1, y, z)) out[0] = { x + 1.0f - r, y + 0.0f, z + 0.0f,     x + 1.0f,   y + 1.0f, z + 1.0f };
+            else if (fireCanBurn(w, x, y, z - 1)) out[0] = { x + 0.0f,     y + 0.0f, z + 0.0f,     x + 1.0f,   y + 1.0f, z + r };
+            else if (fireCanBurn(w, x, y, z + 1)) out[0] = { x + 0.0f,     y + 0.0f, z + 1.0f - r, x + 1.0f,   y + 1.0f, z + 1.0f };
+            else                                  out[0] = { x + 0.0f,     y + 0.0f, z + 0.0f,     x + 1.0f,   y + 1.0f, z + 1.0f };
+        }
         return 1;
     }
 

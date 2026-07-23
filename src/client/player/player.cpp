@@ -338,7 +338,7 @@ void playerSpawnEnsure() {
         g_level.player = new LocalPlayer(&g_level);
         g_level.player->x = WORLD_W * 0.5f;
         g_level.player->z = WORLD_D * 0.5f;
-        g_level.player->yRot = 45.0f;
+        g_level.player->yRot = 0.0f;
         g_level.player->xRot = 0.0f;
 
         g_level.player->health = g_level.player->getMaxHealth();

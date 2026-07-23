@@ -5,7 +5,7 @@
 #include <math.h>
 
 static inline bool isSolidForLiquid(unsigned char id) {
-    if (id == BLOCK_AIR || isLiquidId(id) || isPlant(id)) return false;
+    if (id == BLOCK_AIR || isLiquidId(id) || isCrossShaped(id)) return false;
     return true;
 }
 

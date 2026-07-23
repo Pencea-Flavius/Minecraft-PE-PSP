@@ -24,6 +24,11 @@ static float sideHeat[256];
 static float sideHeata[256];
 static int   sideTickCount = 0;
 
+static float fireBufA[2][16 * 20];
+static float fireBufB[2][16 * 20];
+static float* fireCurrent[2] = { fireBufA[0], fireBufA[1] };
+static float* fireNext[2]    = { fireBufB[0], fireBufB[1] };
+
 static float mthRandom() {
     return (float)rand() / (float)RAND_MAX;
 }
@@ -122,6 +127,28 @@ void animateWaterTexture() {
         lavaCurrent[i] = tmp;
     }
 
+    for (int f = 0; f < 2; f++) {
+        float* cur = fireCurrent[f];
+        float* nxt = fireNext[f];
+        for (int x = 0; x < 16; x++) {
+            for (int y = 0; y < 20; y++) {
+                int count = 18;
+                float pow = cur[x + (y + 1) % 20 * 16] * (float)count;
+                for (int xx = x - 1; xx <= x + 1; xx++) {
+                    for (int yy = y; yy <= y + 1; yy++) {
+                        if (xx >= 0 && yy >= 0 && xx < 16 && yy < 20) pow += cur[xx + yy * 16];
+                        count++;
+                    }
+                }
+                nxt[x + y * 16] = pow / ((float)count * 1.06f);
+                if (y >= 19)
+                    nxt[x + y * 16] = (float)(mthRandom() * mthRandom() * mthRandom() * 4.0 +
+                                              mthRandom() * 0.1f + 0.2f);
+            }
+        }
+        float* tmp = fireNext[f]; fireNext[f] = fireCurrent[f]; fireCurrent[f] = tmp;
+    }
+
     for (int i = 0; i < 256; i++) {
         int x = i % 16;
         int y = i / 16;
@@ -162,6 +189,24 @@ void animateWaterTexture() {
         texPixels[(15 * 16 + y) * texW + (14 * 16 + x)] = lavaCol;
         texPixels[(15 * 16 + y) * texW + (15 * 16 + x)] = lavaCol;
     }
+
+    for (int f = 0; f < 2; f++) {
+        float* cur = fireCurrent[f];
+        for (int i = 0; i < 256; i++) {
+            int x = i % 16, y = i / 16;
+            float fpow = cur[i] * 1.8f;
+            if (fpow > 1.0f) fpow = 1.0f;
+            if (fpow < 0.0f) fpow = 0.0f;
+            int fr = (int)(fpow * 155.0f + 100.0f);
+            int fg = (int)(fpow * fpow * 255.0f);
+            int fb = (int)(fpow * fpow * fpow * fpow * fpow * fpow * fpow * fpow * fpow * fpow * 255.0f);
+            int fa = (fpow < 0.5f) ? 0 : 255;
+            unsigned int fireCol = ((unsigned)fa << 24) | ((unsigned)fb << 16) | ((unsigned)fg << 8) | (unsigned)fr;
+            texPixels[((1 + f) * 16 + y) * texW + (15 * 16 + x)] = fireCol;
+        }
+    }
+
+    sceKernelDcacheWritebackInvalidateRange(&texPixels[16 * texW], 32 * texW * sizeof(unsigned int));
 
     sceKernelDcacheWritebackInvalidateRange(&texPixels[192 * texW],
                                             (256 - 192) * texW * sizeof(unsigned int));

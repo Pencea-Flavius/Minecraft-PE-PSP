@@ -142,6 +142,7 @@ OBJS = \
 	src/world/level/tile/tile_farmland.o \
 	src/world/level/tile/tile_support.o \
 	src/world/level/tile/redstone_ore.o \
+	src/world/level/tile/fire.o \
 	src/world/level/tile/tile_drops.o \
 	src/world/level/levelgen/Synth.o \
 	src/world/level/levelgen/ImprovedNoise.o \

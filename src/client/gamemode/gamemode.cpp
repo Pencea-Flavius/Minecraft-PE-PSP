@@ -21,6 +21,7 @@
 #include "world/item/crafting/recipe.h"
 #include "world/level/tile/entity/furnace_tile_entity.h"
 #include "world/level/tile/entity/reactor_tile_entity.h"
+#include "world/level/tile/fire.h"
 #include "world/entity/item_entity.h"
 
 static Mob* nearbyTripodCamera() {
@@ -367,8 +368,13 @@ static void breakTargetedBlock(const BlockHit& hit) {
                 g_level.playSound(g_level.player, "random.break", 1.0f, 1.0f);
         }
 
-        particlesDestroyBlock(&g_world, hit.x, hit.y, hit.z, brokenId, brokenData);
-        playTileBreakSound(brokenId, hit.x, hit.y, hit.z);
+        if (brokenId == BLOCK_FIRE) {
+            fireExtinguishFx(hit.x, hit.y, hit.z);
+        } else {
+
+            particlesDestroyBlock(&g_world, hit.x, hit.y, hit.z, brokenId, brokenData);
+            playTileBreakSound(brokenId, hit.x, hit.y, hit.z);
+        }
         worldSetBlockAndData(&g_world, hit.x, hit.y, hit.z, BLOCK_AIR, 0);
         worldNotifyNeighborsChanged(&g_world, hit.x, hit.y, hit.z);
 
@@ -401,6 +407,7 @@ static bool continueMining(const BlockHit& hit) {
         g_mining.progress = 0.0f;
         s_lastUs = now; s_digTicks = 0.0f;
         playerSwing();
+        Tile::tiles[id]->attack(&g_world, hit.x, hit.y, hit.z, g_level.player);
     }
 
     float dt = tileDestroyTime(id);
@@ -450,18 +457,17 @@ bool GameMode::useItemOn(ItemInstance* item, const BlockHit& hit) {
 
     if (t > 0 && Tile::tiles[t]->use(&g_world, hit.x, hit.y, hit.z, g_level.player)) return true;
     if (!item || item->isNull()) return false;
-    Item* used = item->getItem();
-    if (!used) return false;
+    if (!item->getItem()) return false;
 
     if (isCreative()) {
 
         short aux = item->data, count = item->count;
-        bool ok = used->useOn(item, g_level.player, &g_world, hit.x, hit.y, hit.z, hit.face,
+        bool ok = item->useOn(g_level.player, &g_world, hit.x, hit.y, hit.z, hit.face,
                               hit.clickX, hit.clickY, hit.clickZ);
         item->data = aux; item->count = count;
         return ok;
     }
-    return used->useOn(item, g_level.player, &g_world, hit.x, hit.y, hit.z, hit.face,
+    return item->useOn(g_level.player, &g_world, hit.x, hit.y, hit.z, hit.face,
                        hit.clickX, hit.clickY, hit.clickZ);
 }
 

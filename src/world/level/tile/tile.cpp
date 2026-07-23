@@ -19,6 +19,7 @@
 #include "world/level/tile/entity/reactor_tile_entity.h"
 #include "world/level/tile/nether_reactor_pattern.h"
 #include "world/level/tile/redstone_ore.h"
+#include "world/level/tile/fire.h"
 #include "client/gamemode/gamemode.h"
 #include <stdlib.h>
 #include <math.h>
@@ -288,6 +289,7 @@ void Tile::getTexture(unsigned char data, int f, int* col, int* row, unsigned in
                 default:            *col = 7; *row = 3; break;
             }
             break;
+        case BLOCK_FIRE:           *col = 15; *row = 1; break;
         case BLOCK_FLOWER:         *col = 13; *row = 0; break;
         case BLOCK_ROSE:           *col = 12; *row = 0; break;
         case BLOCK_MUSHROOM_BROWN: *col = 13; *row = 1; break;
@@ -865,7 +867,14 @@ struct HeavyTile : Tile { HeavyTile(unsigned char i) : Tile(i) {}
     void neighborChanged(World* w, int x, int y, int z) { worldScheduleTick(w, x, y, z, id, 2); } };
 
 struct RedStoneOreTile : Tile { RedStoneOreTile(unsigned char i) : Tile(i) {}
-    void neighborChanged(World* w, int x, int y, int z) { redstoneOreInteract(w, x, y, z); } };
+    bool use(World* w, int x, int y, int z, Player*) { redstoneOreInteract(w, x, y, z); return false; }
+    void attack(World* w, int x, int y, int z, Player*) { redstoneOreInteract(w, x, y, z); } };
+
+struct FireTile : Tile { FireTile(unsigned char i) : Tile(i) {}
+    bool mayPlace(World* w, int x, int y, int z, int) { return fireMayPlace(w, x, y, z); }
+    bool mayPlace(World* w, int x, int y, int z)      { return fireMayPlace(w, x, y, z); }
+    void neighborChanged(World* w, int x, int y, int z) { fireNeighborChanged(w, x, y, z); }
+    Drop getResource(int) { Drop d = { 0, 0, 0 }; return d; } };
 
 struct WebTile : Tile { WebTile(unsigned char i) : Tile(i) {}
     void entityInside(World*, int, int, int, Entity* e) { if (e) e->makeStuckInWeb(); } };
@@ -973,21 +982,23 @@ struct CactusTile : GrowerTile { CactusTile(unsigned char i) : GrowerTile(i) {}
 static bool rawSolidPhys(unsigned char id) {
     if (id == BLOCK_AIR || isLiquidId(id)) return false;
 
-    if (isPlant(id)) return false;
+    if (isCrossShaped(id)) return false;
 
     if (id == BLOCK_CACTUS) return false;
     if (id == BLOCK_TOPSNOW || id == BLOCK_TORCH) return false;
+    if (id == BLOCK_FIRE) return false;
     if (isSign(id)) return false;
     if (id == BLOCK_LADDER) return false;
     return true;
 }
 static bool rawCube(unsigned char id) {
     if (id == BLOCK_AIR || id == BLOCK_INVISIBLE_BEDROCK || isLiquidId(id)) return false;
-    if (isPlant(id)) return false;
+    if (isCrossShaped(id)) return false;
     if (id == BLOCK_CACTUS || id == BLOCK_TOPSNOW || id == BLOCK_TORCH) return false;
     if (isFence(id) || isFenceGate(id) || isPane(id)) return false;
     if (isStairs(id) || isSlab(id)) return false;
     if (id == BLOCK_TRAPDOOR || isDoor(id) || id == BLOCK_LADDER || id == BLOCK_TORCH || isBed(id)) return false;
+    if (id == BLOCK_FIRE) return false;
     if (isSign(id)) return false;
     if (id == BLOCK_CHEST) return false;
     return true;
@@ -995,32 +1006,32 @@ static bool rawCube(unsigned char id) {
 static bool rawOpaque(unsigned char id) {
     return id != BLOCK_AIR && !isLiquidId(id) && id != BLOCK_ICE &&
            id != BLOCK_LEAVES && id != BLOCK_GLASS && id != BLOCK_SAPLING && id != BLOCK_GLASS_PANE &&
-           !isPlant(id) && id != BLOCK_CACTUS && id != BLOCK_TOPSNOW && id != BLOCK_REEDS &&
+           !isCrossShaped(id) && id != BLOCK_CACTUS && id != BLOCK_TOPSNOW && id != BLOCK_REEDS &&
            !isSlab(id) && !isStairs(id) && id != BLOCK_FENCE && id != BLOCK_LADDER && id != BLOCK_TORCH &&
            !isDoor(id) && !isTrapdoor(id) && !isFenceGate(id) && !isBed(id) && id != BLOCK_FARMLAND &&
-           id != BLOCK_CHEST && !isSign(id);
+           id != BLOCK_CHEST && !isSign(id) && id != BLOCK_FIRE;
 }
 static bool rawReplaceable(unsigned char id) {
 
     return id == BLOCK_AIR || isLiquidId(id) || id == BLOCK_TOPSNOW ||
-           id == BLOCK_TALLGRASS;
+           id == BLOCK_TALLGRASS || id == BLOCK_FIRE;
 }
 static int rawLightOpacity(unsigned char id) {
     if (id == BLOCK_AIR || id == BLOCK_INVISIBLE_BEDROCK) return 0;
     if (isWaterId(id) || id == BLOCK_ICE) return 3;
     if (isLavaId(id)) return 15;
     if (id == BLOCK_LEAVES) return 1;
-    if (isPlant(id) ||
+    if (isCrossShaped(id) ||
         id == BLOCK_CACTUS || id == BLOCK_TOPSNOW ||
         id == BLOCK_GLASS || id == BLOCK_GLASS_PANE ||
         isFence(id) || isStairs(id) || isSlab(id) || isDoor(id) ||
         isTrapdoor(id) || isFenceGate(id) || id == BLOCK_LADDER || id == BLOCK_TORCH || isBed(id) ||
-        id == BLOCK_FARMLAND || isSign(id) ||
+        id == BLOCK_FARMLAND || isSign(id) || id == BLOCK_FIRE ||
         id == BLOCK_CHEST) return 0;
     return 15;
 }
 static int rawLightEmit(unsigned char id) {
-    if (isLavaId(id) || id == BLOCK_GLOWSTONE) return 15;
+    if (isLavaId(id) || id == BLOCK_GLOWSTONE || id == BLOCK_FIRE) return 15;
     if (id == BLOCK_TORCH) return 14;
     if (id == BLOCK_GLOWING_OBSIDIAN) return 13;
 
@@ -1063,6 +1074,7 @@ static int rawSoundType(unsigned char id) {
         case BLOCK_DOOR_WOOD: case BLOCK_TRAPDOOR: case BLOCK_LADDER:
         case BLOCK_TORCH: case BLOCK_SIGN: case BLOCK_WALL_SIGN:
         case BLOCK_MELON: case BLOCK_MELON_STEM:
+        case BLOCK_FIRE:
 
         case BLOCK_STAIRS_PLANKS:
             return SOUND_WOOD;
@@ -1087,12 +1099,13 @@ static int shapeOf(unsigned char id) {
     if (isBed(id))              return SHAPE_BED;
     if (isSign(id))             return SHAPE_SIGN;
     if (id == BLOCK_CHEST)      return SHAPE_CHEST;
+    if (id == BLOCK_FIRE)       return SHAPE_FIRE;
     if (id == BLOCK_CACTUS)     return SHAPE_CACTUS;
     if (id == BLOCK_TOPSNOW)    return SHAPE_TOPSNOW;
     if (id == BLOCK_REEDS)      return SHAPE_REEDS;
     if (id == BLOCK_WHEAT)      return SHAPE_WHEAT;
     if (id == BLOCK_MELON_STEM) return SHAPE_MELON_STEM;
-    if (isPlant(id))            return SHAPE_CROSS;
+    if (isCrossShaped(id))            return SHAPE_CROSS;
     return SHAPE_CUBE;
 }
 
@@ -1104,6 +1117,7 @@ static Tile* makeTile(unsigned char id) {
         case BLOCK_COBWEB:                  return new WebTile(id);
         case BLOCK_ORE_REDSTONE: case BLOCK_ORE_REDSTONE_LIT:
             return new RedStoneOreTile(id);
+        case BLOCK_FIRE:     return new FireTile(id);
         case BLOCK_GRASS:    return new GrassTile(id);
         case BLOCK_LEAVES:   return new LeafTile(id);
         case BLOCK_CACTUS:   return new CactusTile(id);

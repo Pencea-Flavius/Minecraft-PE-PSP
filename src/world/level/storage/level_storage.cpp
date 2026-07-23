@@ -121,6 +121,9 @@ static bool loadChunks(World* w, const char* absDir, bool* outGotLight) {
                             w->light[srcBase + y] = (unsigned char)
                                 ((nibGet(payload + OFF_SKY, dstBase + y) << 4) |
                                   nibGet(payload + OFF_BLK, dstBase + y));
+
+                        if (w->blocks[srcBase + y] == BLOCK_ORE_REDSTONE_LIT)
+                            worldScheduleTick(w, gx, y, gz, BLOCK_ORE_REDSTONE_LIT, 30);
                     }
                 }
             }

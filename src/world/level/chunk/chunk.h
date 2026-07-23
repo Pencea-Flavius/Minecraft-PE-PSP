@@ -36,6 +36,7 @@ enum { BLOCK_AIR = 0,
        BLOCK_DOUBLE_SLAB = 43, BLOCK_SLAB = 44,
        BLOCK_BRICKS = 45, BLOCK_TNT = 46, BLOCK_BOOKSHELF = 47,
        BLOCK_MOSSY_COBBLE = 48, BLOCK_OBSIDIAN = 49, BLOCK_TORCH = 50,
+       BLOCK_FIRE = 51,
        BLOCK_STAIRS_PLANKS = 53, BLOCK_CHEST = 54,
        BLOCK_ORE_EMERALD = 56,
        BLOCK_DIAMOND_BLOCK = 57, BLOCK_CRAFTING_TABLE = 58,
@@ -148,7 +149,7 @@ extern unsigned int g_brightColor[16];
 extern float g_brightRamp[16];
 void chunkInitBrightRamp(void);
 
-static inline bool isPlant(unsigned char id) {
+static inline bool isCrossShaped(unsigned char id) {
     return id == BLOCK_FLOWER || id == BLOCK_ROSE ||
            id == BLOCK_MUSHROOM_BROWN || id == BLOCK_MUSHROOM_RED ||
            id == BLOCK_REEDS || id == BLOCK_SAPLING ||

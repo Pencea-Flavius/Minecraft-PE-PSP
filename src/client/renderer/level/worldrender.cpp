@@ -217,22 +217,9 @@ void worldDraw(const World* cw, float camX, float camY, float camZ, float viewDi
             for (int si = 0; si < N_SECTIONS; si++) {
                 const ChunkSection* s = &c->sec[si];
                 if (s->noMipCount == 0 || !s->visible) continue;
-                if (!any) {
-                    if (distMip) {
-                        textureBind(terrain);
 
-                        sceGuTexFilter(GU_NEAREST_MIPMAP_NEAREST, GU_NEAREST);
-                    } else {
-                        textureBindNoMip(terrain);
-                    }
-                    any = true;
-                }
-                if (distMip) {
-                    float dy = (float)(si * SECTION_SY + SECTION_SY / 2) - camY;
-                    float lvl = (sqrtf(dx * dx + dy * dy + dz * dz) - MIP_CRISP_RADIUS) * (1.0f / MIP_BLOCKS_PER_LEVEL);
-                    if (lvl < 0.0f) lvl = 0.0f; else if (lvl > maxLvl) lvl = maxLvl;
-                    sceGuTexLevelMode(GU_TEXTURE_CONST, lvl);
-                }
+                if (!any) { textureBindNoMip(terrain); any = true; }
+                (void)dx; (void)dz;
                 chunkDrawNoMipSection(s);
             }
         }
