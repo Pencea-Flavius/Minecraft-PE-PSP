@@ -169,9 +169,13 @@ static void wakeLiquid(World* w, int x, int y, int z, unsigned char liquidId) {
     worldScheduleTick(w, x, y, z, dyn, isWaterId(dyn) ? 5 : 30);
 }
 
+extern bool g_worldBuilt;
 static void fizz(int x, int y, int z) {
-    float pitch = 2.6f + ((rand() % 1000) / 1000.0f - (rand() % 1000) / 1000.0f) * 0.8f;
-    soundPlay("random.fizz", 0.5f, pitch);
+
+    if (g_worldBuilt) {
+        float pitch = 2.6f + ((rand() % 1000) / 1000.0f - (rand() % 1000) / 1000.0f) * 0.8f;
+        soundPlay("random.fizz", 0.5f, pitch);
+    }
     for (int i = 0; i < 8; i++)
         particlesLargeSmoke((float)x + (rand() % 100) / 100.0f, (float)y + 1.2f, (float)z + (rand() % 100) / 100.0f);
 }

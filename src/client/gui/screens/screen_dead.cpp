@@ -1,8 +1,11 @@
 
 #include <pspctrl.h>
 #include <pspgu.h>
+#include <cstdio>
 
 #include "client/player/player.h"
+#include "world/level/level.h"
+#include "world/entity/local_player.h"
 #include "gpu/sprite.h"
 #include "platform/audio/sound.h"
 #include "platform/time.h"
@@ -22,8 +25,8 @@ void deadScreenOpen() {
 
 void deadHandleInput(MenuState& s, unsigned int pressed) {
     int before = s_deadSel;
-    if (pressed & PSP_CTRL_UP)   s_deadSel = 0;
-    if (pressed & PSP_CTRL_DOWN) s_deadSel = 1;
+    if (pressed & PSP_CTRL_LEFT)  s_deadSel = 0;
+    if (pressed & PSP_CTRL_RIGHT) s_deadSel = 1;
     if (s_deadSel != before) soundPlay("random.click", 1.0f, 1.0f);
 
     if (nowSeconds() - s_openTime < DEAD_WAIT) return;
@@ -66,18 +69,26 @@ void deadRender(MenuState& s) {
         float tw = fontTextWidth(&font, title) * UI_SCALE * 2.0f;
         fontDrawTextShadow(&font, (VW * UI_SCALE - tw) / 2.0f, 20.0f * UI_SCALE,
                            title, 0xFFFFFFFFu, UI_SCALE * 2.0f);
+
+        char line[32];
+        int sc = g_level.player ? g_level.player->getScore() : 0;
+        snprintf(line, sizeof(line), "Score: %d", sc);
+        float sw = fontTextWidth(&font, line) * UI_SCALE;
+        fontDrawTextShadow(&font, (VW * UI_SCALE - sw) / 2.0f, 44.0f * UI_SCALE,
+                           line, 0xFF55FFFFu, UI_SCALE);
     }
 
     if (haveTouch && haveFont) {
         bool active = (nowSeconds() - s_openTime >= DEAD_WAIT);
-        const float btnW = 100.0f, btnH = 20.0f, gap = 6.0f;
-        const float startX = (VW - btnW) / 2.0f;
-        const float startY = 60.0f;
+        const float btnW = 90.0f, btnH = 20.0f, gap = 12.0f;
+        const float totalW = btnW * 2 + gap;
+        const float startX = (VW - totalW) / 2.0f;
+        const float by = 64.0f;
         const char* labels[2] = { "Respawn", "Main menu" };
 
         for (int i = 0; i < 2; ++i) {
             bool hover = active && (s_deadSel == i);
-            float bx = startX, by = startY + i * (btnH + gap);
+            float bx = startX + i * (btnW + gap);
 
             textureBind(&s.guiAtlas);
             spriteDraw(&s.guiAtlas, bx * UI_SCALE, by * UI_SCALE, btnW * UI_SCALE, btnH * UI_SCALE,

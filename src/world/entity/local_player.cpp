@@ -194,11 +194,22 @@ void LocalPlayer::aiStep(unsigned int btn, unsigned char lx, unsigned char ly) {
 
     static bool s_wasInWater = false;
     int feetY = (int)floorf(y - PLAYER_EYE);
-    bool inWater = isWaterId(worldBlock(&g_world, (int)floorf(x), feetY, (int)floorf(z)));
+    bool inWater = false;
+    {
+        int bx0 = (int)floorf(bb.x0), bx1 = (int)floorf(bb.x1);
+        int bz0 = (int)floorf(bb.z0), bz1 = (int)floorf(bb.z1);
+        int by0 = (int)floorf(bb.y0 + 0.4f), by1 = (int)floorf(bb.y1 - 0.4f);
+        for (int bx = bx0; bx <= bx1 && !inWater; ++bx)
+            for (int by = by0; by <= by1 && !inWater; ++by)
+                for (int bz = bz0; bz <= bz1 && !inWater; ++bz)
+                    if (isWaterId(worldBlock(&g_world, bx, by, bz))) inWater = true;
+    }
     if (inWater && !s_wasInWater) {
 
         float speed = sqrtf(xd * xd * 0.2f + yd * yd + zd * zd * 0.2f) * 0.2f;
         if (speed > 1.0f) speed = 1.0f;
+
+        if (speed < 0.5f) speed = 0.5f;
         level->playSound(this, "random.splash", speed,
                          1.0f + (sharedRandom.nextFloat() - sharedRandom.nextFloat()) * 0.4f);
 

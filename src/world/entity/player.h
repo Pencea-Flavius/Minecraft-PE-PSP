@@ -30,6 +30,10 @@ public:
     virtual int  getEntityTypeId() const;
     virtual int  getMaxHealth() { return 20; }
 
+    int score;
+    int getScore() const { return score; }
+    virtual void awardKillScore(Entity* victim, int amount) { score += amount; }
+
     enum { BED_OK = 0, BED_NOT_POSSIBLE_HERE = 1, BED_NOT_POSSIBLE_NOW = 2,
            BED_TOO_FAR_AWAY = 3, BED_OTHER_PROBLEM = 4, BED_NOT_SAFE = 5 };
     static const int SLEEP_DURATION = 100;
