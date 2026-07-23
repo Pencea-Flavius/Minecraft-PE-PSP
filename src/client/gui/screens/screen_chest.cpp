@@ -176,15 +176,7 @@ static void drawPane(MenuState& s, int paneIdx, float paneX) {
         if (it->count > 1 && haveFont)
             drawStackCount(font, it->count, G(cx + 8), G(cy + 8), G(16));
 
-        Item* itm = (it->id > 0 && it->id < 4096) ? Item::items[it->id] : nullptr;
-        if (itm && itm->maxDamage > 0 && it->data > 0) {
-            float frac = 1.0f - (float)it->data / (float)itm->maxDamage;
-            if (frac < 0.0f) frac = 0.0f;
-            unsigned int r = (unsigned int)((1.0f - frac) * 255.0f);
-            unsigned int g = (unsigned int)(frac * 255.0f);
-            guiFill(G(cx + 9), G(cy + 8 + 14), G(14),        G(1), 0xFF000000u);
-            guiFill(G(cx + 9), G(cy + 8 + 14), G(14) * frac, G(1), 0xFF000000u | (g << 8) | r);
-        }
+        drawDurabilityBar(it->id, it->data, G(cx + 8), G(cy + 8), G(16));
     }
     sceGuScissor(0, 0, 480, 272);
 

@@ -115,6 +115,7 @@ void inventoryDraw(MenuState& s) {
         drawBlockIcon(it->id, it->data, G(cx + BlockBorder + 4), G(cy + BlockBorder + 4), G(16), iconTint);
         if (!g_level.player->inventory->isCreative() && it->count > 1)
             drawStackCount(s.font, it->count, G(cx + BlockBorder + 4), G(cy + BlockBorder + 4), G(16));
+        drawDurabilityBar(it->id, it->data, G(cx + BlockBorder + 4), G(cy + BlockBorder + 4), G(16));
     }
     sceGuScissor(0, 0, 480, 272);
 

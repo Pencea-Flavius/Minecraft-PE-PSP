@@ -257,6 +257,7 @@ void furnaceRender(MenuState& s) {
                           G(cx + 8), G(cy + 8), G(16), WHITE);
             if (it->count > 1 && haveFont)
                 drawStackCount(font, it->count, G(cx + 8), G(cy + 8), G(16));
+            drawDurabilityBar(it->id, it->data, G(cx + 8), G(cy + 8), G(16));
         }
     }
     sceGuScissor(0, 0, 480, 272);

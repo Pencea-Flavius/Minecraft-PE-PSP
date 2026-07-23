@@ -679,6 +679,24 @@ void drawStackCount(Font& font, int count, float slotX, float slotY, float size)
                        buf, 0xFFFFFFFFu, scale);
 }
 
+void drawDurabilityBar(short id, short data, float x, float y, float sizePx) {
+    if (data <= 0) return;
+    Item* itm = (id > 0 && id < 4096) ? Item::items[id] : nullptr;
+    if (!itm || itm->maxDamage <= 0) return;
+    float sc = sizePx / 16.0f;
+    float p  = std::floor(13.5f  - (float)data * 13.0f  / (float)itm->maxDamage);
+    int   cc = (int)std::floor(255.5f - (float)data * 255.0f / (float)itm->maxDamage);
+    if (p < 0.0f) p = 0.0f;
+    if (cc < 0) cc = 0; if (cc > 255) cc = 255;
+
+    unsigned int ca = 0xFF000000u | ((unsigned)cc << 8)         | (unsigned)(255 - cc);
+    unsigned int cb = 0xFF000000u | ((unsigned)(255 / 4) << 8)  | (unsigned)((255 - cc) / 4);
+    float bx = x + 2.0f * sc, by = y + 13.0f * sc, bh = 1.0f * sc;
+    guiFill(bx, by, 13.0f * sc, bh, 0xFF000000u);
+    guiFill(bx, by, 12.0f * sc, bh, cb);
+    guiFill(bx, by, p * sc,     bh, ca);
+}
+
 void hotbarDraw(MenuState& s) {
     if (!s.haveGui) return;
     const float barW = 20.0f * HUD_N * HB_S;
@@ -742,17 +760,7 @@ void hotbarDraw(MenuState& s) {
             if (!g_level.player->inventory->isCreative() && it->count > 1)
                 drawStackCount(s.font, it->count, slotX, slotY, 16.0f * HB_S);
 
-            Item* itm = (it->id > 0 && it->id < 4096) ? Item::items[it->id] : nullptr;
-            if (itm && itm->maxDamage > 0 && it->data > 0) {
-                float frac = 1.0f - (float)it->data / (float)itm->maxDamage;
-                if (frac < 0.0f) frac = 0.0f;
-                float bx = slotX + 1.0f * HB_S, by = slotY + 14.0f * HB_S;
-                float bw = 14.0f * HB_S, bh = 1.0f * HB_S;
-                unsigned int r = (unsigned int)((1.0f - frac) * 255.0f);
-                unsigned int g = (unsigned int)(frac * 255.0f);
-                guiFill(bx, by, bw, bh, 0xFF000000u);
-                guiFill(bx, by, bw * frac, bh, 0xFF000000u | (g << 8) | r);
-            }
+            drawDurabilityBar(it->id, it->data, slotX, slotY, 16.0f * HB_S);
         }
     }
 
