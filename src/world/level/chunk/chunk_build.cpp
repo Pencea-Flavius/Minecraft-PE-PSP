@@ -51,7 +51,7 @@ static MeshScratch* mainScratch() {
 }
 
 static bool meshHeapReserveOk() {
-    static const unsigned MESH_HEAP_RESERVE = 3u * 1024 * 1024;
+    static const unsigned MESH_HEAP_RESERVE = 256u * 1024;
     void* p = malloc(MESH_HEAP_RESERVE);
     if (!p) return false;
     free(p);
@@ -59,8 +59,8 @@ static bool meshHeapReserveOk() {
 }
 
 static void buildLayer(const World* w, int ox, int oz, int y0, int y1, int layer,
-                       DrawVertex** outMesh, int* outCount, bool leavesOpaque, bool leavesCull, bool* oom,
-                       MeshScratch* sc) {
+                       DrawVertex** outMesh, int* outCount, bool leavesOpaque, bool leavesCull,
+                       bool* oom, bool* stale, MeshScratch* sc) {
     if (!meshHeapReserveOk()) { *outMesh = 0; *outCount = 0; *oom = true; return; }
 
     if (sc && sc->o) {
@@ -85,7 +85,7 @@ static void buildLayer(const World* w, int ox, int oz, int y0, int y1, int layer
     if (!m) { *outMesh = 0; *outCount = 0; *oom = true; return; }
 
     int emitted = meshPass(w, ox, oz, y0, y1, m, layer, count, leavesOpaque, leavesCull);
-    if (emitted < 0) { free(m); *outMesh = 0; *outCount = 0; *oom = true; return; }
+    if (emitted < 0) { free(m); *outMesh = 0; *outCount = 0; *stale = true; return; }
     DrawVertex* d = chunkPack(m, emitted, ox, y0, oz);
     free(m);
     if (!d) { *outMesh = 0; *outCount = 0; *oom = true; return; }
@@ -156,6 +156,7 @@ void chunkComputeSection(const ChunkMesh* c, const World* w, int si,
     out->mesh = out->water = out->leaves = out->noMip = 0;
     out->vertexCount = out->waterCount = out->leavesCount = out->noMipCount = 0;
     out->oom = false;
+    out->stale = false;
 
     out->leavesOpaqueBand = false;
     out->leavesCullBand   = false;
@@ -209,11 +210,11 @@ void chunkComputeSection(const ChunkMesh* c, const World* w, int si,
         }
     }
     if (!fast) {
-        buildLayer(w, ox, oz, y0, y1, 0, &out->mesh,   &out->vertexCount, leavesOpaque, leavesCull, &out->oom, sc);
-        buildLayer(w, ox, oz, y0, y1, 1, &out->water,  &out->waterCount,  leavesOpaque, leavesCull, &out->oom, sc);
-        buildLayer(w, ox, oz, y0, y1, 2, &out->leaves, &out->leavesCount, leavesOpaque, leavesCull, &out->oom, sc);
+        buildLayer(w, ox, oz, y0, y1, 0, &out->mesh,   &out->vertexCount, leavesOpaque, leavesCull, &out->oom, &out->stale, sc);
+        buildLayer(w, ox, oz, y0, y1, 1, &out->water,  &out->waterCount,  leavesOpaque, leavesCull, &out->oom, &out->stale, sc);
+        buildLayer(w, ox, oz, y0, y1, 2, &out->leaves, &out->leavesCount, leavesOpaque, leavesCull, &out->oom, &out->stale, sc);
 
-        buildLayer(w, ox, oz, y0, y1, 3, &out->noMip,  &out->noMipCount,  leavesOpaque, leavesCull, &out->oom, sc);
+        buildLayer(w, ox, oz, y0, y1, 3, &out->noMip,  &out->noMipCount,  leavesOpaque, leavesCull, &out->oom, &out->stale, sc);
     }
     }
 
@@ -262,8 +263,15 @@ bounds:
 void chunkApplySection(ChunkMesh* c, int si, const SectionMeshResult* r) {
     ChunkSection* s = &c->sec[si];
 
-    if (r->oom && !r->mesh && !r->water && !r->leaves && !r->noMip) {
+    if (r->oom) {
+        sectionMeshResultFree((SectionMeshResult*)r);
         g_meshOOM = 1;
+        s->dirty = true;
+        return;
+    }
+
+    if (r->stale) {
+        sectionMeshResultFree((SectionMeshResult*)r);
         s->dirty = true;
         return;
     }
@@ -288,8 +296,7 @@ void chunkApplySection(ChunkMesh* c, int si, const SectionMeshResult* r) {
     s->leavesCullBand   = r->leavesCullBand;
     s->skyLit           = r->skyLit;
 
-    if (r->oom) { g_meshOOM = 1; s->dirty = true; }
-    else          s->dirty = false;
+    s->dirty = false;
 }
 
 void chunkBuildSection(ChunkMesh* c, const World* w, int si) {

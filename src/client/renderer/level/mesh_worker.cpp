@@ -12,8 +12,8 @@ static const int PENDING_CAP = 32;
 
 static const int DONE_CAP    = 6;
 
-static const int WORKER_CAP_OPAQUE = 16384;
-static const int WORKER_CAP_WL     = 4096;
+static const int WORKER_CAP_OPAQUE = 65536;
+static const int WORKER_CAP_WL     = 16384;
 
 struct Job {
     ChunkMesh*     c;

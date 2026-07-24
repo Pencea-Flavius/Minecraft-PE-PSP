@@ -299,6 +299,8 @@ struct SectionMeshResult {
     bool          leavesOpaqueBand, leavesCullBand;
     bool          skyLit;
     bool          oom;
+    bool          stale;
+
 };
 
 struct MeshScratch;

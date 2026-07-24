@@ -47,6 +47,8 @@ int   g_showFps  = 0;
 int   g_showCoords = 0;
 float g_viewDist = WORLD_VIEW_DIST;
 
+static int g_genThid = -1;
+
 static const float DEG2RAD = 3.14159265f / 180.0f;
 
 #include "client/renderer/water_anim.h"
@@ -527,6 +529,7 @@ void gameRender(MenuState& s) {
         struct SaveArgs { World* w; long seed; int gamemode; char dir[320]; char name[64]; };
         static SaveArgs sArgs;
         static volatile bool g_saveThreadDone = false;
+        static int g_saveThid = -1;
         if (saveStage == 0) {
             sArgs.w = &g_world;
             const char* actDir = LevelStorage::getActiveDir();
@@ -556,6 +559,7 @@ void gameRender(MenuState& s) {
                 g_saveThreadDone = true;
                 return 0;
             }, 0x22, 0x10000, 0, 0);
+            g_saveThid = thid;
             if (thid >= 0) sceKernelStartThread(thid, sizeof(SaveArgs), &sArgs);
             else { LevelStorage::save(sArgs.w, sArgs.dir, sArgs.seed, sArgs.gamemode, sArgs.name); g_saveThreadDone = true; }
             drawGeneratingScreen(s, 0, "Saving chunks");
@@ -564,6 +568,8 @@ void gameRender(MenuState& s) {
         }
         drawGeneratingScreen(s, g_terrainProgress, "Saving chunks");
         if (g_saveThreadDone) {
+
+            if (g_saveThid >= 0) { sceKernelDeleteThread(g_saveThid); g_saveThid = -1; }
             g_saveRequested = false; saveStage = 0;
             g_terrainProgress = 0;
             extern MiningState g_mining;
@@ -631,6 +637,7 @@ void gameRender(MenuState& s) {
                 return 0;
             }, 0x22, 0x10000, 0, 0);
 
+            g_genThid = thid;
             if (thid >= 0) {
                 sceKernelStartThread(thid, sizeof(TerrainArgs), &tArgs);
                 g_genStage = GS_TERRAIN_WAIT;
@@ -663,6 +670,8 @@ void gameRender(MenuState& s) {
 
             drawGeneratingScreen(s, g_terrainProgress * 90 / 100, status);
             if (g_terrainThreadDone) {
+
+                if (g_genThid >= 0) { sceKernelDeleteThread(g_genThid); g_genThid = -1; }
                 if (!g_haveTerrain) {
                     g_haveTerrain = loadTex(&g_terrain, "data/images/terrain.png");
                     if (g_haveTerrain) {
@@ -689,7 +698,8 @@ void gameRender(MenuState& s) {
             if (done >= total) {
                 g_worldBuilt = true; g_genStage = GS_IDLE;
 
-                MeshWorker::start();
+                extern int g_lowMemPsp;
+                if (!g_lowMemPsp) MeshWorker::start();
                 extern int g_autosaveTick; g_autosaveTick = 0;
                 particlesReset();
                 if (g_loadedFromDisk && LevelStorage::loadedValidPlayerPos()) {

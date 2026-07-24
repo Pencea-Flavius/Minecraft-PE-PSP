@@ -149,6 +149,8 @@ void worldDraw(const World* cw, float camX, float camY, float camZ, float viewDi
     g_residentSections = resident;
     g_visibleSections = vis;
 
+    static int g_caveCull = 0;
+    if (g_caveCull) {
     for (int i = 0; i < WORLD_CHUNKS_X * WORLD_CHUNKS_Z; i++)
         for (int si = 0; si < N_SECTIONS; si++) w->chunks[i].sec[si].reachable = false;
 
@@ -191,6 +193,7 @@ void worldDraw(const World* cw, float camX, float camY, float camZ, float viewDi
     for (int i = 0; i < WORLD_CHUNKS_X * WORLD_CHUNKS_Z; i++)
         for (int si = 0; si < N_SECTIONS; si++)
             if (!w->chunks[i].sec[si].reachable) w->chunks[i].sec[si].visible = false;
+    }
 
     int nOpaque = 0;
     for (int i = 0; i < WORLD_CHUNKS_X * WORLD_CHUNKS_Z; i++) {
