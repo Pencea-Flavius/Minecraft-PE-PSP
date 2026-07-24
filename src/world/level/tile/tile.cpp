@@ -941,7 +941,12 @@ struct GrowerTile : Tile { GrowerTile(unsigned char i) : Tile(i) { randomTicks =
 
 struct BushTile : GrowerTile { BushTile(unsigned char i) : GrowerTile(i) {}
     bool canSurvive(World* w, int x, int y, int z) { return bushFamilyCanSurvive(w, id, x, y, z); }
-    bool mayPlace(World* w, int x, int y, int z) { return Tile::mayPlace(w, x, y, z) && canSurvive(w, x, y, z); }
+
+    bool mayPlace(World* w, int x, int y, int z) {
+        if (!Tile::mayPlace(w, x, y, z)) return false;
+        if (id == BLOCK_MUSHROOM_BROWN || id == BLOCK_MUSHROOM_RED) return canSurvive(w, x, y, z);
+        return bushMayPlaceOn(w, id, x, y, z);
+    }
     void grow(World* w, int x, int y, int z) {
         if (id == BLOCK_WHEAT)              cropTick(w, x, y, z);
         else if (id == BLOCK_MELON_STEM)    stemTick(w, x, y, z);

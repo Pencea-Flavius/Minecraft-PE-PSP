@@ -190,23 +190,14 @@ bool Inventory::linkHotbarTo(int slot, short id, unsigned char data) {
 
 void Inventory::pickToHotbar(int gridIndex) {
     int invSlot = gridIndex + firstGridSlot();
-    ItemInstance* picked = getItem(invSlot);
-    if (!picked) return;
+    if (!getItem(invSlot)) return;
+    if (linkedSlots[0].inventorySlot == invSlot) { selected = 0; return; }
 
-    int existing = -1;
-    for (int i = 0; i < HOTBAR; i++) {
-        ItemInstance* h = getLinked(i);
-        if (h && h->id == picked->id && h->data == picked->data) { existing = i; break; }
-    }
-
-    if (existing > 0) {
-        int tmp = linkedSlots[0].inventorySlot;
-        linkedSlots[0].inventorySlot = linkedSlots[existing].inventorySlot;
-        linkedSlots[existing].inventorySlot = tmp;
-    } else if (existing == -1) {
-        for (int i = HOTBAR - 1; i > 0; i--)
-            linkedSlots[i].inventorySlot = linkedSlots[i - 1].inventorySlot;
-        linkedSlots[0].inventorySlot = invSlot;
-    }
+    int i = 0;
+    for (; i < HOTBAR - 1; i++)
+        if (linkedSlots[i].inventorySlot == invSlot) break;
+    for (; i > 0; i--)
+        linkedSlots[i].inventorySlot = linkedSlots[i - 1].inventorySlot;
+    linkedSlots[0].inventorySlot = invSlot;
     selected = 0;
 }

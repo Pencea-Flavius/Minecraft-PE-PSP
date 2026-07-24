@@ -212,7 +212,8 @@ void chunkComputeSection(const ChunkMesh* c, const World* w, int si,
         buildLayer(w, ox, oz, y0, y1, 0, &out->mesh,   &out->vertexCount, leavesOpaque, leavesCull, &out->oom, sc);
         buildLayer(w, ox, oz, y0, y1, 1, &out->water,  &out->waterCount,  leavesOpaque, leavesCull, &out->oom, sc);
         buildLayer(w, ox, oz, y0, y1, 2, &out->leaves, &out->leavesCount, leavesOpaque, leavesCull, &out->oom, sc);
-        out->noMip = 0; out->noMipCount = 0;
+
+        buildLayer(w, ox, oz, y0, y1, 3, &out->noMip,  &out->noMipCount,  leavesOpaque, leavesCull, &out->oom, sc);
     }
     }
 

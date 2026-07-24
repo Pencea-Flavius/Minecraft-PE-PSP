@@ -6,6 +6,7 @@
 
 struct World;
 
+bool bushMayPlaceOn(World* w, unsigned char id, int x, int y, int z);
 bool bushFamilyCanSurvive(World* w, unsigned char id, int x, int y, int z);
 void saplingTick(World* w, int x, int y, int z);
 void saplingGrow(World* w, int x, int y, int z);

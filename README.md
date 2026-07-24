@@ -76,3 +76,23 @@ off a phone opens on the PSP.
 - [**Oreo**](https://github.com/Oreo80) — helped with the porting.
 - [**CYEVV**](https://github.com/CYEVV) — helped fix in-game buttons that were
   not rendering with the 4444 texture format.
+
+## License
+
+The original engine code written for this port — the flat-array world storage,
+the PSP renderer and mesher, the GU/graphics layer, and everything else authored
+here for the PSP — is released under the [MIT License](LICENSE).
+
+**What MIT does *not* cover:** the gameplay and world logic in this project is
+ported from the Minecraft Pocket Edition 0.6.1 sources, and Minecraft is the
+intellectual property of Mojang / Microsoft. That copyright, and the "Minecraft"
+trademark, are theirs — the MIT grant applies only to the original PSP engine
+work, not to anything derived from Mojang's code.
+
+This is a **non-commercial, educational** project and is **not affiliated with,
+endorsed by, or associated with Mojang or Microsoft.** The game assets bundled
+under `data/` (textures such as `terrain.png`, sounds, the font, mob and GUI
+art) are the property of Mojang / Microsoft and are **not** covered by the MIT
+license above; they are included only to make this educational port runnable. If
+you are a rights holder and want anything removed, open an issue.
+

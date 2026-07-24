@@ -215,12 +215,13 @@ void ReactorTileEntity::finishReactorRun() {
     NetherReactor::setPhase(level, x, y, z, 2);
     level->setNightMode(false);
     hasFinished = true;
-    deterioateDome(x, y, z);
+
     for (int cx = x - 1; cx <= x + 1; ++cx)
         for (int cy = y - 1; cy <= y + 1; ++cy)
             for (int cz = z - 1; cz <= z + 1; ++cz)
                 if (cx != x || cy != y || cz != z)
                     level->setTile(cx, cy, cz, BLOCK_OBSIDIAN);
+    deterioateDome(x, y, z);
 }
 
 int ReactorTileEntity::numOfFreeEnemySlots() {

@@ -4,25 +4,29 @@
 #include "world/level/levelgen/Random.h"
 #include <stdlib.h>
 
-bool bushFamilyCanSurvive(World* w, unsigned char id, int x, int y, int z) {
+bool bushMayPlaceOn(World* w, unsigned char id, int x, int y, int z) {
     unsigned char below = worldBlock(w, x, y - 1, z);
-    bool litOk = lightRawAt(w, x, y, z) >= 8 || worldCanSeeSky(w, x, y, z);
     switch (id) {
         case BLOCK_FLOWER: case BLOCK_ROSE: case BLOCK_SAPLING:
 
-            if (below != BLOCK_GRASS && below != BLOCK_DIRT && below != BLOCK_FARMLAND) return false;
-            return litOk;
+            return below == BLOCK_GRASS || below == BLOCK_DIRT || below == BLOCK_FARMLAND;
         case BLOCK_WHEAT: case BLOCK_MELON_STEM:
 
-            if (below != BLOCK_FARMLAND) return false;
-            return litOk;
+            return below == BLOCK_FARMLAND;
         case BLOCK_MUSHROOM_BROWN: case BLOCK_MUSHROOM_RED:
 
-            if (!isOpaque(below)) return false;
-            return lightRawAt(w, x, y, z) < 13;
+            return isOpaque(below);
         default:
             return true;
     }
+}
+
+bool bushFamilyCanSurvive(World* w, unsigned char id, int x, int y, int z) {
+    if (!bushMayPlaceOn(w, id, x, y, z)) return false;
+
+    if (id == BLOCK_MUSHROOM_BROWN || id == BLOCK_MUSHROOM_RED)
+        return lightRawAt(w, x, y, z) < 13;
+    return lightRawAt(w, x, y, z) >= 8 || worldCanSeeSky(w, x, y, z);
 }
 
 void saplingGrow(World* w, int x, int y, int z) {

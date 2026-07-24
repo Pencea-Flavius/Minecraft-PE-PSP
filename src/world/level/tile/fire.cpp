@@ -28,7 +28,10 @@ void fireInitFlammables() {
     setFlammable(BLOCK_WOOL,    30,  60);
 }
 
-bool fireCanBurn(const World* w, int x, int y, int z) { return flameOdds[worldBlock(w, x, y, z)] > 0; }
+bool fireCanBurn(const World* w, int x, int y, int z) {
+    fireInitFlammables();
+    return flameOdds[worldBlock(w, x, y, z)] > 0;
+}
 
 static int getFlammability(World* w, int x, int y, int z, int odds) {
     int f = flameOdds[worldBlock(w, x, y, z)];
