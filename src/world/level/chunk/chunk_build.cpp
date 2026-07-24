@@ -216,7 +216,7 @@ void chunkInitLazy(ChunkMesh* c, int ox, int oz) {
     for (int si = 0; si < N_SECTIONS; si++) {
         ChunkSection* s = &c->sec[si];
         s->by0 = s->lby0 = s->wby0 = (float)(si * SECTION_SY);
-        s->by1 = s->lby1 = s->wby1 = s->by0;
+        s->by1 = s->lby1 = s->wby1 = s->by0 + SECTION_SY;
 
         for (int f = 0; f < 6; f++) s->vis[f] = 0x3F;
         s->dirty = true;

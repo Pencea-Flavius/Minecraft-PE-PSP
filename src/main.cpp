@@ -189,7 +189,10 @@ int main(int argc, char* argv[]) {
 
     s.statusMsg[0] = '\0';
 
-    bool meOk = false;
+    bool meOk = meInit();
+    if (meOk) {
+        chunkEnableMeMeshing(true);
+    }
 
     SceCtrlData initPad;
     sceCtrlReadBufferPositive(&initPad, 1);
@@ -306,6 +309,16 @@ int main(int argc, char* argv[]) {
                     char fpsBuf[32];
                     std::snprintf(fpsBuf, sizeof(fpsBuf), "FPS: %d", (int)(fps + 0.5f));
                     fontDrawTextShadow(&s.font, 10, ty, fpsBuf, 0xFFE0E0E0u, 1.0f);
+                    ty += 12.0f;
+
+                    char meBuf[32];
+                    if (meActive()) {
+                        std::snprintf(meBuf, sizeof(meBuf), "ME: WORKING");
+                        fontDrawTextShadow(&s.font, 10, ty, meBuf, 0xFF00FF00u, 1.0f);
+                    } else {
+                        std::snprintf(meBuf, sizeof(meBuf), "ME: INACTIVE");
+                        fontDrawTextShadow(&s.font, 10, ty, meBuf, 0xFF0000FFu, 1.0f);
+                    }
                     ty += 12.0f;
                 }
 

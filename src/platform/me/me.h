@@ -23,6 +23,9 @@ bool meBusy();
 bool meEmitStart(const World* w, int ox, int oz, int y0, int y1, int layer,
                  struct ChunkVertex* out);
 
+bool meEmitStartCapped(const World* w, int ox, int oz, int y0, int y1, int layer,
+                       struct ChunkVertex* out, int cap);
+
 bool meEmitReady();
 
 int meEmitFinish(struct ChunkVertex* out, int count);

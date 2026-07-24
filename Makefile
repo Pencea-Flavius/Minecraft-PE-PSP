@@ -173,7 +173,7 @@ ASFLAGS = $(CFLAGS)
 
 LIBDIR =
 LDFLAGS =
-LIBS = -lpspgum -lpspgu -lpspge -lpspdisplay -lpspctrl -lpsppower -lpspaudio -lpng -lz -lm -lstdc++
+LIBS = -lpspgum -lpspgu -lpspge -lpspdisplay -lpspctrl -lpsppower -lpspexploit -lpspaudio -lpng -lz -lm -lstdc++
 
 EXTRA_TARGETS = EBOOT.PBP
 PSP_EBOOT_TITLE = Minecraft Pocket-Edition

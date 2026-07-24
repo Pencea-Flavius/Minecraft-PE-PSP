@@ -1,14 +1,29 @@
+
+
 #include "client/renderer/level/mesh_async.h"
 #include "world/level/chunk/chunk.h"
 #include "platform/me/me.h"
 #include <malloc.h>
 #include <pspkernel.h>
 
+#define UNCACHED_USER_MASK  0x40000000
+
+#define ME_SCRATCH_VERTS  16384
+static ChunkVertex s_meScratch[ME_SCRATCH_VERTS] __attribute__((aligned(64)));
+
+enum class MePhase : unsigned char { IDLE, COUNTING, EMITTING };
+
 struct AsyncSlot {
-    ChunkMesh* c;  int si;  int layer;
-    ChunkVertex* buf; int count; int wait;
-    ChunkVertex* pend[3]; int pendN[3];
+    ChunkMesh* c;
+    int si;
+    int layer;
+    MePhase phase;
+    int meCount;
+    int wait;
+    DrawVertex* pend[4];
+    int pendN[4];
     bool active;
+    bool retry;
 };
 static AsyncSlot g_as = {};
 
@@ -25,73 +40,89 @@ static void asyncFinalize(World* w) {
     int ox = g_as.c->ox, oz = g_as.c->oz;
     s->ox = ox; s->oy = y0; s->oz = oz;
 
-    s->mesh   = g_as.pendN[0] ? chunkPack(g_as.pend[0], g_as.pendN[0], ox, y0, oz) : 0;
-    s->water  = g_as.pendN[1] ? chunkPack(g_as.pend[1], g_as.pendN[1], ox, y0, oz) : 0;
-    s->leaves = g_as.pendN[2] ? chunkPack(g_as.pend[2], g_as.pendN[2], ox, y0, oz) : 0;
-    if (g_as.pend[0]) free(g_as.pend[0]);
-    if (g_as.pend[1]) free(g_as.pend[1]);
-    if (g_as.pend[2]) free(g_as.pend[2]);
-    s->vertexCount = s->mesh   ? g_as.pendN[0] : 0;
-    s->waterCount  = s->water  ? g_as.pendN[1] : 0;
-    s->leavesCount = s->leaves ? g_as.pendN[2] : 0;
+    DrawVertex* oldMesh   = s->mesh;
+    DrawVertex* oldWater  = s->water;
+    DrawVertex* oldLeaves = s->leaves;
+    DrawVertex* oldNoMip  = s->noMip;
 
-    bool oom = (g_as.pendN[0] && !s->mesh) || (g_as.pendN[1] && !s->water) || (g_as.pendN[2] && !s->leaves);
+    s->mesh   = g_as.pend[0]; s->vertexCount = g_as.pendN[0];
+    s->water  = g_as.pend[1]; s->waterCount  = g_as.pendN[1];
+    s->leaves = g_as.pend[2]; s->leavesCount = g_as.pendN[2];
+    s->noMip  = g_as.pend[3]; s->noMipCount  = g_as.pendN[3];
 
-    float ylo=1e9f, yhi=-1e9f;
-    for (int i=0;i<s->vertexCount;i++){float y=s->mesh[i].y  /(float)POS_ENC+y0; if(y<ylo)ylo=y; if(y>yhi)yhi=y;}
-    for (int i=0;i<s->waterCount; i++){float y=s->water[i].y /(float)POS_ENC+y0; if(y<ylo)ylo=y; if(y>yhi)yhi=y;}
-    for (int i=0;i<s->leavesCount;i++){float y=s->leaves[i].y/(float)POS_ENC+y0; if(y<ylo)ylo=y; if(y>yhi)yhi=y;}
-    if (ylo>yhi){ylo=(float)y0;yhi=(float)y0;} s->by0=ylo; s->by1=yhi;
-    float lylo=1e9f,lyhi=-1e9f;
-    for (int i=0;i<s->leavesCount;i++){float y=s->leaves[i].y/(float)POS_ENC;if(y<lylo)lylo=y; if(y>lyhi)lyhi=y;}
-    if (lylo>lyhi){lylo=(float)y0;lyhi=(float)y0;} s->lby0=lylo; s->lby1=lyhi;
-    float wylo=1e9f,wyhi=-1e9f;
-    for (int i=0;i<s->waterCount;i++){float y=s->water[i].y/(float)POS_ENC;if(y<wylo)wylo=y; if(y>wyhi)wyhi=y;}
-    if (wylo>wyhi){wylo=(float)y0;wyhi=(float)y0;} s->wby0=wylo; s->wby1=wyhi;
+    if (oldMesh)   free(oldMesh);
+    if (oldWater)  free(oldWater);
+    if (oldLeaves) free(oldLeaves);
+    if (oldNoMip)  free(oldNoMip);
+
+    int totalVerts = s->vertexCount + s->waterCount + s->leavesCount + s->noMipCount;
+    if (totalVerts == 0) {
+        s->by0 = (float)y0; s->by1 = (float)(y0 + SECTION_SY);
+        s->lby0 = s->lby1 = (float)y0;
+        s->wby0 = s->wby1 = (float)y0;
+        for (int f = 0; f < 6; f++) s->vis[f] = 0x3F;
+        if (g_as.retry) { g_meshOOM = 1; s->dirty = true; }
+        else              s->dirty = false;
+        g_as.active = false;
+        return;
+    }
+
+    float ylo = 1e9f, yhi = -1e9f;
+    for (int i = 0; i < s->vertexCount; i++) { float y = s->mesh[i].y   / (float)POS_ENC + y0; if (y < ylo) ylo = y; if (y > yhi) yhi = y; }
+    for (int i = 0; i < s->waterCount;  i++) { float y = s->water[i].y  / (float)POS_ENC + y0; if (y < ylo) ylo = y; if (y > yhi) yhi = y; }
+    for (int i = 0; i < s->leavesCount; i++) { float y = s->leaves[i].y / (float)POS_ENC + y0; if (y < ylo) ylo = y; if (y > yhi) yhi = y; }
+    for (int i = 0; i < s->noMipCount;  i++) { float y = s->noMip[i].y  / (float)POS_ENC + y0; if (y < ylo) ylo = y; if (y > yhi) yhi = y; }
+    if (ylo > yhi) { ylo = (float)y0; yhi = (float)(y0 + SECTION_SY); }
+    s->by0 = ylo; s->by1 = yhi;
+
+    float lylo = 1e9f, lyhi = -1e9f;
+    for (int i = 0; i < s->leavesCount; i++) { float y = s->leaves[i].y / (float)POS_ENC + y0; if (y < lylo) lylo = y; if (y > lyhi) lyhi = y; }
+    if (lylo > lyhi) { lylo = (float)y0; lyhi = (float)y0; }
+    s->lby0 = lylo; s->lby1 = lyhi;
+
+    float wylo = 1e9f, wyhi = -1e9f;
+    for (int i = 0; i < s->waterCount; i++) { float y = s->water[i].y / (float)POS_ENC + y0; if (y < wylo) wylo = y; if (y > wyhi) wyhi = y; }
+    if (wylo > wyhi) { wylo = (float)y0; wyhi = (float)y0; }
+    s->wby0 = wylo; s->wby1 = wyhi;
 
     computeSectionVis(w, ox, y0, oz, s->vis);
 
-    if (oom) { g_meshOOM = 1; s->dirty = true; }
-    else       s->dirty = false;
+    if (g_as.retry) { g_meshOOM = 1; s->dirty = true; }
+    else              s->dirty = false;
     g_as.active = false;
 }
 
-static bool asyncStartLayer(World* w) {
-    ChunkMesh* c = g_as.c; int L = g_as.layer;
-    int ox = c->ox, oz = c->oz;
+static bool startCount(World* w) {
+    int L = g_as.layer;
+    int ox = g_as.c->ox, oz = g_as.c->oz;
     int y0 = g_as.si * SECTION_SY, y1 = y0 + SECTION_SY;
 
-    int cnt = meMeshCount(w, ox, oz, y0, y1, L);
-    if (cnt < 0) {
-        int c2 = meshPass(w, ox, oz, y0, y1, 0, L);
-        if (c2 <= 0) { g_as.pend[L]=0; g_as.pendN[L]=0; return false; }
-        ChunkVertex* m2 = (ChunkVertex*)memalign(16, (size_t)c2 * sizeof(ChunkVertex));
-        if (!m2) { g_as.pend[L]=0; g_as.pendN[L]=0; return false; }
-        meshPass(w, ox, oz, y0, y1, m2, L);
-        sceKernelDcacheWritebackInvalidateRange(m2, (size_t)c2 * sizeof(ChunkVertex));
-        g_as.pend[L] = m2; g_as.pendN[L] = c2; g_asyncCpuN++;
+    if (!meEmitStartCapped(w, ox, oz, y0, y1, L, nullptr, 0x7fffffff))
         return false;
-    }
-    if (cnt == 0) { g_as.pend[L]=0; g_as.pendN[L]=0; return false; }
+    g_as.phase = MePhase::COUNTING;
+    g_as.wait = 0;
+    g_asyncDispatch++;
+    return true;
+}
 
-    ChunkVertex* m = (ChunkVertex*)memalign(16, (size_t)cnt * sizeof(ChunkVertex));
-    if (!m) { g_as.pend[L]=0; g_as.pendN[L]=0; return false; }
-
-    if (meEmitStart(w, ox, oz, y0, y1, L, m)) {
-        g_as.buf = m; g_as.count = cnt; g_as.wait = 0;
-        g_asyncMeN++; g_asyncDispatch++;
-        return true;
-    }
-    meshPass(w, ox, oz, y0, y1, m, L);
-    sceKernelDcacheWritebackInvalidateRange(m, (size_t)cnt * sizeof(ChunkVertex));
-    g_as.pend[L] = m; g_as.pendN[L] = cnt;
-    g_asyncCpuN++;
-    return false;
+static bool startEmit(World* w) {
+    int L = g_as.layer;
+    int ox = g_as.c->ox, oz = g_as.c->oz;
+    int y0 = g_as.si * SECTION_SY, y1 = y0 + SECTION_SY;
+    ChunkVertex* uScratch = (ChunkVertex*)(UNCACHED_USER_MASK | (u32)s_meScratch);
+    if (!meEmitStartCapped(w, ox, oz, y0, y1, L, uScratch, ME_SCRATCH_VERTS))
+        return false;
+    g_as.phase = MePhase::EMITTING;
+    g_as.wait = 0;
+    g_asyncMeN++;
+    return true;
 }
 
 void worldAsyncStep(World* w, float camX, float camY, float camZ, float viewDist) {
     g_asyncFrames++;
-    g_asyncState = (g_as.active ? 100 : 0) + (g_as.buf ? 10 : 0) + g_as.layer;
+    g_asyncState = (g_as.active ? 100 : 0)
+                 + ((g_as.phase != MePhase::IDLE) ? 10 : 0)
+                 + g_as.layer;
     {
         float bd2 = viewDist * viewDist; int dcount = 0;
         for (int i = 0; i < WORLD_CHUNKS_X * WORLD_CHUNKS_Z; i++) {
@@ -103,30 +134,78 @@ void worldAsyncStep(World* w, float camX, float camY, float camZ, float viewDist
         g_asyncDirty = dcount;
     }
 
-    if (g_as.buf) {
+    if (g_as.phase != MePhase::IDLE) {
         if (!meEmitReady()) {
+
             if (++g_as.wait > 240) {
                 meEmitAbort();
-                free(g_as.buf); g_as.buf = 0;
-                g_as.c->sec[g_as.si].dirty = true; g_as.active = false;
+
+                g_as.c->sec[g_as.si].dirty = true;
+                for (int i = 0; i < 4; i++) {
+                    if (g_as.pend[i]) { free(g_as.pend[i]); g_as.pend[i] = 0; }
+                    g_as.pendN[i] = 0;
+                }
+                g_as.active = false;
+                g_as.phase = MePhase::IDLE;
             }
             return;
         }
-        int n = meEmitFinish(g_as.buf, g_as.count);
-        if (n == g_as.count) {
-            g_as.pend[g_as.layer] = g_as.buf; g_as.pendN[g_as.layer] = g_as.count;
+
+        if (g_as.phase == MePhase::COUNTING) {
+            int count = meEmitFinish(nullptr, 0);
+            g_as.phase = MePhase::IDLE;
+            if (count <= 0) {
+
+                g_as.pend[g_as.layer] = nullptr;
+                g_as.pendN[g_as.layer] = 0;
+                g_as.layer++;
+            } else if (count <= ME_SCRATCH_VERTS) {
+
+                g_as.meCount = count;
+                if (!startEmit(w)) {
+
+                    int ox = g_as.c->ox, oz = g_as.c->oz;
+                    int y0 = g_as.si * SECTION_SY, y1 = y0 + SECTION_SY;
+                    meshPass(w, ox, oz, y0, y1, s_meScratch, g_as.layer);
+                    sceKernelDcacheWritebackInvalidateRange(s_meScratch, (size_t)count * sizeof(ChunkVertex));
+                    g_as.pend[g_as.layer] = chunkPack(s_meScratch, count, ox, y0, oz);
+                    g_as.pendN[g_as.layer] = g_as.pend[g_as.layer] ? count : 0;
+                    g_as.layer++;
+                    g_asyncCpuN++;
+                }
+
+                return;
+            } else {
+
+                g_as.pend[g_as.layer] = nullptr;
+                g_as.pendN[g_as.layer] = 0;
+                g_as.retry = true;
+                g_as.layer++;
+                g_asyncMismatch++;
+            }
+
         } else {
-            free(g_as.buf);
-            g_as.pend[g_as.layer] = 0; g_as.pendN[g_as.layer] = 0;
-            g_as.c->sec[g_as.si].dirty = true;
-            g_asyncMismatch++;
+            int n = meEmitFinish(s_meScratch, g_as.meCount);
+            g_as.phase = MePhase::IDLE;
+            if (n == g_as.meCount && n > 0) {
+                int ox = g_as.c->ox, oz = g_as.c->oz;
+                int y0 = g_as.si * SECTION_SY;
+                g_as.pend[g_as.layer] = chunkPack(s_meScratch, n, ox, y0, oz);
+                g_as.pendN[g_as.layer] = g_as.pend[g_as.layer] ? n : 0;
+                if (!g_as.pend[g_as.layer] && n > 0) g_as.retry = true;
+            } else {
+                g_as.pend[g_as.layer] = nullptr;
+                g_as.pendN[g_as.layer] = 0;
+                if (n != 0) g_as.retry = true;
+                g_asyncMismatch++;
+            }
+            g_as.layer++;
         }
-        g_as.buf = 0; g_as.layer++;
     }
 
     if (!g_as.active) {
         float buildD2 = viewDist * viewDist;
-        ChunkMesh* best = 0; int bestSi = -1; float bestD = 1e30f;
+        ChunkMesh* best = nullptr; int bestSi = -1; float bestD = 1e30f;
         for (int i = 0; i < WORLD_CHUNKS_X * WORLD_CHUNKS_Z; i++) {
             ChunkMesh* c = &w->chunks[i];
             float dx = c->cx - camX, dz = c->cz - camZ;
@@ -139,20 +218,23 @@ void worldAsyncStep(World* w, float camX, float camY, float camZ, float viewDist
             }
         }
         if (!best) return;
-        ChunkSection* s = &best->sec[bestSi];
-        if (s->mesh)   { free(s->mesh);   s->mesh = 0; }
-        if (s->water)  { free(s->water);  s->water = 0; }
-        if (s->leaves) { free(s->leaves); s->leaves = 0; }
-        if (s->noMip)  { free(s->noMip);  s->noMip = 0; s->noMipCount = 0; }
-        s->dirty = false;
-        g_as.c = best; g_as.si = bestSi; g_as.layer = 0; g_as.active = true;
-        g_as.pend[0]=g_as.pend[1]=g_as.pend[2]=0;
-        g_as.pendN[0]=g_as.pendN[1]=g_as.pendN[2]=0;
+
+        g_as.c = best; g_as.si = bestSi; g_as.layer = 0;
+        g_as.phase = MePhase::IDLE;
+        g_as.meCount = 0; g_as.retry = false; g_as.wait = 0;
+        g_as.pend[0] = g_as.pend[1] = g_as.pend[2] = g_as.pend[3] = nullptr;
+        g_as.pendN[0] = g_as.pendN[1] = g_as.pendN[2] = g_as.pendN[3] = 0;
+        g_as.active = true;
     }
 
-    while (g_as.layer <= 2) {
-        if (asyncStartLayer(w)) return;
-        g_as.layer++;
+    if (g_as.layer > 3) {
+        asyncFinalize(w);
+        return;
     }
-    asyncFinalize(w);
+
+    if (!startCount(w)) {
+
+        g_as.c->sec[g_as.si].dirty = true;
+        g_as.active = false;
+    }
 }

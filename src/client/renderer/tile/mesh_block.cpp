@@ -219,42 +219,42 @@ int meshPass(const World* w, int ox, int oz, int y0, int y1, ChunkVertex* out, i
 
         if (isSign(id)) continue;
 
-        if (layer == 0 && id == BLOCK_MELON_STEM) {
+        if (layer == 3 && id == BLOCK_MELON_STEM) {
             if (out && n + 36 > cap) return -1;
             if (out) n = emitMelonStem(w, out, n, gx, y, gz, worldData(w, gx, y, gz), g_brightColor[LLB(gx, y, gz)]);
             else n += 36;
             continue;
         }
 
-        if (layer == 0 && id == BLOCK_WHEAT) {
+        if (layer == 3 && id == BLOCK_WHEAT) {
             if (out && n + 48 > cap) return -1;
             if (out) emitCropRows(out, n, gx, y, gz, id, worldData(w, gx, y, gz), g_brightColor[LLB(gx, y, gz)]);
             n += 48;
             continue;
         }
 
-        if (layer == 0 && isPlant(id)) {
+        if (layer == 3 && isPlant(id)) {
             if (out && n + 24 > cap) return -1;
             if (out) emitCross(out, n, gx, y, gz, id, worldData(w, gx, y, gz), g_brightColor[LLB(gx, y, gz)]);
             n += 24;
             continue;
         }
 
-        if (layer == 0 && isLadder(id)) {
+        if (layer == 3 && isLadder(id)) {
             if (out && n + 12 > cap) return -1;
             if (out) n = emitLadder(out, n, gx, y, gz, id, worldData(w, gx, y, gz), g_brightColor[LLB(gx, y, gz)]);
             else n += 12;
             continue;
         }
 
-        if (layer == 0 && id == BLOCK_BED) {
+        if (layer == 3 && id == BLOCK_BED) {
             if (out && n + 36 > cap) return -1;
             if (out) n = emitBed(w, gx, y, gz, id, worldData(w, gx, y, gz), out, n);
             else n += 36;
             continue;
         }
 
-        if (layer == 0 && isTorch(id)) {
+        if (layer == 3 && isTorch(id)) {
             if (out && n + 36 > cap) return -1;
             if (out) n = emitTorch(w, gx, y, gz, id, worldData(w, gx, y, gz), out, n);
             else n += 36;
@@ -268,7 +268,7 @@ int meshPass(const World* w, int ox, int oz, int y0, int y1, ChunkVertex* out, i
             continue;
         }
 
-        if (layer == 0 && isPane(id)) {
+        if (layer == 3 && isPane(id)) {
             if (out && n + 72 > cap) return -1;
             n = emitPane(w, gx, y, gz, id, worldData(w, gx, y, gz), out, n);
             continue;

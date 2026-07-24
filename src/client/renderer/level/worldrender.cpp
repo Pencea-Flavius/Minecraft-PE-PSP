@@ -53,12 +53,11 @@ void worldRebuildStep(const World* cw, float camX, float camY, float camZ, float
     worldUpdateLights(w);
     worldDrainPlayerEdits(w, 6);
 
-    extern int g_diagMode;
-    if (g_diagMode == 3) {
+    if (chunkMeMeshingOn() && meActive()) {
 
-    } else if (chunkMeMeshingOn() && meActive()) {
         worldAsyncStep(w, camX, camY, camZ, viewDist);
-    } else {
+        return;
+    }
 
     static const int MAX_CAND = 48;
     static const unsigned int TIME_BUDGET_US = 2000;
@@ -94,8 +93,6 @@ void worldRebuildStep(const World* cw, float camX, float camY, float camZ, float
         chunkBuildSection(cand[k].c, w, cand[k].si);
         if (sceKernelGetSystemTimeLow() - tStart >= TIME_BUDGET_US) break;
     }
-    }
-
 }
 
 void worldDraw(const World* cw, float camX, float camY, float camZ, float viewDist, const Texture* terrain) {
