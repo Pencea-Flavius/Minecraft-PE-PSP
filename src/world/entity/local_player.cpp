@@ -98,6 +98,12 @@ void LocalPlayer::aiStep(unsigned int btn, unsigned char lx, unsigned char ly) {
 
     xs *= 0.98f; yf *= 0.98f;
 
+    bool downNow = (btn & PSP_CTRL_DOWN) != 0;
+    if (flying) sneaking = false;
+    else if (downNow && !prevSneakBtn) sneaking = !sneaking;
+    prevSneakBtn = downNow;
+    if (sneaking) { xs *= 0.3f; yf *= 0.3f; }
+
     if (bowPull > 0.0f) { xs *= 0.35f; yf *= 0.35f; }
 
     walkDistO = walkDist;

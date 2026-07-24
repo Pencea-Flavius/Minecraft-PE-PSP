@@ -173,6 +173,7 @@ public:
     bool canRemove;
     bool invisible;
     bool reallyRemoveIfPlayer;
+    bool sneaking;
 
 protected:
     static Random sharedRandom;

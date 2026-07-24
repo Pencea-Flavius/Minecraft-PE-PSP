@@ -730,6 +730,7 @@ void gameRender(MenuState& s) {
     float a = g_timerAlpha;
     float ix = g_level.player->xo + (g_level.player->x - g_level.player->xo) * a;
     float iy = g_level.player->yo + (g_level.player->y - g_level.player->yo) * a;
+    if (g_level.player->sneaking) iy -= 0.08f;
     float iz = g_level.player->zo + (g_level.player->z - g_level.player->zo) * a;
     float iyaw   = g_level.player->yRotO   + (g_level.player->yRot   - g_level.player->yRotO)   * a;
     float ipitch = g_level.player->xRotO + (g_level.player->xRot - g_level.player->xRotO) * a;

@@ -267,6 +267,14 @@ void playerModelRender(float a) {
         parts[P_ARM0].xRot += bsin; parts[P_ARM1].xRot -= bsin;
     }
 
+    parts[P_HEAD].py = p->sneaking ? 1.0f : 0.0f;
+    parts[P_LEG0].py = parts[P_LEG1].py = p->sneaking ? 9.0f : 12.0f;
+    parts[P_LEG0].pz = parts[P_LEG1].pz = p->sneaking ? 4.0f : 0.0f;
+    if (p->sneaking) {
+        parts[P_BODY].xRot += 0.5f;
+        parts[P_ARM0].xRot += 0.4f; parts[P_ARM1].xRot += 0.4f;
+    }
+
     int bx = (int)floorf(ix), by = (int)floorf(iy), bz = (int)floorf(iz);
     unsigned int brCol = g_brightColor[lightRawAt(&g_world, bx, by, bz)];
 
@@ -315,7 +323,9 @@ void playerModelRender(float a) {
         }
     }
     ScePspFVector3 sc = { -1.0f/16.0f, -1.0f/16.0f, 1.0f/16.0f };  sceGumScale(&sc);
-    ScePspFVector3 gnd = { 0.0f, -24.0f, 0.0f };       sceGumTranslate(&gnd);
+
+    float gndY = -24.0f + (p->sneaking ? 3.0f : 0.0f);
+    ScePspFVector3 gnd = { 0.0f, gndY, 0.0f };       sceGumTranslate(&gnd);
 
     for (int i = 0; i < P_COUNT; i++) {
         sceGumPushMatrix();

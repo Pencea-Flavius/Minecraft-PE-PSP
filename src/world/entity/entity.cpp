@@ -64,7 +64,7 @@ Entity::Entity(Level* level)
     horizontalCollision(false), verticalCollision(false),
     collision(false), hurtMarked(false),
     slide(true), removed(false), noPhysics(false),
-    canRemove(true), invisible(false), reallyRemoveIfPlayer(false),
+    canRemove(true), invisible(false), reallyRemoveIfPlayer(false), sneaking(false),
     airCapacity(TOTAL_AIR_SUPPLY),
     makeStepSound(true), wasInWater(false), fireImmune(false),
     firstTick(true), nextStep(1), isStuckInWeb(false)
@@ -427,7 +427,7 @@ float Entity::getPickRadius() { return 0.1f; }
 void  Entity::lerpMotion(float nxd, float nyd, float nzd) { xd = nxd; yd = nyd; zd = nzd; }
 void  Entity::animateHurt() {}
 void  Entity::setEquippedSlot(int, int, int) {}
-bool  Entity::isSneaking() { return false; }
+bool  Entity::isSneaking() { return sneaking; }
 bool  Entity::isPlayer() { return false; }
 
 void Entity::lavaHurt() {

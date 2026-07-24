@@ -87,14 +87,51 @@ void Mob::move(float xa, float ya, float za) {
         box[2] += dz; box[5] += dz;
     };
 
+    if (onGround && isSneaking()) {
+        const float d = 0.05f;
+
+        const float EPS = 1.0e-3f;
+        auto groundUnder = [&](float dx, float dz) -> bool {
+            float b0 = c[0] + dx, b3 = c[3] + dx;
+            float b1 = c[1] - 1.0f, b4 = c[4] - 1.0f;
+            float b2 = c[2] + dz, b5 = c[5] + dz;
+            int bx0 = ifloor(b0), bx1 = ifloor(b3) + 1;
+            int by0 = ifloor(b1), by1 = ifloor(b4) + 1;
+            int bz0 = ifloor(b2), bz1 = ifloor(b5) + 1;
+            for (int X = bx0; X < bx1; X++) for (int Y = by0; Y < by1; Y++) for (int Z = bz0; Z < bz1; Z++) {
+                BlockAABB boxes[3];
+                int num = getBlockAABBs(&g_world, X, Y, Z, boxes);
+                for (int i = 0; i < num; i++) {
+                    BlockAABB& bx = boxes[i];
+                    if (b3 > bx.x0 + EPS && b0 < bx.x1 - EPS && b4 > bx.y0 && b1 < bx.y1 &&
+                        b5 > bx.z0 + EPS && b2 < bx.z1 - EPS)
+                        return true;
+                }
+            }
+            return false;
+        };
+        while (xa != 0.0f && !groundUnder(xa, 0.0f)) {
+            if (xa < d && xa >= -d) xa = 0.0f; else if (xa > 0.0f) xa -= d; else xa += d;
+        }
+        while (za != 0.0f && !groundUnder(0.0f, za)) {
+            if (za < d && za >= -d) za = 0.0f; else if (za > 0.0f) za -= d; else za += d;
+        }
+        while (xa != 0.0f && za != 0.0f && !groundUnder(xa, za)) {
+            if (xa < d && xa >= -d) xa = 0.0f; else if (xa > 0.0f) xa -= d; else xa += d;
+            if (za < d && za >= -d) za = 0.0f; else if (za > 0.0f) za -= d; else za += d;
+        }
+    }
+
+    float xaPost = xa, zaPost = za;
+
     float xaClip = xa, yaClip = ya, zaClip = za;
     float cClip[6];
     for (int i = 0; i < 6; i++) cClip[i] = c[i];
     moveAABB(xaClip, yaClip, zaClip, cClip);
 
     float stepHeight = 0.5f;
-    if (stepHeight > 0.0f && wasOnGround && (xaOrg != xaClip || zaOrg != zaClip)) {
-        float stepXa = xaOrg, stepYa = stepHeight, stepZa = zaOrg;
+    if (stepHeight > 0.0f && wasOnGround && (xaPost != xaClip || zaPost != zaClip)) {
+        float stepXa = xaPost, stepYa = stepHeight, stepZa = zaPost;
         float cStep[6];
         for (int i = 0; i < 6; i++) cStep[i] = c[i];
 
@@ -127,7 +164,7 @@ void Mob::move(float xa, float ya, float za) {
     z = (c[2] + c[5]) * 0.5f;
     bb.set(c[0], c[1], c[2], c[3], c[4], c[5]);
 
-    horizontalCollision = (xaOrg != xa) || (zaOrg != za);
+    horizontalCollision = (xaPost != xa) || (zaPost != za);
     onGround = (yaOrg != ya) && (yaOrg < 0);
     if (xaOrg != xa) xd = 0;
     if (yaOrg != ya) yd = 0;

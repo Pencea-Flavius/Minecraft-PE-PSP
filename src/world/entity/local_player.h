@@ -10,6 +10,8 @@ public:
 
     void aiStep(unsigned int btn, unsigned char lx, unsigned char ly);
 
+    bool prevSneakBtn = false;
+
     virtual void die(Entity* source);
 };
 
