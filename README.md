@@ -1,1 +1,1 @@
-synched
+termux sync test
