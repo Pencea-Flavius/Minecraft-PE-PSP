@@ -315,6 +315,14 @@ int tileShapeBoxes(const World* w, int x, int y, int z, unsigned char id,
         float r = 1.0f/16.0f;
         SET(out[0], x + r, y + 0.0f, z + r, x + 1.0f - r, y + 1.0f, z + 1.0f - r);
         return 1;
+    } else if (id == BLOCK_COCOA) {
+
+        int age = (data >> COCOA_AGE_SHIFT) & COCOA_AGE_MASK;
+        float size = 4.0f/16.0f + age * (2.0f/16.0f);
+        float half = size / 2.0f;
+        SET(out[0], x + 0.5f - half, y + 0.5f - half, z + 0.5f - half,
+                    x + 0.5f + half, y + 0.5f + half, z + 0.5f + half);
+        return 1;
     } else if (id == BLOCK_REEDS) {
 
         const float ss = 6.0f/16.0f;

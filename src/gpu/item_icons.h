@@ -55,6 +55,6 @@ static const short kItemIcon[256] = {
 };
 
 static const short kItemIconCoal[16] = { 102, 23, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
-static const short kItemIconDye[16] = { -1, 24, 26, -1, 65, 87, 88, -1, -1, 89, 90, 91, 92, 93, 94, 16 };
+static const short kItemIconDye[16] = { -1, 24, 26, 146, 65, 87, 88, -1, -1, 89, 90, 91, 92, 93, 94, 16 };
 
 #endif

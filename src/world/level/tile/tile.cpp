@@ -121,6 +121,8 @@ Drop Tile::getResource(int data) {
         case BLOCK_TALLGRASS:           return { ITEM_SEEDS_WHEAT, 1, 0 };
         case BLOCK_SIGN: case BLOCK_WALL_SIGN: return { ITEM_SIGN, 1, 0 };
         case BLOCK_REEDS:               return { ITEM_REEDS, 1, 0 };
+        case BLOCK_BAMBOO:               return { BLOCK_BAMBOO, 1, 0 };
+        case BLOCK_VINE:                 return { BLOCK_VINE, 1, 0 };
         case BLOCK_WOOL:                return { BLOCK_WOOL, 1, (short)data };
 
         case BLOCK_WHEAT:               return (data == 7) ? Drop{ ITEM_WHEAT, 1, 0 } : Drop{ 0, 0, 0 };
@@ -279,6 +281,7 @@ void Tile::getTexture(unsigned char data, int f, int* col, int* row, unsigned in
             else switch (data & LOG_TYPE_MASK) {
                 case LOG_SPRUCE: *col = 4; *row = 7; break;
                 case LOG_BIRCH:  *col = 5; *row = 7; break;
+                case LOG_JUNGLE: *col = 9; *row = 9; break;
                 default:         *col = 4; *row = 1; break;
             }
             break;
@@ -286,18 +289,27 @@ void Tile::getTexture(unsigned char data, int f, int* col, int* row, unsigned in
             switch (data & LEAF_TYPE_MASK) {
                 case LEAF_SPRUCE: *col = 4; *row = 8; *tint = 0xFF2BAE3Du; break;
                 case LEAF_BIRCH:  *col = 4; *row = 3; *tint = 0xFF55A780u; break;
+                case LEAF_JUNGLE: *col = 4; *row = 3; *tint = 0xFF2AB01Du; break;
                 default:          *col = 4; *row = 3; *tint = 0xFF18B548u; break;
             }
             break;
         case BLOCK_COBWEB:         *col = 11; *row = 0; break;
 
         case BLOCK_TALLGRASS:
-            switch (data) {
+            switch (data & 3) {
                 case TG_FERN:       *col = 8; *row = 3; *tint = 0xFF339933u; break;
                 case TG_TALL_GRASS: *col = 7; *row = 2; *tint = 0xFF339933u; break;
                 default:            *col = 7; *row = 3; break;
             }
             break;
+        case BLOCK_BAMBOO:         *col = 10; *row = 10; break;
+        case BLOCK_COCOA: {
+            int age = (data >> COCOA_AGE_SHIFT) & COCOA_AGE_MASK;
+            *col = 11; *row = 10;
+            *tint = (age >= 2) ? 0xFFFFFFFFu : 0xFFB0B0B0u;
+            break;
+        }
+        case BLOCK_VINE:           *col = 12; *row = 10; *tint = 0xFF3E8A28u; break;
         case BLOCK_FIRE:           *col = 15; *row = 1; break;
         case BLOCK_FLOWER:         *col = 13; *row = 0; break;
         case BLOCK_ROSE:           *col = 12; *row = 0; break;
@@ -831,7 +843,11 @@ struct GrowerTile : Tile { GrowerTile(unsigned char i) : Tile(i) { randomTicks =
         grow(w, x, y, z); } };
 
 struct BushTile : GrowerTile { BushTile(unsigned char i) : GrowerTile(i) {}
-    bool canSurvive(World* w, int x, int y, int z) { return bushFamilyCanSurvive(w, id, x, y, z); }
+    bool canSurvive(World* w, int x, int y, int z) {
+        if (id == BLOCK_TALLGRASS && (worldData(w, x, y, z) & 8))
+            return fernTopCanSurvive(w, x, y, z);
+        return bushFamilyCanSurvive(w, id, x, y, z);
+    }
 
     bool mayPlace(World* w, int x, int y, int z) {
         if (!Tile::mayPlace(w, x, y, z)) return false;
@@ -859,6 +875,45 @@ struct ReedTile : GrowerTile { ReedTile(unsigned char i) : GrowerTile(i) {}
     bool canSurvive(World* w, int x, int y, int z) { return reedCanSurvive(w, x, y, z); }
     bool mayPlace(World* w, int x, int y, int z) { return Tile::mayPlace(w, x, y, z) && canSurvive(w, x, y, z); }
     void grow(World* w, int x, int y, int z) { reedCactusGrow(w, x, y, z, id, 15); } };
+
+struct BambooTile : GrowerTile { BambooTile(unsigned char i) : GrowerTile(i) {}
+    bool canSurvive(World* w, int x, int y, int z) { return bambooCanSurvive(w, x, y, z); }
+    bool mayPlace(World* w, int x, int y, int z) { return Tile::mayPlace(w, x, y, z) && canSurvive(w, x, y, z); }
+    void grow(World* w, int x, int y, int z) { bambooGrow(w, x, y, z, 3, 12); } };
+
+struct VineTile : GrowerTile { VineTile(unsigned char i) : GrowerTile(i) {}
+    bool canSurvive(World* w, int x, int y, int z) { return vineCanSurvive(w, x, y, z); }
+    bool mayPlace(World* w, int x, int y, int z) { return Tile::mayPlace(w, x, y, z) && canSurvive(w, x, y, z); }
+
+    void grow(World* w, int x, int y, int z) {
+        if (worldBlock(w, x, y - 1, z) != BLOCK_AIR) return;
+        int length = 1;
+        while (worldBlock(w, x, y - length, z) == BLOCK_VINE) length++;
+        if (length >= 6) return;
+        if (rand() % 4 == 0)
+            worldSetTileUpdate(w, x, y - 1, z, BLOCK_VINE, 0);
+    } };
+
+struct CocoaTile : GrowerTile { CocoaTile(unsigned char i) : GrowerTile(i) {}
+
+    bool canSurvive(World* w, int x, int y, int z) { return cocoaCanSurvive(w, x, y, z, worldData(w, x, y, z)); }
+    bool mayPlace(World* w, int x, int y, int z) { return canSurvive(w, x, y, z); }
+    bool mayPlace(World* w, int x, int y, int z, int) { return canSurvive(w, x, y, z); }
+
+    void grow(World* w, int x, int y, int z) {
+        unsigned char data = worldData(w, x, y, z);
+        int dir = data & COCOA_DIR_MASK;
+        int age = (data >> COCOA_AGE_SHIFT) & COCOA_AGE_MASK;
+        if (age < 2 && rand() % 5 == 0)
+            worldSetDataNoUpdate(w, x, y, z, (unsigned char)(dir | ((age + 1) << COCOA_AGE_SHIFT)));
+    }
+
+    void spawnResources(World* w, int x, int y, int z, int data, Random& rng) {
+        int age = (data >> COCOA_AGE_SHIFT) & COCOA_AGE_MASK;
+        int count = (age >= 2) ? (2 + rng.nextInt(2)) : 1;
+        for (int i = 0; i < count; i++)
+            dropItem(x, y, z, ITEM_BONEMEAL, (short)3, rng); // 3 = DYE_BROWN
+    } };
 
 struct CactusTile : GrowerTile { CactusTile(unsigned char i) : GrowerTile(i) {}
 
@@ -991,6 +1046,7 @@ static int rawSoundType(unsigned char id) {
         case BLOCK_GRASS: case BLOCK_LEAVES: case BLOCK_FLOWER: case BLOCK_ROSE:
         case BLOCK_MUSHROOM_BROWN: case BLOCK_MUSHROOM_RED: case BLOCK_SAPLING:
         case BLOCK_REEDS: case BLOCK_WHEAT: case BLOCK_TNT: case BLOCK_TALLGRASS:
+        case BLOCK_BAMBOO: case BLOCK_COCOA: case BLOCK_VINE:
             return SOUND_GRASS;
 
         case BLOCK_DIRT: case BLOCK_GRAVEL: case BLOCK_CLAY: case BLOCK_FARMLAND:
@@ -1130,6 +1186,9 @@ static Tile* makeTile(unsigned char id) {
         case BLOCK_LEAVES:   return new LeafTile(id);
         case BLOCK_CACTUS:   return new CactusTile(id);
         case BLOCK_REEDS:    return new ReedTile(id);
+        case BLOCK_BAMBOO:   return new BambooTile(id);
+        case BLOCK_VINE:     return new VineTile(id);
+        case BLOCK_COCOA:    return new CocoaTile(id);
         case BLOCK_FLOWER: case BLOCK_ROSE: case BLOCK_SAPLING:
         case BLOCK_WHEAT: case BLOCK_MELON_STEM: case BLOCK_TALLGRASS:
         case BLOCK_MUSHROOM_BROWN: case BLOCK_MUSHROOM_RED:

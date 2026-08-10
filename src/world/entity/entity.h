@@ -182,6 +182,7 @@ public:
     bool invisible;
     bool reallyRemoveIfPlayer;
     bool sneaking;
+    bool sprinting;
 
 protected:
     static Random sharedRandom;

@@ -1228,7 +1228,13 @@ void gameRender(MenuState& s) {
     float px0 = ix, py0 = iy, pz0 = iz;
 
     unsigned char eyeBlk = worldBlock(&g_world, Mth::floor(ix), Mth::floor(iy), Mth::floor(iz));
-    float fov = isWaterId(eyeBlk) ? 60.0f : 70.0f;
+    float baseFov = isWaterId(eyeBlk) ? 60.0f : 70.0f;
+    float targetFov = (g_level.player->sprinting) ? baseFov * 1.08f : baseFov;
+
+    static float s_fovCurrent = 70.0f;
+    const float FOV_LERP_SPEED = 0.2f;
+    s_fovCurrent += (targetFov - s_fovCurrent) * FOV_LERP_SPEED;
+    float fov = s_fovCurrent;
 
     float cp = cosf(ipitch * DEG2RAD), sp = sinf(ipitch * DEG2RAD);
     float cy = cosf(iyaw * DEG2RAD),   sy = sinf(iyaw * DEG2RAD);

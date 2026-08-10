@@ -11,6 +11,9 @@ public:
     void aiStep(unsigned int btn, unsigned char lx, unsigned char ly);
 
     bool prevSneakBtn = false;
+    bool prevForward = false;
+    int  aiTickCount = 0;
+    int  lastForwardTapTick = -1000;
 
     virtual void die(Entity* source);
 

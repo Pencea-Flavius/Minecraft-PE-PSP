@@ -117,6 +117,8 @@ static short guiBlockIcon(short id) {
         case BLOCK_FENCE_GATE: return 74;
         case BLOCK_BED: return 132;
         case BLOCK_WOOD_SLAB_DOUBLE: return 30;
+        case BLOCK_BAMBOO: return 144;
+        case BLOCK_VINE: return 145;
         default: return -1;
     }
 }
@@ -125,6 +127,7 @@ static inline int logGuiIcon(unsigned char data) {
     switch (data & LOG_TYPE_MASK) {
         case LOG_SPRUCE: return 17;
         case LOG_BIRCH:  return 18;
+        case LOG_JUNGLE: return 142;
         default:         return 16;
     }
 }
@@ -167,6 +170,7 @@ static inline int leafGuiIcon(unsigned char data) {
     switch (data & LEAF_TYPE_MASK) {
         case LEAF_SPRUCE: return 84;
         case LEAF_BIRCH:  return 85;
+        case LEAF_JUNGLE: return 143;
         default:          return 83;
     }
 }
@@ -536,6 +540,12 @@ const char* getBlockName(short id, unsigned char data) {
             return "Sapling";
         }
         case BLOCK_REEDS: return "Sugar Cane";
+        case BLOCK_BAMBOO: return "Bamboo";
+        case BLOCK_COCOA: {
+            int age = (data >> COCOA_AGE_SHIFT) & COCOA_AGE_MASK;
+            return (age >= 2) ? "Cocoa Pod" : "Cocoa Bud";
+        }
+        case BLOCK_VINE: return "Vine";
 
         default: return "Block";
     }

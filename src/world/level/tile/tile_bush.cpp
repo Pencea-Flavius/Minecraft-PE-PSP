@@ -29,6 +29,12 @@ bool bushFamilyCanSurvive(World* w, unsigned char id, int x, int y, int z) {
     return lightRawAt(w, x, y, z) >= 8 || worldCanSeeSky(w, x, y, z);
 }
 
+bool fernTopCanSurvive(World* w, int x, int y, int z) {
+    unsigned char below = worldBlock(w, x, y - 1, z);
+    return below == BLOCK_TALLGRASS && (worldData(w, x, y - 1, z) & 3) == TG_FERN
+           && !(worldData(w, x, y - 1, z) & 8);
+}
+
 void saplingGrow(World* w, int x, int y, int z) {
     unsigned char data = worldData(w, x, y, z);
     Random rnd(rand());

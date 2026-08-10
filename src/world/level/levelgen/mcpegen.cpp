@@ -290,6 +290,7 @@ bool McpeGen::postProcessPhase(World* w, int chunkX, int chunkZ, int phase) {
     if (random.nextInt(10) == 0) forests += 1;
     if (biome == B_FOREST)   forests += oFor + 2;
     if (biome == B_RAIN)     forests += oFor + 2;
+    if (biome == B_JUNGLE)   forests += oFor + 3;
     if (biome == B_SEASONAL) forests += oFor + 1;
     if (biome == B_TAIGA)    forests += oFor + 1;
     if (biome == B_DESERT)   forests -= 20;
@@ -308,6 +309,9 @@ bool McpeGen::postProcessPhase(World* w, int chunkX, int chunkZ, int phase) {
         } else if (biome == B_RAIN) {
             random.nextInt(3);
             treeOak(w, random, tx, ty, tz);
+        } else if (biome == B_JUNGLE) {
+            random.nextInt(3);
+            treeJungle(w, random, tx, ty, tz);
         } else {
             random.nextInt(10);
             treeOak(w, random, tx, ty, tz);
@@ -321,6 +325,12 @@ bool McpeGen::postProcessPhase(World* w, int chunkX, int chunkZ, int phase) {
 
     for (int i = 0; i < 2; i++) { int x = xo + random.nextInt(16) + 8, y = random.nextInt(128), z = zo + random.nextInt(16) + 8; flowerFeature(w, random, x, y, z, BLOCK_FLOWER); }
     if (random.nextInt(2) == 0) { int x = xo + random.nextInt(16) + 8, y = random.nextInt(128), z = zo + random.nextInt(16) + 8; flowerFeature(w, random, x, y, z, BLOCK_ROSE); }
+
+    for (int i = 0; i < 10; i++) {
+        int x = xo + random.nextInt(16) + 8, y = random.nextInt(128), z = zo + random.nextInt(16) + 8;
+        unsigned char grassData = (random.nextInt(2) == 0) ? TG_FERN : TG_TALL_GRASS;
+        flowerFeature(w, random, x, y, z, BLOCK_TALLGRASS, grassData);
+    }
     if (random.nextInt(4) == 0) { int x = xo + random.nextInt(16) + 8, y = random.nextInt(128), z = zo + random.nextInt(16) + 8; mushroomFeature(w, random, x, y, z, BLOCK_MUSHROOM_BROWN); }
     if (random.nextInt(8) == 0) { int x = xo + random.nextInt(16) + 8, y = random.nextInt(128), z = zo + random.nextInt(16) + 8; mushroomFeature(w, random, x, y, z, BLOCK_MUSHROOM_RED); }
 
@@ -328,6 +338,35 @@ bool McpeGen::postProcessPhase(World* w, int chunkX, int chunkZ, int phase) {
 
     int cacti = (biome == B_DESERT) ? 5 : 0;
     for (int i = 0; i < cacti; i++) { int x = xo + random.nextInt(16) + 8, y = random.nextInt(128), z = zo + random.nextInt(16) + 8; cactusFeature(w, random, x, y, z); }
+
+    if (biome == B_JUNGLE) {
+        int fernClusters = 8 + random.nextInt(6);
+        for (int i = 0; i < fernClusters; i++) {
+            int x = xo + random.nextInt(16) + 8, z = zo + random.nextInt(16) + 8;
+            int y = heightmapAt(w, x, z);
+            unsigned char below = worldBlock(w, x, y - 1, z);
+            if ((below != BLOCK_GRASS && below != BLOCK_DIRT) || worldBlock(w, x, y, z) != BLOCK_AIR) continue;
+            setBlock(w, x, y, z, BLOCK_TALLGRASS, TG_FERN);
+            if (worldBlock(w, x, y + 1, z) == BLOCK_AIR)
+                setBlock(w, x, y + 1, z, BLOCK_TALLGRASS, TG_FERN | 8);
+        }
+
+        int bambooClusters = 3 + random.nextInt(3);
+        for (int i = 0; i < bambooClusters; i++) {
+            int x = xo + random.nextInt(16) + 8, z = zo + random.nextInt(16) + 8;
+            int y = heightmapAt(w, x, z);
+            unsigned char below = worldBlock(w, x, y - 1, z);
+            if (below != BLOCK_GRASS && below != BLOCK_DIRT) continue;
+
+            // Most clusters are freshly sprouted; some are already fully grown
+            // when the world starts, so bamboo groves don't all look brand new.
+            int stalkHeight = (random.nextInt(3) == 0) ? (8 + random.nextInt(5)) : 1;
+            for (int hh = 0; hh < stalkHeight; hh++) {
+                if (worldBlock(w, x, y + hh, z) != BLOCK_AIR) break;
+                setBlock(w, x, y + hh, z, BLOCK_BAMBOO, 0);
+            }
+        }
+    }
 
     return false; }
 

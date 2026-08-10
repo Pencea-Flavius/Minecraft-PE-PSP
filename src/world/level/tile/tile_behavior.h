@@ -8,6 +8,7 @@ struct World;
 
 bool bushMayPlaceOn(World* w, unsigned char id, int x, int y, int z);
 bool bushFamilyCanSurvive(World* w, unsigned char id, int x, int y, int z);
+bool fernTopCanSurvive(World* w, int x, int y, int z);
 void saplingTick(World* w, int x, int y, int z);
 void saplingGrow(World* w, int x, int y, int z);
 void mushroomTick(World* w, int x, int y, int z);
@@ -17,6 +18,10 @@ void stemTick(World* w, int x, int y, int z);
 bool reedCanSurvive(World* w, int x, int y, int z);
 bool cactusCanSurvive(World* w, int x, int y, int z);
 void reedCactusGrow(World* w, int x, int y, int z, unsigned char id, int ageThreshold);
+bool bambooCanSurvive(World* w, int x, int y, int z);
+void bambooGrow(World* w, int x, int y, int z, int ageThreshold, int maxHeight);
+bool vineCanSurvive(World* w, int x, int y, int z);
+bool cocoaCanSurvive(World* w, int x, int y, int z, int data);
 
 void tickFarmland(World* w, int x, int y, int z);
 

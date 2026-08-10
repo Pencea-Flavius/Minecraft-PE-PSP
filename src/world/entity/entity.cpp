@@ -71,7 +71,7 @@ Entity::Entity(Level* level)
     horizontalCollision(false), verticalCollision(false),
     collision(false), hurtMarked(false),
     slide(true), removed(false), noPhysics(false),
-    canRemove(true), invisible(false), reallyRemoveIfPlayer(false), sneaking(false),
+    canRemove(true), invisible(false), reallyRemoveIfPlayer(false), sneaking(false), sprinting(false),
     airCapacity(TOTAL_AIR_SUPPLY),
     makeStepSound(true), wasInWater(false), fireImmune(false),
     firstTick(true), nextStep(1), isStuckInWeb(false)

@@ -102,13 +102,26 @@ void LocalPlayer::aiStep(unsigned int btn, unsigned char lx, unsigned char ly) {
     if (flying) sneaking = false;
     else if (downNow && !prevSneakBtn) sneaking = !sneaking;
     prevSneakBtn = downNow;
+
+    bool forwardNow = yf > 0.3f;
+    if (forwardNow && !prevForward) {
+        if (aiTickCount - lastForwardTapTick <= 10) sprinting = true;
+        lastForwardTapTick = aiTickCount;
+    }
+    prevForward = forwardNow;
+    if (!forwardNow || sneaking || yf <= 0.0f) sprinting = false;
+    aiTickCount++;
+
     if (sneaking) { xs *= 0.3f; yf *= 0.3f; }
 
     if (bowPull > 0.0f) { xs *= 0.35f; yf *= 0.35f; }
 
     walkDistO = walkDist;
     float wx0 = x, wz0 = z;
+    float baseWalkSpeed = walkingSpeed;
+    if (sprinting && !sneaking) walkingSpeed *= 1.3f;
     travel(xs, yf);
+    walkingSpeed = baseWalkSpeed;
 
     extern int g_autoJump;
     if (g_autoJump && onGround && horizontalCollision && !flying && !isInWater() && !isInLava()) {

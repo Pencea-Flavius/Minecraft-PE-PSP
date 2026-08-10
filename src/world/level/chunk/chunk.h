@@ -66,6 +66,7 @@ enum { BLOCK_AIR = 0,
        BLOCK_STAIRS_SANDSTONE = 128,
        BLOCK_QUARTZ_BLOCK = 155,
        BLOCK_STAIRS_QUARTZ = 156,
+       BLOCK_BAMBOO = 157, BLOCK_COCOA = 158, BLOCK_VINE = 159,
 
        BLOCK_WOOD_SLAB_DOUBLE = 157, BLOCK_WOOD_SLAB = 158,
 
@@ -83,10 +84,11 @@ enum { SLAB_TOP_SLOT_BIT = 8 };
 enum { DSLAB_STONE = 0, DSLAB_SAND = 1, DSLAB_WOOD = 2, DSLAB_COBBLE = 3,
        DSLAB_BRICK = 4, DSLAB_SMOOTHBRICK = 5, DSLAB_QUARTZ = 6, DSLAB_MAT_MASK = 7 };
 
-enum { LOG_OAK = 0, LOG_SPRUCE = 1, LOG_BIRCH = 2, LOG_TYPE_MASK = 3 };
+enum { LOG_OAK = 0, LOG_SPRUCE = 1, LOG_BIRCH = 2, LOG_JUNGLE = 3, LOG_TYPE_MASK = 3 };
 enum { SS_DEFAULT = 0, SS_CHISELED = 1, SS_SMOOTH = 2 };
 
 enum { TG_DEAD_SHRUB = 0, TG_TALL_GRASS = 1, TG_FERN = 3 };
+enum { COCOA_DIR_MASK = 3, COCOA_AGE_SHIFT = 2, COCOA_AGE_MASK = 3 };
 enum { QZ_DEFAULT = 0, QZ_CHISELED = 1, QZ_PILLAR = 2 };
 enum { SB_NORMAL = 0, SB_MOSSY = 1, SB_CRACKED = 2 };
 
@@ -162,7 +164,7 @@ static inline bool isCrossShaped(unsigned char id) {
            id == BLOCK_MUSHROOM_BROWN || id == BLOCK_MUSHROOM_RED ||
            id == BLOCK_REEDS || id == BLOCK_SAPLING ||
            id == BLOCK_WHEAT || id == BLOCK_MELON_STEM ||
-           id == BLOCK_TALLGRASS ||
+           id == BLOCK_TALLGRASS || id == BLOCK_BAMBOO || id == BLOCK_VINE ||
            id == BLOCK_COBWEB;
 }
 
@@ -171,7 +173,7 @@ static inline bool isLog(unsigned char id) { return id == BLOCK_LOG; }
 static inline bool isWool(unsigned char id) { return id == BLOCK_WOOL; }
 static inline bool isGlass(unsigned char id) { return id == BLOCK_GLASS; }
 
-enum { LEAF_TYPE_MASK = 3, LEAF_OAK = 0, LEAF_SPRUCE = 1, LEAF_BIRCH = 2,
+enum { LEAF_TYPE_MASK = 3, LEAF_OAK = 0, LEAF_SPRUCE = 1, LEAF_BIRCH = 2, LEAF_JUNGLE = 3,
        LEAF_UPDATE_BIT = 4, LEAF_PERSISTENT_BIT = 8 };
 
 static inline bool isOpaque(unsigned char id) { return Tile::tiles[id]->opaque; }
