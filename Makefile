@@ -166,6 +166,7 @@ OBJS = \
 	src/world/level/levelgen/feature_tree_birch.o \
 	src/world/level/levelgen/feature_tree_spruce.o \
 	src/world/level/levelgen/feature_tree_pine.o \
+	src/world/level/levelgen/feature_tree_jungle.o \
 	src/world/level/levelgen/feature_clay.o \
 	src/world/level/levelgen/feature_flower.o \
 	src/world/level/levelgen/feature_mushroom.o \
