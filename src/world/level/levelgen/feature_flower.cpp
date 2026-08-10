@@ -5,13 +5,13 @@
 #include "world/level/chunk/chunk.h"
 #include <vector>
 
-struct PendingFlower { int x, y, z; unsigned char tile; };
+struct PendingFlower { int x, y, z; unsigned char tile; unsigned char data; };
 static std::vector<PendingFlower> g_pendingFlowers;
 
 #define PENDING_MAX 4096
 unsigned int g_pendingFlowerDrops = 0;
 
-void flowerFeature(World* w, Random& random, int x, int y, int z, unsigned char tile) {
+void flowerFeature(World* w, Random& random, int x, int y, int z, unsigned char tile, unsigned char data) {
     for (int i = 0; i < 64; i++) {
         int x2 = x + random.nextInt(8) - random.nextInt(8);
         int y2 = y + random.nextInt(4) - random.nextInt(4);
@@ -19,7 +19,7 @@ void flowerFeature(World* w, Random& random, int x, int y, int z, unsigned char 
         if (worldBlock(w, x2, y2, z2) == BLOCK_AIR) {
             unsigned char below = worldBlock(w, x2, y2 - 1, z2);
             if (below == BLOCK_GRASS || below == BLOCK_DIRT) {
-                PendingFlower pf = { x2, y2, z2, tile };
+                PendingFlower pf = { x2, y2, z2, tile, data };
                 if (g_pendingFlowers.size() >= PENDING_MAX) { g_pendingFlowerDrops++; continue; }
                 g_pendingFlowers.push_back(pf);
             }
@@ -36,7 +36,7 @@ void worldPlaceFlowers(World* w) {
         unsigned char below = worldBlock(w, f.x, f.y - 1, f.z);
         if (below != BLOCK_GRASS && below != BLOCK_DIRT) continue;
         if (lightRawAt(w, f.x, f.y, f.z) >= 8 || worldCanSeeSky(w, f.x, f.y, f.z))
-            setBlock(w, f.x, f.y, f.z, f.tile);
+            setBlock(w, f.x, f.y, f.z, f.tile, f.data);
     }
     g_pendingFlowers.clear();
 }
