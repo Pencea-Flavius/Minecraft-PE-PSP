@@ -193,7 +193,7 @@ void McpeGen::buildSurfacesChunk(World* w, int chunkX, int chunkZ) {
         for (int z = 0; z < 16; z++) {
             float temp = 1;
 
-            BiomeId biome = classifyBiome(mTemp[z + x * 16], mDownfall[z + x * 16]);
+            BiomeId biome = classifyBiomeSpatial(worldSeed, xOffs * 16 + x, zOffs * 16 + z);
             unsigned char bTop, bMat;
             biomeSurface(biome, &bTop, &bMat);
 
@@ -254,7 +254,7 @@ bool McpeGen::postProcessPhase(World* w, int chunkX, int chunkZ, int phase) {
     switch (phase) {
     case 0: {
     computeBiome(chunkX, chunkZ);
-    mPhaseBiome = (int)classifyBiome(mTemp[8 * 16 + 8], mDownfall[8 * 16 + 8]);
+    mPhaseBiome = (int)classifyBiomeSpatial(worldSeed, xo + 8, zo + 8);
 
     random.setSeed(worldSeed);
     int xScale = random.nextInt() / 2 * 2 + 1;

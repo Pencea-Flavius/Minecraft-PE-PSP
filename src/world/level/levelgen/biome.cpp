@@ -1,23 +1,77 @@
 #include "world/level/levelgen/biome.h"
 #include "world/level/levelgen/mcpegen_internal.h"
+#include "world/level/levelgen/Random.h"
+#include "world/level/levelgen/PerlinNoise.h"
 #include "world/level/world.h"
 
-BiomeId classifyBiome(float temperature, float downfall) {
-    float t = (int)(temperature * 63) / 63.0f;
-    float d = (int)(downfall * 63) / 63.0f;
-    d *= t;
-    if (t < 0.10f) return B_TUNDRA;
-    if (d < 0.20f) {
-        if (t < 0.50f) return B_TUNDRA;
-        else if (t < 0.95f) return B_SAVANNA;
-        else return B_DESERT;
+// Biome placement: each biome gets exactly one seed point, placed once per
+// world (deterministic from the world seed) on a jittered grid so seeds are
+// well spread out without needing rejection sampling. A column's biome is
+// simply whichever seed is nearest, giving compact, non-repeating regions
+// instead of the old noise-based classifier's scattered patches. Distance is
+// perturbed by a low-frequency Perlin field so region borders wiggle
+// naturally instead of forming razor-straight Voronoi edges.
+
+static const int N_BIOMES = 11;
+static const BiomeId kBiomeOrder[N_BIOMES] = {
+    B_TUNDRA, B_SAVANNA, B_DESERT, B_SWAMP, B_TAIGA, B_SHRUB,
+    B_FOREST, B_PLAINS, B_SEASONAL, B_RAIN, B_JUNGLE
+};
+
+static bool  s_seedsReady = false;
+static long  s_seedsForWorldSeed = 0;
+static float s_seedX[N_BIOMES];
+static float s_seedZ[N_BIOMES];
+static PerlinNoise* s_borderNoise = 0;
+
+static void ensureBiomeSeeds(long worldSeed) {
+    if (s_seedsReady && s_seedsForWorldSeed == worldSeed) return;
+
+    Random seedRandom(worldSeed ^ 0x610E5EEDL);
+
+    const int cols = 4, rows = 3; // 12 grid cells, 11 used
+    float worldSpanX = (float)(WORLD_SIZE_CHUNKS * CHUNK_SX);
+    float worldSpanZ = (float)(WORLD_SIZE_CHUNKS * CHUNK_SZ);
+    float cellW = worldSpanX / cols;
+    float cellD = worldSpanZ / rows;
+
+    for (int i = 0; i < N_BIOMES; i++) {
+        int gx = i % cols, gz = i / cols;
+        float centerX = gx * cellW + cellW * 0.5f;
+        float centerZ = gz * cellD + cellD * 0.5f;
+        // Jitter within the cell, keeping a margin so seeds don't land right
+        // on a cell edge (which would crowd two regions' borders together).
+        float jitterX = (seedRandom.nextFloat() - 0.5f) * cellW * 0.5f;
+        float jitterZ = (seedRandom.nextFloat() - 0.5f) * cellD * 0.5f;
+        s_seedX[i] = centerX + jitterX;
+        s_seedZ[i] = centerZ + jitterZ;
     }
-    if (d > 0.5f && t < 0.7f) return B_SWAMP;
-    if (t < 0.50f) return B_TAIGA;
-    if (t < 0.97f) return (d < 0.35f) ? B_SHRUB : B_FOREST;
-    if (d < 0.45f) return B_PLAINS;
-    else if (d < 0.65f) return B_SEASONAL;
-    else return (t > 0.75f) ? B_JUNGLE : B_RAIN;
+
+    delete s_borderNoise;
+    s_borderNoise = new PerlinNoise(&seedRandom, 2);
+
+    s_seedsForWorldSeed = worldSeed;
+    s_seedsReady = true;
+}
+
+BiomeId classifyBiomeSpatial(long worldSeed, int worldX, int worldZ) {
+    ensureBiomeSeeds(worldSeed);
+
+    float bx = (float)worldX, bz = (float)worldZ;
+    int best = 0;
+    float bestD2 = 1e18f;
+    for (int i = 0; i < N_BIOMES; i++) {
+        float dx = bx - s_seedX[i], dz = bz - s_seedZ[i];
+        float d2 = dx * dx + dz * dz;
+
+        // Perturb each seed's effective distance a little so the boundary
+        // between two regions wiggles instead of being a straight line.
+        float wobble = s_borderNoise->getValue(worldX * 0.01f, worldZ * 0.01f + i * 37.0f);
+        d2 += wobble * 900.0f;
+
+        if (d2 < bestD2) { bestD2 = d2; best = i; }
+    }
+    return kBiomeOrder[best];
 }
 
 void biomeSurface(BiomeId b, unsigned char* top, unsigned char* material) {

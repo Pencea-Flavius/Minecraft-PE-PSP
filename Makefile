@@ -187,7 +187,7 @@ INCDIR = src
 # offsets). -MP adds a dummy rule per header so a DELETED header doesn't wedge
 # make with "no rule to make target".
 CFLAGS = -O2 -G0 -Wall -MMD -MP
-CXXFLAGS = $(CFLAGS) -fno-exceptions -fno-rtti
+CXXFLAGS = $(CFLAGS) -fno-exceptions -fno-rtti -DWORLD_SIZE_CHUNKS=32
 ASFLAGS = $(CFLAGS)
 
 LIBDIR =
