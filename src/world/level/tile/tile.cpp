@@ -297,7 +297,10 @@ void Tile::getTexture(unsigned char data, int f, int* col, int* row, unsigned in
 
         case BLOCK_TALLGRASS:
             switch (data & 3) {
-                case TG_FERN:       *col = 8; *row = 3; *tint = 0xFF339933u; break;
+                case TG_FERN:
+                    if (data & 8) { *col = 5; *row = 11; } else { *col = 4; *row = 11; }
+                    *tint = 0xFF339933u;
+                    break;
                 case TG_TALL_GRASS: *col = 7; *row = 2; *tint = 0xFF339933u; break;
                 default:            *col = 7; *row = 3; break;
             }

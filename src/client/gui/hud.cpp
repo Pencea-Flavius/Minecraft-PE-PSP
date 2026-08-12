@@ -117,8 +117,8 @@ static short guiBlockIcon(short id) {
         case BLOCK_FENCE_GATE: return 74;
         case BLOCK_BED: return 132;
         case BLOCK_WOOD_SLAB_DOUBLE: return 30;
-        case BLOCK_BAMBOO: return 144;
-        case BLOCK_VINE: return 145;
+        case BLOCK_BAMBOO: return 272;
+        case BLOCK_VINE: return 273;
         default: return -1;
     }
 }
@@ -127,7 +127,7 @@ static inline int logGuiIcon(unsigned char data) {
     switch (data & LOG_TYPE_MASK) {
         case LOG_SPRUCE: return 17;
         case LOG_BIRCH:  return 18;
-        case LOG_JUNGLE: return 142;
+        case LOG_JUNGLE: return 270;
         default:         return 16;
     }
 }
@@ -170,7 +170,7 @@ static inline int leafGuiIcon(unsigned char data) {
     switch (data & LEAF_TYPE_MASK) {
         case LEAF_SPRUCE: return 84;
         case LEAF_BIRCH:  return 85;
-        case LEAF_JUNGLE: return 143;
+        case LEAF_JUNGLE: return 271;
         default:          return 83;
     }
 }
