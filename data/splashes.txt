@@ -5,33 +5,47 @@
 # to mush -- the final scale is 150 / the string width in font pixels.
 # The one deliberate exception is the self-referential one; it is the joke.
 # The PSP port's own lines are at the end.
+
+# --- v0.7.3 Splashes ---
+100% more yellow text!
+Glowing creepy eyes!
+Redstone free!
+Toilet friendly!
+# Annoying touch buttons!
+Astronomically accurate!
+0xffff-1 chunks!
+Cubism!
 As seen on TV!
 Awesome!
 100% pure!
 May contain nuts!
-More polygons!
-Moderately attractive!
+Better than Prey!
+Less polygons!
+Sexy!
 Limited edition!
 Flashing letters!
+Made by Mojang!
 It's here!
 Best in class!
-It's finished!
-Kind of dragon free!
+It's alpha!
+100% dragon free!
 Excitement!
 More than 500 sold!
 One of a kind!
+Heaps of hits on YouTube!
 Indev!
 Spiders everywhere!
 Check it out!
 Holy cow, man!
 It's a game!
 Made in Sweden!
-Uses LWJGL!
+Uses C++!
 Reticulating splines!
 Minecraft!
 Yaaay!
-Singleplayer!
-Keyboard compatible!
+# Multiplayer!
+# Touch compatible!
+# Undocumented!
 Ingots!
 Exploding creepers!
 That's no moon!
@@ -41,7 +55,8 @@ Survive!
 Dungeon!
 Exclusive!
 The bee's knees!
-Closed source!
+Down with O.P.P.!
+# Closed source!
 Classy!
 Wow!
 Not on steam!
@@ -50,15 +65,16 @@ Awesome community!
 Pixels!
 Teetsuuuuoooo!
 Kaaneeeedaaaa!
-Now with difficulty!
 Enhanced!
 90% bug free!
+Mostly harmless!
 Pretty!
 12 herbs and spices!
 Fat free!
 Absolutely no memes!
 Free dental!
 Ask your doctor!
+Minors welcome!
 Cloud computing!
 Legal in Finland!
 Hard to label!
@@ -70,14 +86,17 @@ Euclidian!
 Now in 3D!
 Inspirational!
 Herregud!
+Complex cellular automata!
 Yes, sir!
 Played by cowboys!
+OpenGL ES 1.1!
 Thousands of colors!
 Try it!
 Age of Wonders is better!
 Try the mushroom stew!
 Sensational!
 Hot tamale, hot hot tamale!
+Play him off, keyboard cat!
 Guaranteed!
 Macroscopic!
 Bring it on!
@@ -87,13 +106,14 @@ Monster infighting!
 Loved by millions!
 Ultimate edition!
 Freaky!
+You've got a brand new key!
 Water proof!
 Uninflammable!
 Whoa, dude!
 All inclusive!
 Tell your friends!
 NP is not in P!
-Music by C418!
+Notch <3 ez!
 Livestreamed!
 Haunted!
 Polynomial!
@@ -101,7 +121,7 @@ Terrestrial!
 All is full of love!
 Full of stars!
 Scientific!
-Not as cool as Spock!
+Cooler than Spock!
 Collaborate and listen!
 Never dig down!
 Take frequent breaks!
@@ -115,19 +135,22 @@ sqrt(-1) love you!
 Phobos anomaly!
 Punching wood!
 Falling off cliffs!
-1% sugar!
+0% sugar!
 150% hyperbole!
 Synecdoche!
 Let's danec!
 Seecret Friday update!
-Reference implementation!
+Ported implementation!
+Lewd with two dudes with food!
 Kiss the sky!
 20 GOTO 10!
-Verlet integration!
+Verlet intregration!
 Peter Griffin!
 Do not distribute!
 Cogito ergo sum!
+4815162342 lines of code!
 A skeleton popped out!
+The Work of Notch!
 The sum of its parts!
 BTAF used to be good!
 I miss ADOM!
@@ -145,9 +168,11 @@ Rita is the new top dog!
 SWM forever!
 Representing Edsbyn!
 Matt Damon!
+Supercalifragilisticexpialidocious!
 Consummate V's!
 Cow Tools!
 Double buffered!
+V-synched!
 Fan fiction!
 Flaxkikare!
 Jason! Jason! Jason!
@@ -161,42 +186,50 @@ Kick it root down!
 Regional resources!
 Woo, facepunch!
 Woo, somethingawful!
+Woo, /v/!
 Woo, tigsource!
+Woo, minecraftforum!
 Woo, worldofminecraft!
 Woo, reddit!
 Woo, 2pp!
 Google anlyticsed!
+# Now supports åäö!
 Give us Gordon!
 Tip your waiter!
 Very fun!
 12345 is a bad password!
 Vote for net neutrality!
-MAP11 has two names!
+Lives in a pineapple under the sea!
 Omnipotent!
 Gasp!
 ...!
 Bees, bees, bees, bees!
-This splash is too small to read on a PSP, but in an emulator it's fine!
+# Jag känner en bot!
 Haha, LOL!
 Hampsterdance!
+Switches and ores!
 Menger sponge!
 idspispopd!
 Eple (original edit)!
 So fresh, so clean!
-Slow acting portals!
-Try the Nether!
+Don't look directly at the bugs!
 Oh, ok, Pigmen!
-Finally with ladders!
 Scary!
+Play Minecraft, Watch Topgear, Get Pig!
 Twittered about!
+Jump up, jump up, and get down!
 Joel is neat!
+A riddle, wrapped in a mystery!
+Huge tracts of land!
 Welcome to your Doom!
+Stay a while, stay forever!
 Stay a while and listen!
 Treatment for your rash!
 "Autological" is!
+Information wants to be free!
+"Almost never" is an interesting concept!
 Lots of truthiness!
 The creeper is a spy!
-Turing complete!
 It's groundbreaking!
 Let our battle's begin!
 The sky is the limit!
@@ -207,8 +240,8 @@ Kinda like Lemmings!
 Follow the train, CJ!
 Leveraging synergy!
 DungeonQuest is unfair!
+110813!
 90210!
-Check out the far lands!
 Tyrion would love it!
 Also try VVVVVV!
 Also try Super Meat Boy!
@@ -217,143 +250,72 @@ Also try Mount And Blade!
 Also try Project Zomboid!
 Also try World of Goo!
 Also try Limbo!
+Also try Pixeljunk Shooter!
 Also try Braid!
 That's super!
 Bread is pain!
 Read more books!
 Khaaaaaaaaan!
+Less addictive than TV Tropes!
+More addictive than lemonade!
 Bigger than a bread box!
 Millions of peaches!
 Fnord!
 This is my true form!
+Totally forgot about Dre!
+Don't bother with the clones!
 Pumpkinhead!
-Made by Jeb!
-Has an ending!
-Finally complete!
+Hobo humping slobo babe!
+Endless!
 Feature packed!
 Boots with the fur!
 Stop, hammertime!
-Testificates!
 Conventional!
+Homeomorphic to a 3-sphere!
+Doesn't avoid double negatives!
 Place ALL the blocks!
 Does barrel rolls!
 Meeting expectations!
 PC gaming since 1873!
+Ghoughpteighbteau tchoghs!
+# Déjà vu!
 Got your nose!
 Haley loves Elan!
+Afraid of the big, black bat!
 Doesn't use the U-word!
 Child's play!
+See you next Friday or so!
+From the streets of Södermalm!
+150 bpm for 400000 minutes!
 Technologic!
 Funk soul brother!
-Pumpakungen!
+Pumpa kungen!
 Helo Cymru!
 My life for Aiur!
+Lennart lennart = new Lennart();
+I see your vocabulary has improved!
 Who put it there?
 You can't explain that!
 if not ok then return end
+# §kFUNKY LOL
+SOPA means LOSER in Swedish!
 Big Pointy Teeth!
+Bekarton guards the gate!
 Mmmph, mmph!
+Don't feed avocados to parrots!
 Swords for everyone!
-Plz reply to my tweet!
+# Plz reply to my tweet!
 .party()!
 Take her pillow!
 Put that cookie down!
 Pretty scary!
 I have a suggestion.
 Now with extra hugs!
-Java 16 + 1 + 4 = 21!
+Almost C++11!
 Woah.
 HURNERJSGER?
 What's up, Doc?
-That's Numberwang!
-pls rt
-Throw a blanket over it!
-Now with additional stuff!
-Extra things!
-Now With Multiplayer!
-Rise from your grave!
-Run, coward! I hunger!
-Flavor with no seasoning!
-It swings, it jives!
-Cruising streets for gold!
-/give @a hugs 64
-This is good for Realms.
-Do it all, everything!
-GNU Terry Pratchett
-More Digital!
-doot doot
-Falling with style!
-Boats FTW
-Javalicious edition
-You're going too fast!
-Thank you for the fish!
-All rumors are true!
-Truly gone fishing!
-Rainbow turtle?
-Something funny!
-I need more context.
-Ahhhhhh!
-Don't worry, be happy!
-Water bottle!
-What's the question?
-Plant a tree!
-Go to the dentist!
-What do you expect?
-Look mum, I'm in a splash!
-It came from space.
-Ph1lza had a good run!
-Ping the human!
-Buzzy Bees!
-Wash your hands!
-Soap and water!
-Support local businesses!
-Stay safe!
-Stay strong!
-Don't touch your face!
-Prepare, but don't hoard!
-Shop for your elders!
-Honey, I grew the bees!
-Find your claw!
-Everybody do the Leif!
-<3 Max & 99 & Ducky!
-Bushy eyebrows!
-Edit is a name!
-Music by Lena Raine!
-Aww man!
-And my pickaxe!
-Envision! Create! Share!
-Fabulous graphics!
-Vanilla!
-Zoglin!?
-Black lives matter!
-Be anti-racist!
-Learn about allyship!
-Contains simulated goats!
-Home-made!
-Get to the coppah!
-Made by "real" people!
-Who let the frogs out?
-RIBBIT!
-Croak team!
-Nooooooooooooo!
-Hat Fridays!
-Technoblade never dies!
-You are valid!
-I'm glad you're here!
-You are welcome here!
-Your gender is valid!
-Contains infinite genders!
-Made with lave!
-This sand is sus
-Has working bookshelves!
-Sniff sniff...
-Place hanging sign here
-Joule is neat too!
-Music by Aaron Cherof!
-Music by Kumi Tanioka!
-Music by Amos Roddy!
-Flint and Steel!
-Chicken Jockey!
+!!!1!
 
 # --- PSP port ---
 333 MHz of raw power!
@@ -363,7 +325,34 @@ No UMD required!
 Mind the analog nub!
 Also try LameCraft!
 Also try CrossCraft!
+Also try Angry Birds!
+Also try Age of Zombies!
+Also try Blast Off!
 Unsigned by Sony!
 Charge your battery!
+Warrenty voided!
 Homebrew!
 Graphics Engine powered!
+No Annoying touch buttons!
+Made with love!
+Made with self hatred!
+Made with free labour!
+From Romania with Love!
+Plz reply to my X!
+PIC0.PNG!
+PIC1.PNG!
+ICON0.PNG!
+No support for special charachters!
+He's got RAM, get him!
+Dualshock 3 support!
+Sixaxis support!
+Multiple control schemes!
+Now with music!
+Music by C418!
+Touch incompatible!
+Singleplayer!
+Documented!
+Not on the PS store!
+Open source!
+Deja vu!
+Jag kanner en bot!
