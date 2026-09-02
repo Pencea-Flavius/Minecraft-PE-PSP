@@ -21,7 +21,8 @@ struct OptionRowDef {
 
     const char* group;
     const char* label;
-    const char* values[4];
+
+    const char* values[5];
     int numValues;
     int def;
     bool percent;
@@ -41,7 +42,7 @@ static const OptionRowDef g_optionRows[OPT_CATEGORIES][OPT_MAX_ROWS] = {
 
         { 0,      "Third Person", {"Off", "Behind", "In Front", 0}, 3, 0 },
 
-        { 0,      "Autosave",     {"Off", "15 min", "20 min", "30 min"}, 4, 1 },
+        { 0,      "Auto Save",    {"Off", "5 min", "15 min", "20 min", "30 min"}, 5, 2 },
         { "Interface", "Bar On Top", {"Off", "On", 0, 0}, 2, 0 },
         { 0,           "Show FPS",   {"Off", "On", 0, 0}, 2, 0 },
 
@@ -175,7 +176,7 @@ static int renderDistChoices() { return g_lowMemPsp ? 2 : 4; }
 #define CAT_AUDIO       3
 #define ROW_SOUNDVOL    0
 #define ROW_CATVOL0     1
-static const int kAutosaveTicks[4] = { 0, 18000, 24000, 36000 };
+static const int kAutosaveTicks[5] = { 0, 6000, 18000, 24000, 36000 };
 
 static const struct { const char* label; int* value; int def; } kPageSettings[] = {
     { "Invert Look", &g_invertY,  0 },
@@ -216,7 +217,7 @@ static void optionsApply() {
     g_showCoords  = g_optionValueIdx[CAT_GAME][ROW_SHOWCOORDS];
     g_barOnTop    = g_optionValueIdx[CAT_GAME][ROW_BARONTOP];
     int ai = g_optionValueIdx[CAT_GAME][ROW_AUTOSAVE];
-    if (ai < 0) ai = 0; else if (ai > 3) ai = 3;
+    if (ai < 0) ai = 0; else if (ai > 4) ai = 4;
     g_autosave    = kAutosaveTicks[ai];
     g_blockOutline = g_optionValueIdx[CAT_GAME][ROW_BLOCKOUTLINE];
     g_autoJump     = g_optionValueIdx[CAT_CONTROLS][ROW_AUTOJUMP];
@@ -322,6 +323,11 @@ void optionsLoad() {
             *eq = '\0';
             int val = atoi(eq + 1);
             if (strcmp(line, "Sound Volume") == 0) strcpy(line, "Master");
+
+            if (strcmp(line, "Autosave") == 0) {
+                strcpy(line, "Auto Save");
+                if (val > 0) val++;
+            }
 
             {
                 bool claimed = false;
@@ -583,13 +589,16 @@ void OptionsScreen::renderContent(MenuState& s) {
 
             char valBuf[16];
             const char* valTxt = 0;
+
+            const int nCap   = (int)(sizeof(row.values) / sizeof(row.values[0]));
+            const int nShown = (nVals < nCap) ? nVals : nCap;
             if (row.button) {
-                valTxt = (valIdx >= 0 && valIdx < 4) ? row.values[valIdx] : 0;
+                valTxt = (valIdx >= 0 && valIdx < nShown) ? row.values[valIdx] : 0;
             } else if (!isBool) {
                 if (row.percent) {
                     snprintf(valBuf, sizeof(valBuf), "%d%%", row.percentMin + valIdx * row.percentStep);
                     valTxt = valBuf;
-                } else if (valIdx >= 0 && valIdx < 4) {
+                } else if (valIdx >= 0 && valIdx < nShown) {
                     valTxt = row.values[valIdx];
                 }
             }

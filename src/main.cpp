@@ -22,6 +22,7 @@
 #include "world/level/world.h"
 #include "world/level/chunk/chunk.h"
 #include "world/level/chunk/chunk_cache.h"
+#include "world/level/storage/chunk_storage.h"
 #include "world/level/tile/tile.h"
 #include "client/gui/screens/menu.h"
 #include "client/gui/screens/control_scheme.h"
@@ -72,6 +73,14 @@ static void detectLowMemPsp(void) {
 }
 
 static volatile int g_exitRequested = 0;
+
+static volatile int g_powerResumed = 0;
+
+static int powerCallback(int , int pwrflags, void* ) {
+    if (pwrflags & PSP_POWER_CB_RESUME_COMPLETE)
+        g_powerResumed = 1;
+    return 0;
+}
 
 static float drawFaultCounters(MenuState& s, float ty) {
     extern unsigned int g_listPeakBytes, g_listOverruns;
@@ -219,6 +228,10 @@ static int exitCallback(int , int , void* ) {
 static int callbackThread(SceSize , void* ) {
     int cbid = sceKernelCreateCallback("Exit Callback", exitCallback, 0);
     sceKernelRegisterExitCallback(cbid);
+
+    int pcb = sceKernelCreateCallback("Power Callback", powerCallback, 0);
+
+    if (pcb >= 0) scePowerRegisterCallback(-1, pcb);
     sceKernelSleepThreadCB();
     return 0;
 }
@@ -407,6 +420,24 @@ int main(int argc, char* argv[]) {
     int fpsFrames = 0;
 
     while (!g_exitRequested) {
+
+        if (g_powerResumed) {
+            g_powerResumed = 0;
+
+            guResumeFromSleep();
+            chunkStorageDropOpenFiles();
+
+            extern bool g_worldBuilt;
+            if (g_worldBuilt) {
+                extern int g_autosaveTick;
+                g_saveRequested = true;
+                g_autosaveTick  = 0;
+            }
+
+            soundPowerResume();
+            scePowerTick(0);
+        }
+
         float now = nowSeconds();
 
         if (now - fpsLastTime >= 1.0f) {

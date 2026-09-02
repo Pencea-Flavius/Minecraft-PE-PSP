@@ -7,6 +7,8 @@ struct World;
 void chunkStorageInit(const char* absDir);
 void chunkStorageShutdown();
 
+void chunkStorageDropOpenFiles();
+
 bool chunkStorageHasSave(const char* absDir);
 
 bool chunkStorageLoad(World* w, int cx, int cz, bool* outGotLight, bool* outPopulated = 0);

@@ -29,6 +29,8 @@ void soundMusicUpdate(void);
 
 void soundMusicStop(void);
 
+void soundPowerResume(void);
+
 const char* soundMusicCurrentTrack(void);
 
 void soundSetCategoryVolume(int cat, float volume);

@@ -72,6 +72,8 @@ void guPresent(void);
 
 void guSuspendForDialog(void);
 void guResumeFromDialog(void);
+
+void guResumeFromSleep(void);
 void guDialogBegin(unsigned int clearColor);
 void guDialogEnd(void);
 void guDialogPresent(void);

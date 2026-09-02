@@ -568,6 +568,32 @@ void guResumeFromDialog(void) {
 
 }
 
+void guResumeFromSleep(void) {
+    sceGuSync(0, 0);
+    sceGuDisplay(GU_TRUE);
+
+    sceGuStart(GU_DIRECT, g_callListUncached);
+    guApplyPersistentState();
+    const int callRet = sceGuFinish();
+    if (!guListSizeIsSane(callRet, GU_CALL_LIST_WORDS * 4u)) {
+        if (!g_listBadFinish) {
+            g_listBadFinishSite = GUF_RESUME;
+            g_listBadFinishRet  = callRet;
+        }
+        g_listBadFinish++;
+    }
+    sceGuSync(0, 0);
+
+    const int shown = (s_postedIdx >= 0 && s_postedIdx < GU_FB_COUNT) ? s_postedIdx : 1;
+    sceDisplaySetFrameBuf(guFbAddr(shown), GU_BUF_WIDTH,
+                          PSP_DISPLAY_PIXEL_FORMAT_565, PSP_DISPLAY_SETBUF_NEXTFRAME);
+    s_postedIdx     = shown;
+    s_prevPostedIdx = -1;
+    g_drawIdx       = guFreeBuffer();
+
+    guGlobalsCheck(GU_PHASE_FRAME_START);
+}
+
 void guDialogBegin(unsigned int clearColor) {
     guCheckLiveBuffer();
     g_listIdx ^= 1;

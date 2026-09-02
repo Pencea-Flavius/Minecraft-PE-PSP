@@ -148,6 +148,16 @@ void chunkStorageShutdown() {
     free(s_payload); s_payload = 0;
 }
 
+void chunkStorageDropOpenFiles() {
+    StorageGuard guard;
+    for (int i = 0; i < REGION_CACHE; i++) {
+        if (s_cache[i].valid) delete s_cache[i].rf;
+        s_cache[i].rf = 0; s_cache[i].valid = false;
+    }
+    s_next = 0;
+
+}
+
 bool chunkStorageHasSave(const char* absDir) {
 
     char path[320];

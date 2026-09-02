@@ -705,6 +705,10 @@ void soundMusicStop(void) {
     musicUnlock();
 }
 
+void soundPowerResume(void) {
+    soundMusicStop();
+}
+
 void soundMusicUpdate(void) {
     if (!g_musCount || g_channel < 0) return;
     if (g_catVol[SND_CAT_MUSIC] <= 0.0f) return;
