@@ -32,15 +32,14 @@ inline void mobFaceNormal(int face, float* n) {
 #error "MOB_LIGHTING must be defined"
 #endif
 
-inline unsigned int mobFaceLitColor(const float* m, int face, unsigned int brCol) {
+inline unsigned int mobDirLitColor(const float* m, const float* n, unsigned int brCol) {
 #if !MOB_LIGHTING
-    (void)m; (void)face; return brCol;
+    (void)m; (void)n; return brCol;
 #else
     static const float LDIR[2][3] = {
         {  0.161690f, 0.808452f, -0.565916f },
         { -0.161690f, 0.808452f,  0.565916f },
     };
-    float n[3]; mobFaceNormal(face, n);
 
     float wx = m[0] * n[0] + m[4] * n[1] + m[8]  * n[2];
     float wy = m[1] * n[0] + m[5] * n[1] + m[9]  * n[2];
@@ -65,6 +64,15 @@ inline unsigned int mobFaceLitColor(const float* m, int face, unsigned int brCol
     if (g > 255) g = 255;
     if (b > 255) b = 255;
     return (brCol & 0xFF000000u) | (b << 16) | (g << 8) | r;
+#endif
+}
+
+inline unsigned int mobFaceLitColor(const float* m, int face, unsigned int brCol) {
+#if !MOB_LIGHTING
+    (void)m; (void)face; return brCol;
+#else
+    float n[3]; mobFaceNormal(face, n);
+    return mobDirLitColor(m, n, brCol);
 #endif
 }
 

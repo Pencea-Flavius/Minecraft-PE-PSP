@@ -30,19 +30,19 @@ const Texture* chestModelTexture() {
     return s_singleOk ? &s_single : 0;
 }
 
-static SkinVertex s_lid[36], s_lock[36], s_body[36];
+static MobVertex s_lid[36], s_lock[36], s_body[36];
 
 static const float S = 1.0f / 16.0f;
 
-static void drawPart(const SkinVertex* mesh, float px, float py, float pz, float xRot) {
+static void drawPart(const MobVertex* mesh, float px, float py, float pz, float xRot,
+                     unsigned int col) {
     sceGumPushMatrix();
     ScePspFVector3 to = { px, py, pz };
     sceGumTranslate(&to);
     if (xRot != 0.0f) sceGumRotateX(xRot);
-    void* v = guFrameCopy((void*)mesh, 36 * sizeof(SkinVertex));
-    if (v) sceGumDrawArray(GU_TRIANGLES,
-                    GU_TEXTURE_32BITF | GU_COLOR_8888 | GU_VERTEX_32BITF | GU_TRANSFORM_3D,
-                    36, 0, v);
+    void* v = guFrameCopy((void*)mesh, 36 * sizeof(MobVertex));
+
+    if (v) mobDrawPartLit((const MobVertex*)v, col);
     sceGumPopMatrix();
 }
 
@@ -72,23 +72,16 @@ void renderChestTile(ChestTileEntity* chest, float a) {
     if (dbl && !chest->isMaster()) return;
     if (dbl && !s_doubleOk) return;
 
-    int raw = chest->level ? chest->level->getRawBrightness(chest->x, chest->y, chest->z) : 15;
-    if (raw < 0) raw = 0;
-    if (raw > 15) raw = 15;
-    const unsigned int col = g_brightColor[raw];
+    const unsigned int col = tileEntityLightColor(chest->level, chest->x, chest->y, chest->z);
 
     const float W  = dbl ? 30.0f : 14.0f;
     const int   Wi = dbl ? 30    : 14;
     const float xo = dbl ? -7.0f : 1.0f;
     const float tw = dbl ? 128.0f : 64.0f, th = 64.0f;
 
-    MobVertex box[36];
-    mobBuildBox(box,  0*S, -5*S, -14*S,  W*S,  0*S,   0*S, 0,  0, Wi,  5, 14, false, 0.0f, tw, th);
-    mobBoxToColoured(s_lid, box, 36, col);
-    mobBuildBox(box, -1*S, -2*S, -15*S,  1*S,  2*S, -14*S, 0,  0,  2,  4,  1, false, 0.0f, tw, th);
-    mobBoxToColoured(s_lock, box, 36, col);
-    mobBuildBox(box,  0*S,  0*S,   0*S,  W*S, 10*S,  14*S, 0, 19, Wi, 10, 14, false, 0.0f, tw, th);
-    mobBoxToColoured(s_body, box, 36, col);
+    mobBuildBox(s_lid,   0*S, -5*S, -14*S,  W*S,  0*S,   0*S, 0,  0, Wi,  5, 14, false, 0.0f, tw, th);
+    mobBuildBox(s_lock, -1*S, -2*S, -15*S,  1*S,  2*S, -14*S, 0,  0,  2,  4,  1, false, 0.0f, tw, th);
+    mobBuildBox(s_body,  0*S,  0*S,   0*S,  W*S, 10*S,  14*S, 0, 19, Wi, 10, 14, false, 0.0f, tw, th);
 
     float open = chest->oOpenness + (chest->openness - chest->oOpenness) * a;
     float t = 1.0f - open;
@@ -124,9 +117,11 @@ void renderChestTile(ChestTileEntity* chest, float a) {
     sceGuDisable(GU_CULL_FACE);
     textureBind(dbl ? &s_double : &s_single);
 
-    drawPart(s_body, xo*S, 6*S,  1*S, 0.0f);
-    drawPart(s_lid,  xo*S, 7*S, 15*S, xRot);
-    drawPart(s_lock,  8*S, 7*S, 15*S, xRot);
+    drawPart(s_body, xo*S, 6*S,  1*S, 0.0f, col);
+    drawPart(s_lid,  xo*S, 7*S, 15*S, xRot, col);
+    drawPart(s_lock,  8*S, 7*S, 15*S, xRot, col);
+
+    sceGuColor(0xFFFFFFFFu);
 
     sceGuEnable(GU_CULL_FACE);
     sceGumPopMatrix();

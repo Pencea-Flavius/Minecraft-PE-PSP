@@ -1,5 +1,6 @@
 
 #include "client/renderer/tileentity/tile_entity_renderer.h"
+#include "client/renderer/entity/mob_model.h"
 #include "world/level/level.h"
 #include "world/entity/local_player.h"
 #include "world/level/level.h"
@@ -58,7 +59,7 @@ static inline int quad(PVert* m, int n, unsigned int col,
     return n;
 }
 
-static int box(PVert* m, int n, unsigned int col,
+static int box(PVert* m, int n, const unsigned int* col6,
                float x, float y, float z, float w, float h, float d,
                float tu, float tv) {
     const float TW = 64.0f, TH = 32.0f;
@@ -66,17 +67,17 @@ static int box(PVert* m, int n, unsigned int col,
     #define U(a) ((tu+(a))/TW)
     #define V(a) ((tv+(a))/TH)
 
-    n = quad(m,n,col, x0,y0,z0,U(d),V(d+h),  x1,y0,z0,U(d+w),V(d+h),  x1,y1,z0,U(d+w),V(d),  x0,y1,z0,U(d),V(d));
+    n = quad(m,n,col6[0], x0,y0,z0,U(d),V(d+h),  x1,y0,z0,U(d+w),V(d+h),  x1,y1,z0,U(d+w),V(d),  x0,y1,z0,U(d),V(d));
 
-    n = quad(m,n,col, x1,y0,z1,U(d+w+d),V(d+h), x0,y0,z1,U(d+w+d+w),V(d+h), x0,y1,z1,U(d+w+d+w),V(d), x1,y1,z1,U(d+w+d),V(d));
+    n = quad(m,n,col6[1], x1,y0,z1,U(d+w+d),V(d+h), x0,y0,z1,U(d+w+d+w),V(d+h), x0,y1,z1,U(d+w+d+w),V(d), x1,y1,z1,U(d+w+d),V(d));
 
-    n = quad(m,n,col, x0,y0,z1,U(0),V(d+h), x0,y0,z0,U(d),V(d+h), x0,y1,z0,U(d),V(d), x0,y1,z1,U(0),V(d));
+    n = quad(m,n,col6[2], x0,y0,z1,U(0),V(d+h), x0,y0,z0,U(d),V(d+h), x0,y1,z0,U(d),V(d), x0,y1,z1,U(0),V(d));
 
-    n = quad(m,n,col, x1,y0,z0,U(d+w),V(d+h), x1,y0,z1,U(d+w+d),V(d+h), x1,y1,z1,U(d+w+d),V(d), x1,y1,z0,U(d+w),V(d));
+    n = quad(m,n,col6[3], x1,y0,z0,U(d+w),V(d+h), x1,y0,z1,U(d+w+d),V(d+h), x1,y1,z1,U(d+w+d),V(d), x1,y1,z0,U(d+w),V(d));
 
-    n = quad(m,n,col, x0,y0,z1,U(d),V(d), x1,y0,z1,U(d+w),V(d), x1,y0,z0,U(d+w),V(0), x0,y0,z0,U(d),V(0));
+    n = quad(m,n,col6[4], x0,y0,z1,U(d),V(d), x1,y0,z1,U(d+w),V(d), x1,y0,z0,U(d+w),V(0), x0,y0,z0,U(d),V(0));
 
-    n = quad(m,n,col, x0,y1,z0,U(d+w),V(d), x1,y1,z0,U(d+w+w),V(d), x1,y1,z1,U(d+w+w),V(0), x0,y1,z1,U(d+w),V(0));
+    n = quad(m,n,col6[5], x0,y1,z0,U(d+w),V(d), x1,y1,z0,U(d+w+w),V(d), x1,y1,z1,U(d+w+w),V(0), x0,y1,z1,U(d+w),V(0));
     #undef U
     #undef V
     return n;
@@ -86,6 +87,17 @@ static PVert s_model[144];
 
 static PVert s_text[512];
 
+unsigned int tileEntityLightColor(Level* level, int x, int y, int z) {
+    int raw = level ? level->getRawBrightness(x, y, z) : 15;
+    if (raw < 0)  raw = 0;
+    if (raw > 15) raw = 15;
+    float b = g_brightRamp[raw];
+    if (b > 1.0f) b = 1.0f;
+    else if (b <= 0.4f) b = 0.4f;
+    unsigned int c = (unsigned int)(b * 255.0f + 0.5f);
+    return 0xFF000000u | (c << 16) | (c << 8) | c;
+}
+
 static void renderSign(SignTileEntity* sign, float a) {
     ensureAssets();
     if (!s_signOk) return;
@@ -93,14 +105,9 @@ static void renderSign(SignTileEntity* sign, float a) {
     int data = sign->getData();
     bool standing = (sign->getTile() == BLOCK_SIGN);
 
-    int raw = sign->level ? sign->level->getRawBrightness(sign->x, sign->y, sign->z) : 15;
-    if (raw < 0) raw = 0;
-    if (raw > 15) raw = 15;
-    unsigned int col = g_brightColor[raw];
+    unsigned int col = tileEntityLightColor(sign->level, sign->x, sign->y, sign->z);
 
-    int n = box(s_model, 0, col, -12, -14, -1, 24, 12, 2, 0, 0);
-    if (standing) n = box(s_model, n, col, -1, -2, -1, 2, 14, 2, 0, 14);
-
+    int n = 0;
     const float size = 16.0f / 24.0f;
     float rot;
     if (standing) {
@@ -126,6 +133,16 @@ static void renderSign(SignTileEntity* sign, float a) {
     sceGumScale(&ms);
     sceGuDisable(GU_CULL_FACE);
     textureBind(&s_signTex);
+
+    ScePspFMatrix4 lm;
+    sceGumStoreMatrix(&lm);
+    static const float FN[6][3] = {
+        { 0,0,-1 }, { 0,0,1 }, { -1,0,0 }, { 1,0,0 }, { 0,-1,0 }, { 0,1,0 },
+    };
+    unsigned int col6[6];
+    for (int f = 0; f < 6; f++) col6[f] = mobDirLitColor((const float*)&lm, FN[f], col);
+    n = box(s_model, 0, col6, -12, -14, -1, 24, 12, 2, 0, 0);
+    if (standing) n = box(s_model, n, col6, -1, -2, -1, 2, 14, 2, 0, 14);
 
     void* mv = guFrameCopy(s_model, n * sizeof(PVert));
     if (mv) sceGumDrawArray(GU_TRIANGLES,

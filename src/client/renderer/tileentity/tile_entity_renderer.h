@@ -6,6 +6,8 @@ class Level;
 
 void renderAllTileEntities(Level* level, float a);
 
+unsigned int tileEntityLightColor(Level* level, int x, int y, int z);
+
 class ChestTileEntity;
 
 void renderChestTile(ChestTileEntity* chest, float a);
