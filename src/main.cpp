@@ -89,9 +89,30 @@ static float drawFaultCounters(MenuState& s, float ty) {
         fontDrawTextShadow(&s.font, 10, ty, buf, 0xFF0000FFu, 1.0f);
         ty += 12.0f;
     }
-    extern unsigned int g_listBadFinish;
+
+    extern unsigned int g_listBadFinish, g_listBadFinishSite;
+    extern int g_listBadFinishRet;
     if (g_listBadFinish) {
-        std::snprintf(buf, sizeof(buf), "GE-LIST BAD FINISH %u", g_listBadFinish);
+        static const char* kSite[] = { "?", "FRAME", "DIALOG", "RESUME", "PHOTO" };
+        const unsigned si = (g_listBadFinishSite < 5u) ? g_listBadFinishSite : 0u;
+        std::snprintf(buf, sizeof(buf), "GE-LIST BAD FINISH %u @%s 0x%08X",
+                      g_listBadFinish, kSite[si], (unsigned)g_listBadFinishRet);
+        fontDrawTextShadow(&s.font, 10, ty, buf, 0xFF5050FFu, 1.0f);
+        ty += 12.0f;
+    }
+
+    extern unsigned int g_guStompPhase, g_guStompWhat, g_guStompCount, g_guRepairCount;
+    if (g_guStompPhase) {
+        static const char* kPhase[] = { "?", "START", "TERRAIN", "WATER",
+                                        "ENTITY", "2D", "PHOTO" };
+        const unsigned ph = (g_guStompPhase < 7u) ? g_guStompPhase : 0u;
+        std::snprintf(buf, sizeof(buf), "GU-GLOBALS STOMPED @%s w%u x%u",
+                      kPhase[ph], g_guStompWhat, g_guStompCount);
+        fontDrawTextShadow(&s.font, 10, ty, buf, 0xFF0000FFu, 1.0f);
+        ty += 12.0f;
+    }
+    if (g_guRepairCount) {
+        std::snprintf(buf, sizeof(buf), "GU-GLOBALS REPAIRED %u", g_guRepairCount);
         fontDrawTextShadow(&s.font, 10, ty, buf, 0xFF5050FFu, 1.0f);
         ty += 12.0f;
     }

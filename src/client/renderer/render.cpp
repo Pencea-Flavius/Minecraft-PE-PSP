@@ -1666,6 +1666,7 @@ void gameRender(MenuState& s) {
         playerModelRender(a);
 
     guListSync();
+    guGlobalsCheck(GU_PHASE_ENTITY);
     profEnd(PROF_ENTITY);
 
     if (g_worldBuilt && g_beautifulSkies && g_cloudMode) {
@@ -1708,6 +1709,7 @@ void gameRender(MenuState& s) {
     profBegin(PROF_HUD);
 
     guListSync();
+    guGlobalsCheck(GU_PHASE_2D);
 
     guOrtho();
     sceGuEnable(GU_BLEND);

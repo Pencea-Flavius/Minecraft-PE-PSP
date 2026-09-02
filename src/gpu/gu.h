@@ -15,6 +15,18 @@ void* guFrameAllocPriority(int bytes);
 
 void guListSync(void);
 
+enum {
+    GU_PHASE_FRAME_START = 1,
+    GU_PHASE_TERRAIN,
+    GU_PHASE_WATER,
+    GU_PHASE_ENTITY,
+    GU_PHASE_2D,
+    GU_PHASE_PHOTO
+};
+void guGlobalsCheck(int phase);
+
+enum { GUF_FRAME = 1, GUF_DIALOG, GUF_RESUME, GUF_PHOTO };
+
 void guDeferFree(void* p);
 
 extern int g_dither;

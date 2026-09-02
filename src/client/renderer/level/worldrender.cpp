@@ -328,6 +328,7 @@ void worldDraw(const World* cw, float camX, float camY, float camZ, float viewDi
     }
 
     guListSync();
+    guGlobalsCheck(GU_PHASE_TERRAIN);
 }
 
 struct WaterSec { float d2; const ChunkSection* s; };
@@ -373,4 +374,5 @@ void worldDrawWater(const World* w, float camX, float camY, float camZ, float vi
     }
     if (distMip) textureMipAuto();
     guListSync();
+    guGlobalsCheck(GU_PHASE_WATER);
 }

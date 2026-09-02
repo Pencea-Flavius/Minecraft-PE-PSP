@@ -88,10 +88,54 @@ unsigned int g_frameAllocListFails = 0;
 unsigned int g_listPeakBytes = 0;
 unsigned int g_listOverruns  = 0;
 unsigned int g_listBadFinish = 0;
+unsigned int g_listBadFinishSite = 0;
+int          g_listBadFinishRet  = 0;
 
-static unsigned guFinishBytes(void) {
+extern "C" {
+    extern unsigned int gu_curr_context;
+    extern unsigned int gu_list;
+    extern unsigned int ge_edram_address;
+}
+static unsigned int s_guListSnap  = 0;
+static unsigned int s_geEdramSnap = 0;
+static bool         s_guSnapTaken = false;
+
+unsigned int g_guStompPhase   = 0;
+unsigned int g_guStompWhat    = 0;
+unsigned int g_guStompCount   = 0;
+unsigned int g_guRepairCount  = 0;
+
+void guGlobalsCheck(int phase) {
+    if (!s_guSnapTaken) return;
+    unsigned int what = 0;
+    if (gu_curr_context > 2u)             what |= 1u;
+    if (gu_list         != s_guListSnap)  what |= 2u;
+    if (ge_edram_address != s_geEdramSnap) what |= 4u;
+    if (!what) return;
+    g_guStompCount++;
+    if (!g_guStompPhase) {
+        g_guStompPhase = (unsigned)phase;
+        g_guStompWhat  = what;
+    }
+}
+
+static void guGlobalsRepair(void) {
+    if (!s_guSnapTaken) return;
+    if (gu_curr_context <= 2u && gu_list == s_guListSnap &&
+        ge_edram_address == s_geEdramSnap) return;
+    gu_curr_context  = 0;
+    gu_list          = s_guListSnap;
+    ge_edram_address = s_geEdramSnap;
+    g_guRepairCount++;
+}
+
+static unsigned guFinishBytes(int site) {
     const int ret = sceGuFinish();
     if (!guListSizeIsSane(ret, GU_LIST_BYTES)) {
+        if (!g_listBadFinish) {
+            g_listBadFinishSite = (unsigned)site;
+            g_listBadFinishRet  = ret;
+        }
         g_listBadFinish++;
         return 0;
     }
@@ -335,6 +379,10 @@ void guInit(void) {
     sceGuFinish();
     sceGuSync(0, 0);
 
+    s_guListSnap  = gu_list;
+    s_geEdramSnap = ge_edram_address;
+    s_guSnapTaken = true;
+
     sceDisplayWaitVblankStart();
     sceGuDisplay(GU_TRUE);
 
@@ -396,6 +444,9 @@ bool guStartFrame(unsigned int clearColor) {
 
     if (s_dialogUp) return false;
 
+    guGlobalsCheck(GU_PHASE_FRAME_START);
+    guGlobalsRepair();
+
     guCheckLiveBuffer();
 
     g_listIdx ^= 1;
@@ -430,7 +481,9 @@ void guFinishFrame(void) {
 
     profBegin(PROF_GESYNC);
 
-    unsigned listBytes = guFinishBytes();
+    unsigned listBytes = guFinishBytes(GUF_FRAME);
+
+    if (!listBytes) listBytes = g_listUsed;
     profListBytes(listBytes);
 
     if (listBytes > g_listPeakBytes) g_listPeakBytes = listBytes;
@@ -492,8 +545,16 @@ void guResumeFromDialog(void) {
     guApplyPersistentState();
 
     const int callRet = sceGuFinish();
-    const unsigned used = guListSizeIsSane(callRet, GU_CALL_LIST_WORDS * 4u)
-                        ? (unsigned)callRet : (g_listBadFinish++, 0u);
+    unsigned used = 0;
+    if (guListSizeIsSane(callRet, GU_CALL_LIST_WORDS * 4u)) {
+        used = (unsigned)callRet;
+    } else {
+        if (!g_listBadFinish) {
+            g_listBadFinishSite = GUF_RESUME;
+            g_listBadFinishRet  = callRet;
+        }
+        g_listBadFinish++;
+    }
     sceGuSync(0, 0);
     if (used >= GU_CALL_LIST_WORDS * 4) g_listOverruns++;
 
@@ -524,7 +585,8 @@ void guDialogBegin(unsigned int clearColor) {
 
 void guDialogEnd(void) {
 
-    unsigned listBytes = guFinishBytes();
+    unsigned listBytes = guFinishBytes(GUF_DIALOG);
+    if (!listBytes) listBytes = g_listUsed;
     profListBytes(listBytes);
     if (listBytes > g_listPeakBytes) g_listPeakBytes = listBytes;
     if (listBytes >= GU_LIST_BYTES) g_listOverruns++;
@@ -565,8 +627,11 @@ bool guSavePhotoPng(const char* path, int shrink) {
     sceGuCopyImage(GU_PSM_5650, 0, 0, GU_SCR_WIDTH, GU_SCR_HEIGHT, GU_BUF_WIDTH,
                    (void*)((unsigned int)sceGeEdramGetAddr() + (unsigned int)g_fb[g_drawIdx]),
                    0, 0, GU_BUF_WIDTH, shot);
-    sceGuFinish();
+
+    guFinishBytes(GUF_PHOTO);
     sceGuSync(0, 0);
+    guCheckListCanary();
+    guGlobalsCheck(GU_PHASE_PHOTO);
 
     const unsigned short* shotRd = (const unsigned short*)((unsigned int)shot | 0x40000000u);
 
