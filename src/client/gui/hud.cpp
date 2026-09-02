@@ -786,6 +786,7 @@ const char* getBlockDescription(short id, unsigned char data) {
             case ITEM_BOW: return "Allows for ranged attacks by using arrows.";
             case ITEM_SIGN: return "Shows text entered by you or other players.";
             case ITEM_PAINTING: return "Used as decoration.";
+            case ITEM_CAMERA: return "Place it and use Paper on it to take a picture.";
 
             case ITEM_HELMET_CLOTH: case ITEM_HELMET_CHAIN: case ITEM_HELMET_IRON:
             case ITEM_HELMET_DIAMOND: case ITEM_HELMET_GOLD:
