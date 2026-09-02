@@ -10,4 +10,6 @@ const char* savePath(const char* rel);
 
 void savePathInit(void);
 
+const char* pathDevice(void);
+
 #endif

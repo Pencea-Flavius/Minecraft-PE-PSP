@@ -28,6 +28,16 @@ const char* savePath(const char* rel) {
     return assetPath(rel);
 }
 
+const char* pathDevice(void) {
+    static char dev[16];
+    const char* colon = strchr(g_base, ':');
+    if (!colon || (size_t)(colon - g_base) >= sizeof(dev) - 1) return "ms0:";
+    const size_t n = (size_t)(colon - g_base) + 1;
+    memcpy(dev, g_base, n);
+    dev[n] = '\0';
+    return dev;
+}
+
 void savePathInit(void) {
     sceIoMkdir(savePath("saves"), 0777);
 }

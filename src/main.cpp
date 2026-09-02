@@ -721,13 +721,18 @@ int main(int argc, char* argv[]) {
                 if (g_photoPending) {
                     guFinishFrame();
 
-                    sceIoMkdir("ms0:/PSP", 0777);
-                    sceIoMkdir("ms0:/PSP/PHOTO", 0777);
-                    sceIoMkdir("ms0:/PSP/PHOTO/Minecraft", 0777);
+                    const char* dev = pathDevice();
+                    char photoDir[64];
+                    std::snprintf(photoDir, sizeof(photoDir), "%s/PSP", dev);
+                    sceIoMkdir(photoDir, 0777);
+                    std::snprintf(photoDir, sizeof(photoDir), "%s/PSP/PHOTO", dev);
+                    sceIoMkdir(photoDir, 0777);
+                    std::snprintf(photoDir, sizeof(photoDir), "%s/PSP/PHOTO/Minecraft", dev);
+                    sceIoMkdir(photoDir, 0777);
                     char full[320];
                     for (int i = 0; i < 10000; i++) {
                         std::snprintf(full, sizeof(full),
-                                      "ms0:/PSP/PHOTO/Minecraft/img_%04d.png", i);
+                                      "%s/img_%04d.png", photoDir, i);
                         FILE* probe = fopen(full, "rb");
                         if (!probe) break;
                         fclose(probe);
