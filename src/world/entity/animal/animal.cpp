@@ -71,7 +71,9 @@ bool Animal::playerInteract() {
 }
 
 void Animal::baseTick() {
-    if (age < 0) age++;
+
+    if      (age < 0) age++;
+    else if (age > 0) age--;
     Mob::baseTick();
 }
 
