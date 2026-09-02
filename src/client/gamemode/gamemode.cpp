@@ -37,10 +37,10 @@ static Mob* nearbyTripodCamera() {
     if (!g_level.player) return 0;
 
     static EntityList nearby;
-    g_level.getEntities(0, g_level.player->bb.grow(2.5f, 2.5f, 2.5f), nearby);
+    g_level.getEntitiesOfType(EntityTypes::IdTripodCamera,
+                              g_level.player->bb.grow(2.5f, 2.5f, 2.5f), nearby);
     for (size_t i = 0; i < nearby.size(); i++) {
         Entity* e = nearby[i];
-        if (e->entityRendererId != ER_TRIPODCAMERA_RENDERER) continue;
         float dx = e->x - g_level.player->x;
         float dy = e->y - g_level.player->y;
         float dz = e->z - g_level.player->z;
@@ -55,7 +55,7 @@ static int countTripodCameras() {
     int n = 0;
     for (size_t i = 0; i < g_level.entities.size(); i++) {
         Entity* e = g_level.entities[i];
-        if (e && !e->removed && e->entityRendererId == ER_TRIPODCAMERA_RENDERER) n++;
+        if (e && !e->removed && e->getEntityTypeId() == EntityTypes::IdTripodCamera) n++;
     }
     return n;
 }
@@ -432,6 +432,16 @@ void GameMode::handleInput(unsigned int pressed, unsigned int held) {
 
     if (!g_level.player) return;
 
+    if ((held & PSP_CTRL_UP) && (held & PSP_CTRL_LTRIGGER) && (held & PSP_CTRL_RTRIGGER) &&
+        (pressed & (PSP_CTRL_UP | PSP_CTRL_LTRIGGER | PSP_CTRL_RTRIGGER))) {
+
+        ItemInstance cam(ITEM_CAMERA, 1, 0), film(ITEM_PAPER, 8, 0);
+        g_level.player->inventory->add(cam);
+        g_level.player->inventory->add(film);
+        hudChatMessage("[debug] 1 camera + 8 paper");
+        return;
+    }
+
     if (g_worldBuilt) pressed |= autoRepeatClicks(pressed, held);
 
     if (g_worldBuilt) {
@@ -513,23 +523,36 @@ void GameMode::handleInput(unsigned int pressed, unsigned int held) {
             if ((pressed & PSP_CTRL_LTRIGGER) && !g_useItemDelay) {
                 g_useItemDelay = USE_ITEM_DELAY_TICKS;
 
+                Mob* near = nearbyTripodCamera();
+                if (near) {
+
+                    if (!near->playerInteract())
+                        hudChatMessage("There's already a camera here. Hold paper to take a picture.");
+                } else if (countTripodCameras() >= MAX_TRIPOD_CAMERAS) {
+
+                    hudChatMessage("Can't place the camera. The maximum number of "
+                                   "cameras in a world has been reached.");
+                } else {
+                    g_level.addEntity(new TripodCamera(&g_level,
+                        g_level.player->x, g_level.player->y, g_level.player->z,
+                        g_level.player->yRot, g_level.player->xRot));
+
+                    g_level.player->inventory->consumeSelected();
+                }
+                playerSwing();
+            }
+            pressed &= ~PSP_CTRL_LTRIGGER;
+        }
+
+        else if (sel && sel->id == ITEM_PAPER) {
+            if ((pressed & PSP_CTRL_LTRIGGER) && !g_useItemDelay) {
+                g_useItemDelay = USE_ITEM_DELAY_TICKS;
                 bool handled = interactMobUnderCrosshair();
                 if (!handled) {
                     Mob* near = nearbyTripodCamera();
                     if (near) handled = near->playerInteract();
                 }
-                if (!handled) {
-                    if (countTripodCameras() >= MAX_TRIPOD_CAMERAS) {
-
-                        hudChatMessage("Can't place the camera. The maximum number of "
-                                       "cameras in a world has been reached.");
-                    } else {
-                        g_level.addEntity(new TripodCamera(&g_level,
-                            g_level.player->x, g_level.player->y, g_level.player->z,
-                            g_level.player->yRot, g_level.player->xRot));
-                    }
-                }
-                playerSwing();
+                if (handled) playerSwing();
             }
             pressed &= ~PSP_CTRL_LTRIGGER;
         }
@@ -763,7 +786,14 @@ CrosshairTarget gameModeCrosshairTarget() {
     }
 
     if (sel && sel->id == ITEM_CAMERA) {
-        t.useLabel = nearbyTripodCamera() ? "Take Picture" : "Place";
+
+        t.useLabel = !nearbyTripodCamera() ? "Place"
+                   : (g_gameMode && g_gameMode->isCreative()) ? "Take Picture" : 0;
+        return t;
+    }
+
+    if (sel && sel->id == ITEM_PAPER) {
+        t.useLabel = nearbyTripodCamera() ? "Take Picture" : 0;
         return t;
     }
 

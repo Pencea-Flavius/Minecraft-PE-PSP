@@ -8,6 +8,7 @@
 #include "world/entity/item_entity.h"
 #include "world/entity/throwable.h"
 #include "world/entity/minecart.h"
+#include "world/entity/tripod_camera.h"
 #include "world/entity/animal/pig.h"
 #include "world/entity/animal/cow.h"
 #include "world/entity/animal/chicken.h"
@@ -39,6 +40,7 @@ Entity* createEntity(int typeId, Level* level) {
         case EntityTypes::IdPrimedTnt: return new PrimedTnt(level);
         case EntityTypes::IdItemEntity:  return new ItemEntity(level);
         case EntityTypes::IdMinecart:    return new Minecart(level);
+        case EntityTypes::IdTripodCamera: return new TripodCamera(level);
         case EntityTypes::IdSnowball:    return new Throwable(level, EntityTypes::IdSnowball);
         case EntityTypes::IdThrownEgg:   return new Throwable(level, EntityTypes::IdThrownEgg);
     }
@@ -61,5 +63,5 @@ Entity* loadEntity(CompoundTag* tag, Level* level) {
 FITS(LocalPlayer); FITS(Chicken); FITS(Cow); FITS(Pig); FITS(Sheep);
 FITS(Zombie); FITS(Skeleton); FITS(Creeper); FITS(Spider); FITS(PigZombie);
 FITS(ItemEntity); FITS(Arrow); FITS(Minecart); FITS(PrimedTnt);
-FITS(Painting); FITS(FallingTile);
+FITS(Painting); FITS(FallingTile); FITS(TripodCamera);
 #undef FITS

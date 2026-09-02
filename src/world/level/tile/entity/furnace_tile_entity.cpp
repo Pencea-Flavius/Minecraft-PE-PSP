@@ -48,6 +48,8 @@ int FurnaceTileEntity::getBurnDuration(const ItemInstance& fuel) {
     if (id == ITEM_COAL)  return BURN_INTERVAL * 8;
 
     if (id == BLOCK_COAL_BLOCK) return BURN_INTERVAL * 80;
+
+    if (id == ITEM_BUCKET && fuel.data == BLOCK_LAVA) return BURN_INTERVAL * 100;
     return 0;
 }
 
@@ -109,7 +111,8 @@ void FurnaceTileEntity::tick() {
     if (litTime == 0 && canBurn()) {
         litDuration = litTime = getBurnDuration(items[SLOT_FUEL]);
         if (litTime > 0) {
-            if (--items[SLOT_FUEL].count <= 0) items[SLOT_FUEL].setNull();
+
+            items[SLOT_FUEL].useAsFuel();
         }
     }
     if (isLit() && canBurn()) {

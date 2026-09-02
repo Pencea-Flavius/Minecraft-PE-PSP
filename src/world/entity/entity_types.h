@@ -27,6 +27,8 @@ namespace EntityTypes {
     const int IdThrownEgg   = 82;
     const int IdPainting    = 83;
     const int IdMinecart    = 84;
+
+    const int IdTripodCamera = 85;
 }
 
 #endif

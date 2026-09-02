@@ -31,6 +31,8 @@ struct ItemInstance {
     void hurt(int amount);
 
     ItemInstance remove(int n);
+
+    void useAsFuel();
 };
 
 #endif

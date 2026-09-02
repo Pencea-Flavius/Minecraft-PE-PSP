@@ -1,5 +1,7 @@
 #include "world/item/item_instance.h"
 #include "world/item/item.h"
+#include "world/item/bucket_item.h"
+#include "world/level/tile/tile.h"
 
 Item* ItemInstance::getItem() const {
     if (id >= 0 && id < 4096) return Item::items[id];
@@ -30,4 +32,13 @@ ItemInstance ItemInstance::remove(int n) {
     count -= n;
     if (count <= 0) setNull();
     return out;
+}
+
+void ItemInstance::useAsFuel() {
+
+    if (count == 1 && id == ITEM_BUCKET && data == BLOCK_LAVA) {
+        *this = ItemInstance(ITEM_BUCKET, 1, BUCKET_EMPTY);
+        return;
+    }
+    if (--count <= 0) setNull();
 }

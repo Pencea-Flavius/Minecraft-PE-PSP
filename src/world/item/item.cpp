@@ -181,6 +181,8 @@ void Item::initItems() {
             { ITEM_MINECART, 2 }, { BLOCK_RAIL, 2 }, { BLOCK_GOLDEN_RAIL, 2 },
             { BLOCK_TNT, 2 }, { BLOCK_TORCH, 2 },
 
+            { ITEM_CAMERA, 2 },
+
             { ITEM_APPLE, 4 }, { ITEM_BOWL, 4 }, { ITEM_MUSHROOM_STEW, 4 },
             { ITEM_WHEAT, 4 }, { ITEM_BREAD, 4 }, { ITEM_SUGAR, 4 }, { ITEM_REEDS, 4 },
             { ITEM_CAKE, 4 },

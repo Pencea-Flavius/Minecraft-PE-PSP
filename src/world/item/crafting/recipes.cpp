@@ -107,6 +107,12 @@ Recipes::Recipes() {
                         "X",
                         "#",
                         "Y", { ITEM('Y', ITEM_FEATHER), ITEM('X', ITEM_FLINT), ITEM('#', ITEM_STICK) });
+
+        addShapedRecipe(ItemInstance(ITEM_CAMERA, 1, 0),
+                        "GPG",
+                        "GRG",
+                        "S S", { ITEM('G', ITEM_GOLD_INGOT), TILE('P', BLOCK_GLASS_PANE),
+                                 ITEM('R', ITEM_REDSTONE),   ITEM('S', ITEM_STICK) });
     }
 
     {
