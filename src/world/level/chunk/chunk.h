@@ -222,6 +222,17 @@ static inline unsigned char rotFaceMask(unsigned char id) { return Tile::tiles[i
 
 extern unsigned int g_brightColor[16];
 extern float g_brightRamp[16];
+
+#define BRIGHT_GAMMA_MAX 0.6f
+extern float g_brightGamma;
+
+static inline float brightGammaApply(float b, float gamma) {
+    if (gamma <= 0.0f) return b;
+    float inv = 1.0f - b;
+    inv = 1.0f - inv * inv * inv * inv;
+    return b * (1.0f - gamma) + inv * gamma;
+}
+
 void chunkInitBrightRamp(void);
 
 #define ENTITY_LIGHT_FLOOR     0.35f

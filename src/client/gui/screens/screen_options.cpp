@@ -80,6 +80,8 @@ static const OptionRowDef g_optionRows[OPT_CATEGORIES][OPT_MAX_ROWS] = {
 
         { 0,          "Particles",       {"Off", "On", 0, 0}, 2, 1 },
         { 0,          "Smooth Lighting", {"Off", "On", 0, 0}, 2, 1 },
+
+        { 0,          "Brightness",      {0, 0, 0, 0}, 11, 0, true, 0, 10 },
         { "Experimental", "Mipmapping",  {"Off", "On", 0, 0}, 2, 1 },
 
         { 0,              "Dithering",   {"Off", "On", 0, 0}, 2, 0 },
@@ -98,7 +100,7 @@ static const OptionRowDef g_optionRows[OPT_CATEGORIES][OPT_MAX_ROWS] = {
     },
 };
 
-static const int g_optionRowCount[OPT_CATEGORIES] = { 9, 6, 10, 8 };
+static const int g_optionRowCount[OPT_CATEGORIES] = { 9, 6, 11, 8 };
 static const char* g_optionCategoryNames[OPT_CATEGORIES] = { "Game", "Controls", "Graphics", "Audio" };
 static int g_optionValueIdx[OPT_CATEGORIES][OPT_MAX_ROWS];
 
@@ -142,8 +144,9 @@ extern World g_world;
 #define ROW_ANIMTEX     5
 #define ROW_PARTICLES   6
 #define ROW_SMOOTHLIGHT 7
-#define ROW_MIPMAP      8
-#define ROW_DITHER      9
+#define ROW_BRIGHTNESS  8
+#define ROW_MIPMAP      9
+#define ROW_DITHER      10
 
 static const float kRenderDist[4] = { 16.0f, 32.0f, 48.0f, 64.0f };
 extern int g_lowMemPsp;
@@ -192,6 +195,8 @@ unsigned int optionsValueSig() {
             h = (h ^ (unsigned int)g_optionValueIdx[c][r]) * 16777619u;
     return h;
 }
+
+static float s_meshedGamma = 0.0f;
 
 static void optionsApply() {
 
@@ -244,6 +249,20 @@ static void optionsApply() {
         g_smoothLighting = wantSmooth;
         if (g_worldBuilt) worldMarkAllDirty(&g_world);
     }
+
+    float wantGamma = (g_optionValueIdx[CAT_GRAPHICS][ROW_BRIGHTNESS] / 10.0f) * BRIGHT_GAMMA_MAX;
+    if (wantGamma != g_brightGamma) {
+        g_brightGamma = wantGamma;
+        chunkInitBrightRamp();
+    }
+
+    if (!g_worldBuilt) s_meshedGamma = g_brightGamma;
+}
+
+static void optionsBrightnessCommit() {
+    if (s_meshedGamma == g_brightGamma) return;
+    s_meshedGamma = g_brightGamma;
+    if (g_worldBuilt) worldMarkAllDirty(&g_world);
 }
 
 static void optionsSetDefaults() {
@@ -411,6 +430,7 @@ void OptionsScreen::handleInput(MenuState& s, unsigned int pressed, unsigned int
 
     if (pressed & PSP_CTRL_CIRCLE) {
         optionsSave();
+        optionsBrightnessCommit();
 
         if (g_optionsOpen) { g_optionsOpen = false; g_paused = true; }
         else               screen = SCREEN_TITLE;

@@ -10,6 +10,9 @@
 unsigned int g_brightColor[16];
 
 float g_brightRamp[16];
+
+float g_brightGamma = 0.0f;
+
 void chunkInitBrightRamp(void) {
     const float amb = 0.05f;
     for (int i = 0; i <= 15; i++) {
@@ -17,6 +20,8 @@ void chunkInitBrightRamp(void) {
         float b = ((1.0f - v) / (v * 3.0f + 1.0f)) * (1.0f - amb) + amb * 3.0f;
         if (b > 1.0f) b = 1.0f;
         if (b < 0.0f) b = 0.0f;
+
+        b = brightGammaApply(b, g_brightGamma);
         unsigned int c = (unsigned int)(b * 255.0f + 0.5f);
         g_brightColor[i] = 0xFF000000u | (c << 16) | (c << 8) | c;
         g_brightRamp[i] = b;
