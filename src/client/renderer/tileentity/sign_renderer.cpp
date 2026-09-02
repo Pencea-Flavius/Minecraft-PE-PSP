@@ -88,14 +88,8 @@ static PVert s_model[144];
 static PVert s_text[512];
 
 unsigned int tileEntityLightColor(Level* level, int x, int y, int z) {
-    int raw = level ? level->getRawBrightness(x, y, z) : 15;
-    if (raw < 0)  raw = 0;
-    if (raw > 15) raw = 15;
-    float b = g_brightRamp[raw];
-    if (b > 1.0f) b = 1.0f;
-    else if (b <= 0.4f) b = 0.4f;
-    unsigned int c = (unsigned int)(b * 255.0f + 0.5f);
-    return 0xFF000000u | (c << 16) | (c << 8) | c;
+    return brightColorFloored(level ? level->getRawBrightness(x, y, z) : 15,
+                              TILE_ENTITY_LIGHT_FLOOR);
 }
 
 static void renderSign(SignTileEntity* sign, float a) {

@@ -25,7 +25,7 @@ extern World   g_world;
 
 static unsigned int dropLight(float x, float y, float z) {
     int br = lightRawAt(&g_world, Mth::floor(x), Mth::floor(y), Mth::floor(z));
-    return g_brightColor[br];
+    return brightColorFloored(br, ENTITY_LIGHT_FLOOR);
 }
 
 void ItemRenderer::render(Entity* entity, float x, float y, float z, float , float a) {

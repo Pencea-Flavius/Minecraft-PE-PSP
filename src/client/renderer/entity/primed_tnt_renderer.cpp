@@ -35,7 +35,7 @@ void PrimedTntRenderer::render(Entity* entity, float x, float y, float z, float 
     if (s_meshCount <= 0) return;
 
     int br = lightRawAt(&g_world, Mth::floor(x), Mth::floor(y), Mth::floor(z));
-    unsigned int brCol = g_brightColor[br];
+    unsigned int brCol = brightColorFloored(br, ENTITY_LIGHT_FLOOR);
 
     ChunkVertex* mesh = (ChunkVertex*)guFrameAlloc(s_meshCount * sizeof(ChunkVertex));
     if (!mesh) return;

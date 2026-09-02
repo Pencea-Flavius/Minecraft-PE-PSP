@@ -16,7 +16,6 @@
 #include <pspgum.h>
 
 extern World g_world;
-extern unsigned int g_brightColor[16];
 
 void ThrowableRenderer::render(Entity* entity, float x, float y, float z, float , float ) {
     Throwable* t = (Throwable*)entity;
@@ -26,7 +25,7 @@ void ThrowableRenderer::render(Entity* entity, float x, float y, float z, float 
     if (!tex) return;
 
     int br = lightRawAt(&g_world, Mth::floor(x), Mth::floor(y), Mth::floor(z));
-    unsigned int c = g_brightColor[br];
+    unsigned int c = brightColorFloored(br, ENTITY_LIGHT_FLOOR);
 
     const float xo = 0.5f, yo = 0.25f, r = 1.0f;
     ChunkVertex q[6] = {

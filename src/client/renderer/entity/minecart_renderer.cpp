@@ -79,7 +79,7 @@ void MinecartRenderer::render(Entity* entity, float x, float y, float z, float r
     }
 
     int br = lightRawAt(&g_world, Mth::floor(x), Mth::floor(y), Mth::floor(z));
-    unsigned int col = g_brightColor[br];
+    unsigned int col = brightColorFloored(br, ENTITY_LIGHT_FLOOR);
 
     if (s_have) textureBindNoMip(&s_tex);
     else        sceGuDisable(GU_TEXTURE_2D);

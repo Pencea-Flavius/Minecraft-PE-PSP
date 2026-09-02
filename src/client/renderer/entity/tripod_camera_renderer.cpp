@@ -42,7 +42,7 @@ void TripodCameraRenderer::render(Entity* entity, float x, float y, float z,
         s_tried = true;
     }
     int br = lightRawAt(&g_world, Mth::floor(x), Mth::floor(y), Mth::floor(z));
-    unsigned int c = g_brightColor[br];
+    unsigned int c = brightColorFloored(br, ENTITY_LIGHT_FLOOR);
     float fy = y - cam->heightOffset;
 
     const bool wantFlash = cam->activated && cam->life < 8 && cam->life > 0;

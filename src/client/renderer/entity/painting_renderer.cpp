@@ -3,6 +3,7 @@
 #include "world/entity/painting.h"
 #include "world/entity/motive.h"
 #include "world/level/chunk/chunk.h"
+#include "client/renderer/entity/mob_model.h"
 #include "gpu/texture.h"
 #include "gpu/gu.h"
 #include "platform/dcache.h"
@@ -136,9 +137,7 @@ void PaintingRenderer::render(Entity* entity, float x, float y, float z, float r
     PVert* mesh = getMesh(painting->motive, &n);
     if (!mesh || n <= 0) return;
 
-    int raw = painting->getRawBrightness();
-    if (raw < 0) raw = 0;
-    if (raw > 15) raw = 15;
+    unsigned int col = brightColorFloored(painting->getRawBrightness(), ENTITY_LIGHT_FLOOR);
 
     sceGumMatrixMode(GU_MODEL);
     sceGumPushMatrix();
@@ -149,9 +148,14 @@ void PaintingRenderer::render(Entity* entity, float x, float y, float z, float r
     ScePspFVector3 s = { 1.0f / 16.0f, 1.0f / 16.0f, 1.0f / 16.0f };
     sceGumScale(&s);
 
+    ScePspFMatrix4 lm;
+    sceGumStoreMatrix(&lm);
+    static const float FRONT[3] = { 0.0f, 0.0f, -1.0f };
+    col = mobDirLitColor((const float*)&lm, FRONT, col);
+
     sceGuDisable(GU_CULL_FACE);
     textureBind(&s_art);
-    sceGuColor(g_brightColor[raw]);
+    sceGuColor(col);
     sceGumDrawArray(GU_TRIANGLES,
                     GU_TEXTURE_32BITF | GU_VERTEX_32BITF | GU_TRANSFORM_3D,
                     n, 0, mesh);

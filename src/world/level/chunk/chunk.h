@@ -224,6 +224,18 @@ extern unsigned int g_brightColor[16];
 extern float g_brightRamp[16];
 void chunkInitBrightRamp(void);
 
+#define ENTITY_LIGHT_FLOOR     0.35f
+#define TILE_ENTITY_LIGHT_FLOOR 0.4f
+static inline unsigned int brightColorFloored(int raw, float floorB) {
+    if (raw < 0)  raw = 0;
+    if (raw > 15) raw = 15;
+    float b = g_brightRamp[raw];
+    if (b > 1.0f)     b = 1.0f;
+    else if (b <= floorB) b = floorB;
+    unsigned int c = (unsigned int)(b * 255.0f + 0.5f);
+    return 0xFF000000u | (c << 16) | (c << 8) | c;
+}
+
 static inline bool isCropTile(unsigned char id) {
     return id == BLOCK_WHEAT || id == BLOCK_CARROTS ||
            id == BLOCK_POTATOES || id == BLOCK_BEETROOT;

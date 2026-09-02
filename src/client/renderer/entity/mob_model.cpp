@@ -102,7 +102,7 @@ void mobRenderParts(Mob* mob, MobPart* parts, int count, Texture* tex,
     float feet = y - mob->heightOffset;
 
     int bx = (int)floorf(x), by = (int)floorf(feet + mob->bbHeight * 0.66f), bz = (int)floorf(z);
-    unsigned int brCol = g_brightColor[lightRawAt(&g_world, bx, by, bz)];
+    unsigned int brCol = brightColorFloored(lightRawAt(&g_world, bx, by, bz), ENTITY_LIGHT_FLOOR);
     if (tint != 0xFFFFFFFFu) brCol = mul(brCol, tint);
 
     if (mob->hurtTime > 0 || mob->deathTime > 0) {

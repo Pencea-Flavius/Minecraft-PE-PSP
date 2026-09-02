@@ -275,7 +275,7 @@ void playerModelRender(float a) {
     }
 
     int bx = (int)floorf(ix), by = (int)floorf(iy), bz = (int)floorf(iz);
-    unsigned int brCol = g_brightColor[lightRawAt(&g_world, bx, by, bz)];
+    unsigned int brCol = brightColorFloored(lightRawAt(&g_world, bx, by, bz), ENTITY_LIGHT_FLOOR);
 
     if (p->hurtTime > 0 || p->deathTime > 0) {
         const unsigned int HURT_GB = 140;
