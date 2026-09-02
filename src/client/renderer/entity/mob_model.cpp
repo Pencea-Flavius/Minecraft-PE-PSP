@@ -47,6 +47,25 @@ void mobBuildBox(MobVertex* out, float x0, float y0, float z0,
     addPoly(x0,y0,z1, x1,y0,z1, x1,y1,z1, x0,y1,z1, (tx+2*d+2*w)/W,(ty+d)/H, (tx+2*d+w)/W,(ty+d+h)/H);
 }
 
+void mobDrawPartLit(const MobVertex* base, unsigned int brCol) {
+#if !MOB_LIGHTING
+
+    sceGuColor(brCol);
+    sceGumDrawArray(GU_TRIANGLES,
+                    GU_TEXTURE_32BITF | GU_VERTEX_32BITF | GU_TRANSFORM_3D,
+                    36, 0, base);
+#else
+    ScePspFMatrix4 m;
+    sceGumStoreMatrix(&m);
+    for (int f = 0; f < 6; f++) {
+        sceGuColor(mobFaceLitColor((const float*)&m, f, brCol));
+        sceGumDrawArray(GU_TRIANGLES,
+                        GU_TEXTURE_32BITF | GU_VERTEX_32BITF | GU_TRANSFORM_3D,
+                        6, 0, base + f * 6);
+    }
+#endif
+}
+
 static inline unsigned int mul(unsigned int a, unsigned int b) {
     unsigned int aa = ((a >> 24) & 0xFF) * ((b >> 24) & 0xFF) / 255;
     unsigned int bb = ((a >> 16) & 0xFF) * ((b >> 16) & 0xFF) / 255;
@@ -147,11 +166,10 @@ void mobRenderParts(Mob* mob, MobPart* parts, int count, Texture* tex,
         if (parts[i].zRot != 0.0f) sceGumRotateZ(parts[i].zRot);
         if (parts[i].yRot != 0.0f) sceGumRotateY(parts[i].yRot);
         if (parts[i].xRot != 0.0f) sceGumRotateX(parts[i].xRot);
-        sceGumDrawArray(GU_TRIANGLES,
-                        GU_TEXTURE_32BITF | GU_VERTEX_32BITF | GU_TRANSFORM_3D,
-                        36, 0, parts[i].base);
+        mobDrawPartLit(parts[i].base, brCol);
         sceGumPopMatrix();
     }
+    sceGuColor(brCol);
 
     if (bowPartIndex >= 0 && bowPartIndex < count) {
         MobPart& ap = parts[bowPartIndex];

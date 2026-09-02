@@ -126,7 +126,7 @@ static Texture* armorTexture(int mat, int file) {
     return g_armorOK[mat][file] ? &g_armorTex[mat][file] : 0;
 }
 
-static void drawArmorLayers(unsigned int brCol) {
+static void drawArmorLayers(unsigned int brCol, bool lit = true) {
 
     LocalPlayer* p = g_level.player;
     if (!p) return;
@@ -164,9 +164,13 @@ static void drawArmorLayers(unsigned int brCol) {
             if (parts[i].zRot != 0.0f) sceGumRotateZ(parts[i].zRot);
             if (parts[i].yRot != 0.0f) sceGumRotateY(parts[i].yRot);
             if (parts[i].xRot != 0.0f) sceGumRotateX(parts[i].xRot);
-            sceGumDrawArray(GU_TRIANGLES,
-                GU_TEXTURE_32BITF | GU_VERTEX_32BITF | GU_TRANSFORM_3D,
-                36, 0, set[i]);
+            if (lit) {
+                mobDrawPartLit(set[i], brCol);
+            } else {
+                sceGumDrawArray(GU_TRIANGLES,
+                    GU_TEXTURE_32BITF | GU_VERTEX_32BITF | GU_TRANSFORM_3D,
+                    36, 0, set[i]);
+            }
             sceGumPopMatrix();
         }
     }
@@ -334,11 +338,10 @@ void playerModelRender(float a) {
         if (parts[i].zRot != 0.0f) sceGumRotateZ(parts[i].zRot);
         if (parts[i].yRot != 0.0f) sceGumRotateY(parts[i].yRot);
         if (parts[i].xRot != 0.0f) sceGumRotateX(parts[i].xRot);
-        sceGumDrawArray(GU_TRIANGLES,
-                        GU_TEXTURE_32BITF | GU_VERTEX_32BITF | GU_TRANSFORM_3D,
-                        36, 0, parts[i].base);
+        mobDrawPartLit(parts[i].base, brCol);
         sceGumPopMatrix();
     }
+    sceGuColor(brCol);
 
     drawArmorLayers(brCol);
     sceGuColor(0xFFFFFFFFu);
@@ -484,7 +487,7 @@ void playerModelRenderPreview(float sx, float sy, float scale) {
                         36, 0, parts[i].base);
         sceGumPopMatrix();
     }
-    drawArmorLayers(0xFFFFFFFFu);
+    drawArmorLayers(0xFFFFFFFFu, false);
     sceGuDisable(GU_ALPHA_TEST);
     sceGuEnable(GU_CULL_FACE);
     sceGuDisable(GU_DEPTH_TEST);

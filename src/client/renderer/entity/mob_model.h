@@ -2,10 +2,73 @@
 #ifndef MCPSP_CLIENT_ENTITY_MOB_MODEL_H
 #define MCPSP_CLIENT_ENTITY_MOB_MODEL_H
 
+#include <math.h>
+
 class Mob;
 struct Texture;
 
 struct MobVertex { float u, v; float x, y, z; };
+
+#define MOB_LIGHTING 1
+
+inline void mobFaceNormal(int face, float* n) {
+    static const signed char F[6][3] = {
+        {  0, -1,  0 },
+        { -1,  0,  0 },
+        {  1,  0,  0 },
+        {  0,  1,  0 },
+        {  0,  0, -1 },
+        {  0,  0,  1 },
+    };
+    n[0] = F[face][0];
+    n[1] = F[face][1];
+    n[2] = F[face][2];
+}
+
+#define MOB_LIGHT_DIFFUSE 0.6f
+#define MOB_LIGHT_AMBIENT 0.4f
+
+#ifndef MOB_LIGHTING
+#error "MOB_LIGHTING must be defined"
+#endif
+
+inline unsigned int mobFaceLitColor(const float* m, int face, unsigned int brCol) {
+#if !MOB_LIGHTING
+    (void)m; (void)face; return brCol;
+#else
+    static const float LDIR[2][3] = {
+        {  0.161690f, 0.808452f, -0.565916f },
+        { -0.161690f, 0.808452f,  0.565916f },
+    };
+    float n[3]; mobFaceNormal(face, n);
+
+    float wx = m[0] * n[0] + m[4] * n[1] + m[8]  * n[2];
+    float wy = m[1] * n[0] + m[5] * n[1] + m[9]  * n[2];
+    float wz = m[2] * n[0] + m[6] * n[1] + m[10] * n[2];
+
+    float len = sqrtf(wx * wx + wy * wy + wz * wz);
+    if (len > 1e-6f) { wx /= len; wy /= len; wz /= len; }
+
+    float d = MOB_LIGHT_AMBIENT;
+    for (int i = 0; i < 2; i++) {
+        float nl = wx * LDIR[i][0] + wy * LDIR[i][1] + wz * LDIR[i][2];
+        if (nl > 0.0f) d += MOB_LIGHT_DIFFUSE * nl;
+    }
+
+    if (d > 1.0f) d = 1.0f;
+
+    unsigned int q = (unsigned int)(d * 256.0f);
+    unsigned int r = ((brCol        & 0xFFu) * q) >> 8;
+    unsigned int g = (((brCol >> 8)  & 0xFFu) * q) >> 8;
+    unsigned int b = (((brCol >> 16) & 0xFFu) * q) >> 8;
+    if (r > 255) r = 255;
+    if (g > 255) g = 255;
+    if (b > 255) b = 255;
+    return (brCol & 0xFF000000u) | (b << 16) | (g << 8) | r;
+#endif
+}
+
+void mobDrawPartLit(const MobVertex* base, unsigned int brCol);
 
 struct SkinVertex { float u, v; unsigned int color; float x, y, z; };
 
