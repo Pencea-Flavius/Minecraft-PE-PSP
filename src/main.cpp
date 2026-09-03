@@ -76,6 +76,8 @@ static volatile int g_exitRequested = 0;
 
 static volatile int g_powerResumed = 0;
 
+static unsigned int g_powerResumes = 0;
+
 static int powerCallback(int , int pwrflags, void* ) {
     if (pwrflags & PSP_POWER_CB_RESUME_COMPLETE)
         g_powerResumed = 1;
@@ -104,8 +106,9 @@ static float drawFaultCounters(MenuState& s, float ty) {
     if (g_listBadFinish) {
         static const char* kSite[] = { "?", "FRAME", "DIALOG", "RESUME", "PHOTO" };
         const unsigned si = (g_listBadFinishSite < 5u) ? g_listBadFinishSite : 0u;
-        std::snprintf(buf, sizeof(buf), "GE-LIST BAD FINISH %u @%s 0x%08X",
-                      g_listBadFinish, kSite[si], (unsigned)g_listBadFinishRet);
+        std::snprintf(buf, sizeof(buf), "GE-LIST BAD FINISH %u @%s 0x%08X slp%u",
+                      g_listBadFinish, kSite[si], (unsigned)g_listBadFinishRet,
+                      g_powerResumes);
         fontDrawTextShadow(&s.font, 10, ty, buf, 0xFF5050FFu, 1.0f);
         ty += 12.0f;
     }
@@ -423,6 +426,7 @@ int main(int argc, char* argv[]) {
 
         if (g_powerResumed) {
             g_powerResumed = 0;
+            g_powerResumes++;
 
             guResumeFromSleep();
             chunkStorageDropOpenFiles();

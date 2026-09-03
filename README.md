@@ -197,17 +197,13 @@ that is worth more than a warning nobody reads.
   `editQueueFind`. Reading it properly is also what turned up `evict()` not
   clearing the queue: entries key on the resident *slot*, so one outliving its
   chunk blocked the next chunk's edits from the fast lane.
-  not rendering with the 4444 texture format.
-- [**SzyZET777**](https://github.com/SzyZET777) — pointed out that the
-  player-edit fast lane in `dirty.cpp` was open-coding the same shift loop at
-  four call sites, each keeping the membership array in sync by hand. The queue
-  stayed a fixed array (it is pushed to from the light cascade, which can run
-  while the worldgen worker is inside the allocator — under `-fno-exceptions` a
-  container that has to grow there corrupts the heap silently), but the index
-  arithmetic moved into `editQueueRemoveAt` / `editQueuePushFront` /
-  `editQueueFind`. Reading it properly is also what turned up `evict()` not
-  clearing the queue: entries key on the resident *slot*, so one outliving its
-  chunk blocked the next chunk's edits from the fast lane.
+  Also contributed two optimisations to `meshSectionSink`
+  (`src/client/renderer/tile/mesh_block.cpp`): the 18³ neighbour-cache fill
+  walks `lc[]` with a plain counter instead of recomputing the two-multiply
+  index every element, and the chain of ~20 shape predicates became one
+  `switch` on the block id, which GCC turns into a jump table — so an ordinary
+  cube reaches the generic path in one indexed branch. Worth +1..3 fps while
+  chunks are being built.
 - [**Stann**](https://github.com/ThatStann) — drew the delete-world **X** button
   (both states, in `touchgui.png`), the controller drawings the Controls page
   labels (`data/images/gui/controls/psp.png`, `go.png`), and the button-icon

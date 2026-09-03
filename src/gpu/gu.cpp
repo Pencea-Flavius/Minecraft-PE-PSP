@@ -32,7 +32,7 @@ unsigned int g_callCanaryBroken = 0;
 
 static void* g_callListUncached = 0;
 
-#define GU_DEFER_MAX 512
+#define GU_DEFER_MAX 1024
 static void* g_deferBuf[2][GU_DEFER_MAX];
 static int   g_deferN[2] = { 0, 0 };
 static int   g_deferCur  = 0;
@@ -215,8 +215,6 @@ static void* g_zbp = 0;
 static int   g_drawIdx = 0;
 
 static bool s_dialogUp = false;
-
-static bool s_dialogFirstFrame = false;
 
 static inline void* guFbAddr(int idx) {
     return (void*)(((unsigned int)sceGeEdramGetAddr() + (unsigned int)g_fb[idx])
@@ -535,7 +533,6 @@ void guSuspendForDialog(void) {
     sceGuSync(0, 0);
     guFlushDeferredFrees();
     s_dialogUp = true;
-    s_dialogFirstFrame = true;
 
     g_drawIdx = guFreeBuffer();
 }
@@ -602,10 +599,7 @@ void guDialogBegin(unsigned int clearColor) {
     g_listIdx ^= 1;
     sceGuStart(GU_DIRECT, guListCur());
 
-    if (s_dialogFirstFrame) {
-        s_dialogFirstFrame = false;
-        sceGuScissor(0, 0, GU_SCR_WIDTH, GU_SCR_HEIGHT);
-    }
+    sceGuScissor(0, 0, GU_SCR_WIDTH, GU_SCR_HEIGHT);
 
     g_frameScratch = 0;
     g_listUsed     = 0;
@@ -634,6 +628,8 @@ void guDialogEnd(void) {
 void guDialogPresent(void) {
 
     guPresent();
+
+    sceDisplayWaitVblankStart();
 }
 
 void guEndFrame(void) {

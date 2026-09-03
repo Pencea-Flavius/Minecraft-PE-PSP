@@ -640,10 +640,11 @@ int meshSectionSink(const World* w, int ox, int oz, int y0, int y1,
     unsigned char lc[18 * 18 * 18];
     unsigned char llc[18 * 18 * 18];
 
+    int li = 0;
     for (int dx = 0; dx < 18; dx++)
     for (int dz = 0; dz < 18; dz++)
     for (int dy = 0; dy < 18; dy++)
-        lc[(dx * 18 + dz) * 18 + dy] = worldBlock(w, ox - 1 + dx, y0 - 1 + dy, oz - 1 + dz);
+        lc[li++] = worldBlock(w, ox - 1 + dx, y0 - 1 + dy, oz - 1 + dz);
     memset(llc, 0xFF, sizeof llc);
     #define LCB(X, Y, Z) lc[((((X) - ox + 1) * 18 + ((Z) - oz + 1)) * 18) + ((Y) - y0 + 1)]
     #define LLB(X, Y, Z) lightLazy(w, llc, \
@@ -666,113 +667,115 @@ int meshSectionSink(const World* w, int ox, int oz, int y0, int y1,
             && isOpaque(lc[base + kFaceStride[2]]) && isOpaque(lc[base + kFaceStride[3]])
             && isOpaque(lc[base + kFaceStride[4]]) && isOpaque(lc[base + kFaceStride[5]]))
             continue;
-        if (isSign(id) || id == BLOCK_CHEST) continue;
 
-        if (isWaterId(id)) {
-            if (!sinkReserve(&sk, 1, 36)) return -1;
-            nw = emitLiquid(w, gx, y, gz, id, sk.buf[1], nw);
-            continue;
-        }
-        if (isLavaId(id)) {
-            sawLava = true;
-            continue;
-        }
-        if (isStemTile(id)) {
-            if (!sinkReserve(&sk, 3, 36)) return -1;
-            nn = emitMelonStem(w, sk.buf[3], nn, gx, y, gz, id, worldData(w, gx, y, gz), g_brightColor[lightLazy(w, llc, base, gx, y, gz)]);
-            continue;
-        }
-        if (isCropTile(id)) {
-            if (!sinkReserve(&sk, 3, 48)) return -1;
-            nn = emitCropRows(sk.buf[3], nn, gx, y, gz, id, worldData(w, gx, y, gz), g_brightColor[lightLazy(w, llc, base, gx, y, gz)]);
-            continue;
-        }
-        if (isCrossShaped(id)) {
-            if (!sinkReserve(&sk, 3, 24)) return -1;
-            emitCross(sk.buf[3], nn, gx, y, gz, id, worldData(w, gx, y, gz), g_brightColor[lightLazy(w, llc, base, gx, y, gz)]);
-            nn += 24;
-            continue;
-        }
+        switch (id) {
 
-        if (id == BLOCK_FIRE) {
-            if (!sinkReserve(&sk, 3, 60)) return -1;
-            nn = emitFire(sk.buf[3], nn, w, gx, y, gz, g_brightColor[lightLazy(w, llc, base, gx, y, gz)]);
-            continue;
-        }
+            case BLOCK_SIGN: case BLOCK_WALL_SIGN: case BLOCK_CHEST:
+                continue;
 
-        if (isLadder(id)) {
-            if (!sinkReserve(&sk, 3, 12)) return -1;
-            nn = emitLadder(sk.buf[3], nn, gx, y, gz, id, worldData(w, gx, y, gz), g_brightColor[lightLazy(w, llc, base, gx, y, gz)]);
-            continue;
-        } else if (isRail(id)) {
-            if (!sinkReserve(&sk, 3, 12)) return -1;
-            nn = emitRail(sk.buf[3], nn, gx, y, gz, id, worldData(w, gx, y, gz), g_brightColor[lightLazy(w, llc, base, gx, y, gz)]);
-            continue;
-        } else if (id == BLOCK_BED) {
-            if (!sinkReserve(&sk, 3, 36)) return -1;
-            nn = emitBed(w, gx, y, gz, id, worldData(w, gx, y, gz), sk.buf[3], nn);
-            continue;
-        } else if (isTorch(id)) {
-            if (!sinkReserve(&sk, 3, 36)) return -1;
-            nn = emitTorch(w, gx, y, gz, id, worldData(w, gx, y, gz), sk.buf[3], nn);
-            continue;
-        }
+            case BLOCK_WATER: case BLOCK_CALM_WATER:
+                if (!sinkReserve(&sk, 1, 36)) return -1;
+                nw = emitLiquid(w, gx, y, gz, id, sk.buf[1], nw);
+                continue;
 
-        if (isCarpet(id)) {
+            case BLOCK_LAVA: case BLOCK_CALM_LAVA:
+                sawLava = true;
+                continue;
 
-            if (!sinkReserve(&sk, 0, 36)) return -1;
-            no = emitCarpet(w, gx, y, gz, id, worldData(w, gx, y, gz), sk.buf[0], no);
-            continue;
-        }
+            case BLOCK_MELON_STEM: case BLOCK_PUMPKIN_STEM:
+                if (!sinkReserve(&sk, 3, 36)) return -1;
+                nn = emitMelonStem(w, sk.buf[3], nn, gx, y, gz, id, worldData(w, gx, y, gz), g_brightColor[lightLazy(w, llc, base, gx, y, gz)]);
+                continue;
 
-        if (isSlab(id) || isStairs(id)) {
-            if (!sinkReserve(&sk, 0, 108)) return -1;
+            case BLOCK_WHEAT: case BLOCK_CARROTS: case BLOCK_POTATOES: case BLOCK_BEETROOT:
+                if (!sinkReserve(&sk, 3, 48)) return -1;
+                nn = emitCropRows(sk.buf[3], nn, gx, y, gz, id, worldData(w, gx, y, gz), g_brightColor[lightLazy(w, llc, base, gx, y, gz)]);
+                continue;
 
-            no = isSlab(id) ? emitSlab(w, gx, y, gz, id, worldData(w, gx, y, gz), sk.buf[0], no)
-                            : emitStairs(w, gx, y, gz, id, worldData(w, gx, y, gz), sk.buf[0], no);
-            continue;
-        }
+            case BLOCK_FLOWER: case BLOCK_ROSE:
+            case BLOCK_MUSHROOM_BROWN: case BLOCK_MUSHROOM_RED:
+            case BLOCK_REEDS: case BLOCK_SAPLING:
+            case BLOCK_TALLGRASS: case BLOCK_COBWEB:
+                if (!sinkReserve(&sk, 3, 24)) return -1;
+                emitCross(sk.buf[3], nn, gx, y, gz, id, worldData(w, gx, y, gz), g_brightColor[lightLazy(w, llc, base, gx, y, gz)]);
+                nn += 24;
+                continue;
 
-        if (isPane(id)) {
-            if (!sinkReserve(&sk, 3, 108)) return -1;
-            nn = emitPane(w, gx, y, gz, id, worldData(w, gx, y, gz), sk.buf[3], nn);
-            continue;
-        }
+            case BLOCK_FIRE:
+                if (!sinkReserve(&sk, 3, 60)) return -1;
+                nn = emitFire(sk.buf[3], nn, w, gx, y, gz, g_brightColor[lightLazy(w, llc, base, gx, y, gz)]);
+                continue;
 
-        if (isFence(id)) {
-            if (!sinkReserve(&sk, 0, 324)) return -1;
-            no = emitFence(w, gx, y, gz, id, worldData(w, gx, y, gz), sk.buf[0], no);
-            continue;
-        }
+            case BLOCK_LADDER:
+                if (!sinkReserve(&sk, 3, 12)) return -1;
+                nn = emitLadder(sk.buf[3], nn, gx, y, gz, id, worldData(w, gx, y, gz), g_brightColor[lightLazy(w, llc, base, gx, y, gz)]);
+                continue;
 
-        if (isWall(id)) {
-            if (!sinkReserve(&sk, 0, WALL_VERTS)) return -1;
-            no = emitWall(w, gx, y, gz, id, worldData(w, gx, y, gz), sk.buf[0], no);
-            continue;
-        }
+            case BLOCK_RAIL: case BLOCK_GOLDEN_RAIL:
+                if (!sinkReserve(&sk, 3, 12)) return -1;
+                nn = emitRail(sk.buf[3], nn, gx, y, gz, id, worldData(w, gx, y, gz), g_brightColor[lightLazy(w, llc, base, gx, y, gz)]);
+                continue;
 
-        if (isDoor(id)) {
-            if (!sinkReserve(&sk, 3, 36)) return -1;
-            nn = emitDoor(w, gx, y, gz, id, worldData(w, gx, y, gz), sk.buf[3], nn);
-            continue;
-        }
+            case BLOCK_BED:
+                if (!sinkReserve(&sk, 3, 36)) return -1;
+                nn = emitBed(w, gx, y, gz, id, worldData(w, gx, y, gz), sk.buf[3], nn);
+                continue;
 
-        if (isTrapdoor(id)) {
-            if (!sinkReserve(&sk, 3, 36)) return -1;
-            nn = emitTrapdoor(w, gx, y, gz, id, worldData(w, gx, y, gz), sk.buf[3], nn);
-            continue;
-        }
+            case BLOCK_TORCH:
+                if (!sinkReserve(&sk, 3, 36)) return -1;
+                nn = emitTorch(w, gx, y, gz, id, worldData(w, gx, y, gz), sk.buf[3], nn);
+                continue;
 
-        if (id == BLOCK_CAKE) {
-            if (!sinkReserve(&sk, 3, 36)) return -1;
-            nn = emitCake(w, gx, y, gz, id, worldData(w, gx, y, gz), sk.buf[3], nn);
-            continue;
-        }
+            case BLOCK_CARPET:
+                if (!sinkReserve(&sk, 0, 36)) return -1;
+                no = emitCarpet(w, gx, y, gz, id, worldData(w, gx, y, gz), sk.buf[0], no);
+                continue;
 
-        if (isFenceGate(id)) {
-            if (!sinkReserve(&sk, 0, FENCE_GATE_VERTS)) return -1;
-            no = emitFenceGate(w, gx, y, gz, id, worldData(w, gx, y, gz), sk.buf[0], no);
-            continue;
+            case BLOCK_SLAB: case BLOCK_WOOD_SLAB:
+            case BLOCK_STAIRS_PLANKS: case BLOCK_STAIRS_COBBLESTONE:
+            case BLOCK_STAIRS_SPRUCE: case BLOCK_STAIRS_BIRCH: case BLOCK_STAIRS_JUNGLE:
+            case BLOCK_STAIRS_BRICK:  case BLOCK_STAIRS_STONE_BRICK:
+            case BLOCK_STAIRS_SANDSTONE: case BLOCK_STAIRS_NETHER_BRICK:
+            case BLOCK_STAIRS_QUARTZ:
+                if (!sinkReserve(&sk, 0, 108)) return -1;
+                no = isSlab(id) ? emitSlab(w, gx, y, gz, id, worldData(w, gx, y, gz), sk.buf[0], no)
+                                : emitStairs(w, gx, y, gz, id, worldData(w, gx, y, gz), sk.buf[0], no);
+                continue;
+
+            case BLOCK_GLASS_PANE: case BLOCK_IRON_BARS:
+                if (!sinkReserve(&sk, 3, 108)) return -1;
+                nn = emitPane(w, gx, y, gz, id, worldData(w, gx, y, gz), sk.buf[3], nn);
+                continue;
+
+            case BLOCK_FENCE:
+                if (!sinkReserve(&sk, 0, 324)) return -1;
+                no = emitFence(w, gx, y, gz, id, worldData(w, gx, y, gz), sk.buf[0], no);
+                continue;
+
+            case BLOCK_COBBLE_WALL:
+                if (!sinkReserve(&sk, 0, WALL_VERTS)) return -1;
+                no = emitWall(w, gx, y, gz, id, worldData(w, gx, y, gz), sk.buf[0], no);
+                continue;
+
+            case BLOCK_DOOR_WOOD: case BLOCK_DOOR_IRON:
+                if (!sinkReserve(&sk, 3, 36)) return -1;
+                nn = emitDoor(w, gx, y, gz, id, worldData(w, gx, y, gz), sk.buf[3], nn);
+                continue;
+
+            case BLOCK_TRAPDOOR:
+                if (!sinkReserve(&sk, 3, 36)) return -1;
+                nn = emitTrapdoor(w, gx, y, gz, id, worldData(w, gx, y, gz), sk.buf[3], nn);
+                continue;
+
+            case BLOCK_CAKE:
+                if (!sinkReserve(&sk, 3, 36)) return -1;
+                nn = emitCake(w, gx, y, gz, id, worldData(w, gx, y, gz), sk.buf[3], nn);
+                continue;
+
+            case BLOCK_FENCE_GATE:
+                if (!sinkReserve(&sk, 0, FENCE_GATE_VERTS)) return -1;
+                no = emitFenceGate(w, gx, y, gz, id, worldData(w, gx, y, gz), sk.buf[0], no);
+                continue;
         }
 
         bool leaf = isLeaf(id);
