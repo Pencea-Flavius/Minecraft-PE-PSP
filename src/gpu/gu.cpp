@@ -216,6 +216,8 @@ static int   g_drawIdx = 0;
 
 static bool s_dialogUp = false;
 
+static bool s_dialogFirstFrame = false;
+
 static inline void* guFbAddr(int idx) {
     return (void*)(((unsigned int)sceGeEdramGetAddr() + (unsigned int)g_fb[idx])
                    | 0x40000000u);
@@ -533,6 +535,7 @@ void guSuspendForDialog(void) {
     sceGuSync(0, 0);
     guFlushDeferredFrees();
     s_dialogUp = true;
+    s_dialogFirstFrame = true;
 
     g_drawIdx = guFreeBuffer();
 }
@@ -598,6 +601,12 @@ void guDialogBegin(unsigned int clearColor) {
     guCheckLiveBuffer();
     g_listIdx ^= 1;
     sceGuStart(GU_DIRECT, guListCur());
+
+    if (s_dialogFirstFrame) {
+        s_dialogFirstFrame = false;
+        sceGuScissor(0, 0, GU_SCR_WIDTH, GU_SCR_HEIGHT);
+    }
+
     g_frameScratch = 0;
     g_listUsed     = 0;
     g_frameId++;

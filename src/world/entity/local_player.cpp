@@ -44,6 +44,7 @@ void LocalPlayer::aiStep(unsigned int btn, unsigned char lx, unsigned char ly,
         yRotO = yRot; xRotO = xRot;
         walkDistO = walkDist;
         oBob = bob; oTilt = tilt;
+        xBobO = xBob; yBobO = yBob;
         yBodyRotO = yBodyRot; walkAnimSpeedO = walkAnimSpeed; walkAnimPosO = walkAnimPos;
         xd = yd = zd = 0.0f;
         return;
@@ -242,6 +243,11 @@ void LocalPlayer::aiStep(unsigned int btn, unsigned char lx, unsigned char ly,
     if (onGround) tTilt = 0.0f;
     bob  += (tBob  - bob)  * 0.4f;
     tilt += (tTilt - tilt) * 0.8f;
+
+    xBobO = xBob; yBobO = yBob;
+    xBob += (xRot - xBob) * 0.5f;
+    yBob += (yRot - yBob) * 0.5f;
+
     itemHandTick();
 
     if (onGround) {

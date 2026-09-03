@@ -10,7 +10,9 @@
 
 Player::Player(Level* level)
     : Mob(level), inventory(new Inventory(true)),
-      bob(0), oBob(0), tilt(0), oTilt(0), bowPull(0), bowTimeHeld(0),
+      bob(0), oBob(0), tilt(0), oTilt(0),
+      xBob(0), yBob(0), xBobO(0), yBobO(0),
+      bowPull(0), bowTimeHeld(0),
       eatAnim(0), score(0), sleeping(false), sleepCounter(0), bedX(0), bedY(0), bedZ(0),
       respawnX(0), respawnY(-1), respawnZ(0) {}
 

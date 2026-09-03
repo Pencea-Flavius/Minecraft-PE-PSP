@@ -339,7 +339,7 @@ int emitLiquid(const World* w, int gx, int y, int gz, unsigned char id, ChunkVer
 
 int emitPartialBox(const World* w, int gx, int y, int gz, unsigned char id, unsigned char data,
                    float x0, float y0, float z0, float x1, float y1, float z1,
-                   int boundaryMask, int hiddenFaces, ChunkVertex* out, int n, bool fixUV = false,
+                   int boundaryMask, int hiddenFaces, ChunkVertex* out, int n, bool fixUV = true,
                    bool fullTileUV = false, int edgeFaceMask = 0);
 int emitSlab(const World* w, int gx, int y, int gz, unsigned char id, unsigned char data, ChunkVertex* out, int n);
 int emitCarpet(const World* w, int gx, int y, int gz, unsigned char id, unsigned char data, ChunkVertex* out, int n);

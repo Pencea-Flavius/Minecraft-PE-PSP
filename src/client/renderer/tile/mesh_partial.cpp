@@ -236,7 +236,7 @@ int emitPane(const World* w, int gx, int y, int gz, unsigned char id, unsigned c
         else                    { ax0 = 0.0f; ax1 = 1.0f; bMask |= (1 << F_LEFT) | (1 << F_RIGHT); }
         n = emitPartialBox(w, gx, y, gz, id, data,
                            ax0, 0.0f, 7.0f/16.0f, ax1, 1.0f, 9.0f/16.0f,
-                           bMask, 0, out, n, false, false, edgeX);
+                           bMask, 0, out, n, true, false, edgeX);
     }
 
     bool hasZ = isolated || north || south || (!west && !east);
@@ -257,7 +257,7 @@ int emitPane(const World* w, int gx, int y, int gz, unsigned char id, unsigned c
                 int hidden = (e >= cut0 - 1e-4f) ? (1 << F_FORWARD) : 0;
                 n = emitPartialBox(w, gx, y, gz, id, data,
                                    7.0f/16.0f, 0.0f, az0, 9.0f/16.0f, 1.0f, e,
-                                   m, hidden, out, n, false, false, edgeZ);
+                                   m, hidden, out, n, true, false, edgeZ);
             }
 
             if (az1 > cut1 + 1e-4f) {
@@ -266,12 +266,12 @@ int emitPane(const World* w, int gx, int y, int gz, unsigned char id, unsigned c
                 int hidden = (b <= cut1 + 1e-4f) ? (1 << F_BACK) : 0;
                 n = emitPartialBox(w, gx, y, gz, id, data,
                                    7.0f/16.0f, 0.0f, b, 9.0f/16.0f, 1.0f, az1,
-                                   m, hidden, out, n, false, false, edgeZ);
+                                   m, hidden, out, n, true, false, edgeZ);
             }
         } else {
             n = emitPartialBox(w, gx, y, gz, id, data,
                                7.0f/16.0f, 0.0f, az0, 9.0f/16.0f, 1.0f, az1,
-                               bMask, 0, out, n, false, false, edgeZ);
+                               bMask, 0, out, n, true, false, edgeZ);
         }
     }
 

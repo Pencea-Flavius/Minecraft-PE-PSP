@@ -501,12 +501,26 @@ void itemHandDraw(float a, float bs, float bc) {
 
     if (g_viewBobbing) {
         float wda = g_level.player->walkDist - g_level.player->walkDistO;
-        float b = -(g_level.player->walkDistO + wda * a);
+        float b = -(g_level.player->walkDist + wda * a);
         float bobv  = g_level.player->oBob  + (g_level.player->bob  - g_level.player->oBob)  * a;
         float tiltv = g_level.player->oTilt + (g_level.player->tilt - g_level.player->oTilt) * a;
-        ScePspFVector3 bob = { sinf(b * PIF) * bobv * 0.5f, -fabsf(cosf(b * PIF)) * bobv, 0.0f };
+        const float sinB = sinf(b * PIF);
+        ScePspFVector3 bob = { sinB * bobv * 0.5f, -fabsf(cosf(b * PIF) * bobv), 0.0f };
         sceGumTranslate(&bob);
+        sceGumRotateZ(sinB * bobv * 3.0f * DEG2RAD);
+        sceGumRotateX(fabsf(cosf(b * PIF - 0.2f) * bobv) * 5.0f * DEG2RAD);
+
         sceGumRotateX(tiltv * DEG2RAD);
+    }
+
+    {
+        const Player* p = g_level.player;
+        float xr  = p->xRotO + (p->xRot - p->xRotO) * a;
+        float yr  = p->yRotO + (p->yRot - p->yRotO) * a;
+        float xrr = p->xBobO + (p->xBob - p->xBobO) * a;
+        float yrr = p->yBobO + (p->yBob - p->yBobO) * a;
+        sceGumRotateX((xr - xrr) * 0.1f * DEG2RAD);
+        sceGumRotateY((yr - yrr) * 0.1f * DEG2RAD);
     }
 
     if (hasItem) {

@@ -7,7 +7,7 @@ typedef unsigned int   u32;
 void memcpy_vfpu( void* dst, const void* src, size_t size )
 {
 
-	if( ((u32)src&0x3) != ((u32)dst&0x3) && (size<16) )
+    if( !vfpuCopyWorthIt( (u32)src, (u32)dst, size ) )
     {
         memcpy( dst, src, size );
         return;
@@ -76,6 +76,7 @@ void memcpy_vfpu( void* dst, const void* src, size_t size )
 	}
 	else
     {
+
 		while (size>63)
 		{
 			asm(".set	push\n"
@@ -94,7 +95,7 @@ void memcpy_vfpu( void* dst, const void* src, size_t size )
 				".set	pop\n"
 				:"+r"(dst8),"+r"(src8),"+r"(size)
 				:
-				:"memory"
+				:"memory","$f0","$f1","$f2","$f3"
 				);
 		}
 
@@ -110,7 +111,7 @@ void memcpy_vfpu( void* dst, const void* src, size_t size )
 				".set	pop\n"
 				:"+r"(dst8),"+r"(src8),"+r"(size)
 				:
-				:"memory"
+				:"memory","$f0","$f1","$f2","$f3"
 				);
 		}
     }

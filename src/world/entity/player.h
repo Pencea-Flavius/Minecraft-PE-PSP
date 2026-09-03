@@ -28,6 +28,8 @@ public:
     void hurtArmor(int dmg);
 
     float bob, oBob, tilt, oTilt;
+
+    float xBob, yBob, xBobO, yBobO;
     float bowPull, bowTimeHeld;
     float eatAnim;
 
