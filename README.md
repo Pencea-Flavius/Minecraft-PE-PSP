@@ -5,7 +5,7 @@ This repository contains a port of **Minecraft Pocket Edition** for the Sony Pla
 It runs on **every PSP™ model, including the 32 MB PSP™-1000** — see [Hardware](#hardware) for what the 1000 gives up.  
 The port is based on **MCPE v0.6.1** — this means all *World Logic*, *Save Format*, *Block Interaction*, *Movement* etc.  
 are ***exactly*** as in Pocket Edition on your phones[^1].  
-This doesn't mean however it isn't improved upon, the current feature set sits somewhere around **v0.7.6**[^2]  
+This doesn't mean however it isn't improved upon, the current feature set sits at **v0.8.1**[^2]  
 ### This includes:  
 * world generation,
 * gamemodes,
@@ -142,8 +142,14 @@ All later models[^4] + Emulators (depending on their configuration) get the full
 
 ## Compatibility
 
-Worlds use the real MCPE 0.6.1 on-disk format (`chunks.dat`, `level.dat`, `entities.dat`).  
-All worlds made on the PSP™ open in MCPE v0.6.1, and vice versa.
+Worlds use the real MCPE on-disk format (`chunks.dat`, `level.dat`, `entities.dat`),  
+unchanged from 0.6.1 through 0.8.1.
+
+**Any MCPE world up to and including v0.8.1 opens on the PSP™.**
+
+The other way around, open a world made here in **v0.8.1** — the port now builds
+with the 0.8.1 block set, and an older Pocket Edition simply does not know those
+blocks, so anything newer than its own version will not show up.
 
 ## Disclaimer
 

@@ -30,6 +30,13 @@ static const unsigned char CH_UNPOPULATED = 0x5A;
 
 static const int OFF_CRC = OFF_UPD + 1;
 
+static const char CH_MAGIC[4] = { 'M', 'P', 'S', 'P' };
+static const int CH_TR_FLAGS = CH_PAYLOAD + 4;
+static const int CH_TR_CRC   = CH_PAYLOAD + 8;
+static const int CH_TRAILER  = 12;
+static const int CH_RECORD   = CH_PAYLOAD + CH_TRAILER;
+static const unsigned char CH_TR_UNPOPULATED = 0x01;
+
 static unsigned int crc32(const unsigned char* p, int n) {
     unsigned int c = 0xFFFFFFFFu;
     for (int i = 0; i < n; i++) {
@@ -47,13 +54,22 @@ static unsigned int payloadCrc(unsigned char* buf) {
     memcpy(buf + OFF_CRC, save, 4);
     return c;
 }
-static void crcPut(unsigned char* buf, unsigned int c) {
-    for (int i = 0; i < 4; i++) buf[OFF_CRC + i] = (unsigned char)(c >> (i * 8));
-}
 static unsigned int crcGet(const unsigned char* buf) {
     unsigned int c = 0;
     for (int i = 0; i < 4; i++) c |= (unsigned int)buf[OFF_CRC + i] << (i * 8);
     return c;
+}
+
+static bool trailerOk(const unsigned char* buf, int len) {
+    return len >= CH_RECORD && memcmp(buf + CH_PAYLOAD, CH_MAGIC, 4) == 0;
+}
+
+static bool legacyMarks(const unsigned char* buf, int len) {
+    if (len < CH_PAYLOAD) return false;
+    if (buf[OFF_UPD] != 0 && buf[OFF_UPD] != CH_UNPOPULATED) return false;
+    for (int i = OFF_CRC + 4; i < OFF_UPD + CH_COLS; i++)
+        if (buf[i]) return false;
+    return true;
 }
 
 static inline int chunkIdx(int lx, int lz, int y) { return (lx << 11) | (lz << 7) | y; }
@@ -168,7 +184,7 @@ bool chunkStorageHasSave(const char* absDir) {
 }
 
 static unsigned char* payload() {
-    if (!s_payload) s_payload = (unsigned char*)malloc(CH_PAYLOAD);
+    if (!s_payload) s_payload = (unsigned char*)malloc(CH_RECORD);
     return s_payload;
 }
 
@@ -185,9 +201,17 @@ bool chunkStorageLoad(World* w, int cx, int cz, bool* outGotLight, bool* outPopu
     if (!rf->readChunk(cx & 31, cz & 31, &buf, &len)) return false;
     if (len < OFF_DATA + CH_NIBBLE) { delete[] buf; return false; }
 
-    if (len >= OFF_CRC + 4) {
-        unsigned int stored = crcGet(buf);
-        if (stored && stored != payloadCrc(buf)) {
+    bool haveTrailer = trailerOk(buf, len);
+    bool haveLegacy  = !haveTrailer && legacyMarks(buf, len);
+    unsigned int stored = 0;
+    if (haveTrailer) {
+        for (int i = 0; i < 4; i++) stored |= (unsigned int)buf[CH_TR_CRC + i] << (i * 8);
+    } else if (haveLegacy && len >= OFF_CRC + 4) {
+        stored = crcGet(buf);
+    }
+    if (stored) {
+        unsigned int actual = haveTrailer ? crc32(buf, CH_PAYLOAD) : payloadCrc(buf);
+        if (stored != actual) {
             LOGI("chunkStorage: chunk %d,%d fails its checksum -- regenerating\n", cx, cz);
             g_chunkCrcFails++;
             delete[] buf;
@@ -196,7 +220,14 @@ bool chunkStorageLoad(World* w, int cx, int cz, bool* outGotLight, bool* outPopu
     }
 
     if (len < OFF_UPD && outGotLight) *outGotLight = false;
-    if (outPopulated && len > OFF_UPD && buf[OFF_UPD] == CH_UNPOPULATED) *outPopulated = false;
+    if (outPopulated) {
+        if (haveTrailer) {
+            if (buf[CH_TR_FLAGS] & CH_TR_UNPOPULATED) *outPopulated = false;
+        } else if (haveLegacy && len > OFF_UPD && buf[OFF_UPD] == CH_UNPOPULATED) {
+            *outPopulated = false;
+        }
+
+    }
 
     for (int lx = 0; lx < 16; lx++) {
         for (int lz = 0; lz < 16; lz++) {
@@ -224,8 +255,7 @@ bool chunkStorageSave(World* w, int cx, int cz) {
     unsigned char* buf = payload();
     if (!buf) { LOGI("chunkStorage: no room for the save buffer\n"); return false; }
 
-    memset(buf, 0, CH_PAYLOAD);
-    if (!worldSlot(w, cx, cz)->terrainPopulated) buf[OFF_UPD] = CH_UNPOPULATED;
+    memset(buf, 0, CH_RECORD);
     for (int lx = 0; lx < 16; lx++) {
         for (int lz = 0; lz < 16; lz++) {
             int gx = cx * 16 + lx, gz = cz * 16 + lz;
@@ -250,8 +280,11 @@ bool chunkStorageSave(World* w, int cx, int cz) {
             }
         }
     }
-    crcPut(buf, payloadCrc(buf));
-    if (!rf->writeChunk(cx & 31, cz & 31, buf, CH_PAYLOAD)) return false;
+    memcpy(buf + CH_PAYLOAD, CH_MAGIC, 4);
+    if (!worldSlot(w, cx, cz)->terrainPopulated) buf[CH_TR_FLAGS] = CH_TR_UNPOPULATED;
+    unsigned int crc = crc32(buf, CH_PAYLOAD);
+    for (int i = 0; i < 4; i++) buf[CH_TR_CRC + i] = (unsigned char)(crc >> (i * 8));
+    if (!rf->writeChunk(cx & 31, cz & 31, buf, CH_RECORD)) return false;
     worldSlot(w, cx, cz)->unsaved = false;
     return true;
 }
