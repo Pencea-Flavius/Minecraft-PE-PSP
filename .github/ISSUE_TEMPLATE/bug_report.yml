@@ -1,0 +1,59 @@
+name: Bug Report
+description: Report a problem you encountered
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! Please make sure you're using the **latest release** and that the issue hasn't already been fixed, so we don't waste time on something already solved.
+
+  - type: checkboxes
+    id: checked-latest
+    attributes:
+      label: Confirmation
+      options:
+        - label: I have checked that I'm using the latest release and the bug still happens
+          required: true
+
+  - type: textarea
+    id: bug-description
+    attributes:
+      label: Bug description
+      description: Explain as clearly as possible what happens and what should happen instead
+      placeholder: Ex. when I press X, Y happens instead of Z
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version used
+      description: The version/release number you tested the bug on
+      placeholder: ex. v1.2.3
+    validations:
+      required: true
+
+  - type: dropdown
+    id: psp-model
+    attributes:
+      label: PSP Model
+      description: Which model are you using?
+      options:
+        - PSP 1000
+        - PSP 2000
+        - PSP 3000
+        - PSP Go
+        - PSP Street
+        - PPSSPP
+    validations:
+      required: true
+
+  - type: input
+    id: custom-firmware
+    attributes:
+      label: Custom Firmware
+      description: What CFW are you using? (leave blank or write "N/A" if you selected PPSSPP above)
+      placeholder: ex. ARK-4, ARK-5, etc.
+    validations:
+      required: false
