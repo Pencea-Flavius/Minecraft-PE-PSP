@@ -89,7 +89,14 @@ bool RegionFile::open() {
 }
 
 void RegionFile::close() {
-    if (file) { fclose(file); file = NULL; }
+    if (file) {
+        // Push whatever the C library still buffers down to the OS, so a
+        // power loss right after saving cannot leave the record half-written.
+        fflush(file);
+        sceIoSync(filename, 0);
+        fclose(file);
+        file = NULL;
+    }
 }
 
 bool RegionFile::readChunk(int x, int z, unsigned char** dest, int* destLen) {
@@ -126,20 +133,22 @@ bool RegionFile::writeChunk(int x, int z, const unsigned char* data, int len) {
     int offset = offsets[idx];
     int sectorNum = offset >> 8;
     int sectorCount = offset & 0xff;
-    int sectorsNeeded = (size / SECTOR_BYTES) + 1;
+    int sectorsNeeded = (size + SECTOR_BYTES - 1) / SECTOR_BYTES;
 
-    if (sectorsNeeded > 256) {
+    // The sector count rides in the low 8 bits of the offset entry.
+    if (sectorsNeeded > 255) {
         LOGI("RegionFile: chunk too big to save\n");
         return false;
     }
 
     if (sectorNum != 0 && sectorCount == sectorsNeeded) {
 
-        write(sectorNum, data, len);
+        if (!write(sectorNum, data, len)) return false;
     } else {
 
-        for (int i = 0; i < sectorCount; i++)
-            sectorSetFree(sectorNum + i, true);
+        if (sectorNum != 0)
+            for (int i = 0; i < sectorCount; i++)
+                sectorSetFree(sectorNum + i, true);
 
         int slot = 0, runLength = 0;
         bool extendFile = false;
@@ -164,27 +173,31 @@ bool RegionFile::writeChunk(int x, int z, const unsigned char* data, int len) {
             fseek(file, 0, SEEK_END);
             int extend = sectorsNeeded - runLength;
             for (int i = 0; i < extend; i++) {
-                fwrite(emptyChunk, sizeof(int), SECTOR_INTS, file);
-                sectorSetFree(slot + i, true);
+                if (fwrite(emptyChunk, sizeof(int), SECTOR_INTS, file) != SECTOR_INTS)
+                    return false;
+                sectorSetFree(slot + runLength + i, true);
             }
         }
+
+        // Write the payload before publishing the new offset: until the offset
+        // table entry lands, the old record stays intact if anything fails.
+        if (!write(slot, data, len)) return false;
+
         offsets[idx] = (slot << 8) | sectorsNeeded;
         for (int i = 0; i < sectorsNeeded; i++)
             sectorSetFree(slot + i, false);
 
-        write(slot, data, len);
-
         fseek(file, idx * sizeof(int), SEEK_SET);
-        fwrite(&offsets[idx], sizeof(int), 1, file);
+        if (fwrite(&offsets[idx], sizeof(int), 1, file) != 1) return false;
     }
     fflush(file);
     return true;
 }
 
 bool RegionFile::write(int sector, const unsigned char* data, int len) {
-    fseek(file, sector * SECTOR_BYTES, SEEK_SET);
+    if (fseek(file, sector * SECTOR_BYTES, SEEK_SET) != 0) return false;
     int size = len + sizeof(int);
-    logAssert(fwrite(&size, sizeof(int), 1, file), 1);
-    logAssert(fwrite(data, 1, len, file), len);
+    if (fwrite(&size, sizeof(int), 1, file) != 1) return false;
+    if (len > 0 && (int)fwrite(data, 1, len, file) != len) return false;
     return true;
 }

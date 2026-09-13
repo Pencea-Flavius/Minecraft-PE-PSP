@@ -231,7 +231,7 @@ INCDIR = src
 # (framelog.csv, always on). Default empty -- the shipped build carries neither.
 EXTRA_CFLAGS ?=
 
-CFLAGS = -O2 -G0 -Wall -MMD -MP $(EXTRA_CFLAGS)
+CFLAGS = -O2 -G0 -Wall -fno-strict-aliasing -MMD -MP $(EXTRA_CFLAGS)
 CXXFLAGS = $(CFLAGS) -fno-exceptions -fno-rtti
 ASFLAGS = $(CFLAGS)
 

@@ -9,7 +9,7 @@ void BytesDataOutput::writeString(const std::string& v) {
 std::string BytesDataInput::readString() {
     int len = readShort();
     if (len < 0) len = 0;
-    if (len > MAX_STRING_LENGTH - 1) len = MAX_STRING_LENGTH - 1;
+    if (len > MAX_STRING_LENGTH) len = MAX_STRING_LENGTH;
     char* buffer = new char[len + 1];
     readBytes(buffer, len);
     buffer[len] = 0;

@@ -33,6 +33,7 @@ public:
     virtual void      readBytes(void* data, int bytes) = 0;
 
     virtual bool      failed() const { return false; }
+    virtual void      fail()         {}
 };
 
 class BytesDataOutput : public IDataOutput {
@@ -74,19 +75,20 @@ public:
 class MemReader : public BytesDataInput {
 public:
     MemReader(const unsigned char* data, int size)
-        : fail(false), _buf(data), _size(size), _pos(0) {}
+        : _buf(data), _size(size), _pos(0), failedFlag(false) {}
     virtual void readBytes(void* data, int bytes) {
         if (bytes <= 0) return;
-        if (_pos + bytes > _size) { fail = true; memset(data, 0, bytes); _pos = _size; return; }
+        if (_pos + bytes > _size) { failedFlag = true; memset(data, 0, bytes); _pos = _size; return; }
         memcpy(data, &_buf[_pos], bytes);
         _pos += bytes;
     }
-    virtual bool failed() const { return fail; }
-    bool fail;
+    virtual bool failed() const { return failedFlag; }
+    virtual void fail() { failedFlag = true; }
 private:
     const unsigned char* _buf;
     int _size;
     int _pos;
+    bool failedFlag;
 };
 
 #endif

@@ -10,6 +10,9 @@ class ListTag : public Tag {
 public:
     ListTag() : Tag(""), type(TAG_Byte) {}
     ListTag(const std::string& n) : Tag(n), type(TAG_Byte) {}
+    // Elements are owned; deleteChildren() is idempotent, so explicit calls
+    // before delete stay safe.
+    ~ListTag() { deleteChildren(); }
 
     void write(IDataOutput* dos) {
         type = list.empty() ? TAG_Byte : list.front()->getId();
@@ -25,7 +28,13 @@ public:
 
         deleteChildren();
         if (size < 0) size = 0;
-        for (int i = 0; i < size; i++) {
+        // A corrupt or truncated save must not be able to make us allocate an
+        // unbounded number of elements (EndTag lists in particular consume no
+        // input, so a huge size would loop until memory runs out).
+        static const int MAX_LIST_LENGTH = 1 << 20;
+        if (size > MAX_LIST_LENGTH) size = MAX_LIST_LENGTH;
+        if (type == TAG_End && size > 0) size = 0;
+        for (int i = 0; i < size && !dis->failed(); i++) {
             Tag* tag = Tag::newTag(type, NullString);
             if (!tag) break;
             tag->load(dis);

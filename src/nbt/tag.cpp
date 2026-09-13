@@ -19,7 +19,12 @@ Tag* Tag::readNamedTag(IDataInput* dis) {
     if (type == TAG_End) return new EndTag();
 
     Tag* tag = newTag(type, dis->readString());
-    if (!tag) return NULL;
+    if (!tag) {
+        // Unknown tag id: the stream can no longer be parsed reliably, so mark
+        // it failed instead of leaving the reader silently desynced.
+        dis->fail();
+        return NULL;
+    }
 
     tag->load(dis);
     return tag;

@@ -430,6 +430,9 @@ static void playCave(float volume, float pitch) {
     s->frac       = 0;
     s->step       = (unsigned int)(((float)g_caveRate / SAMPLE_RATE) * pitch * 65536.0f);
     s->vol        = (int)(volume * 4096.0f);
+    // Compiler barrier: the mixer thread must never observe playing == 1
+    // before every field above is visible (single core, in-order MIPS).
+    __asm__ __volatile__("" ::: "memory");
     s->playing    = 1;
 }
 
@@ -831,6 +834,9 @@ void soundPlay(const char* name, float volume, float pitch, int catOverride) {
     s->step       = (unsigned int)(((float)g_srcRate / SAMPLE_RATE) * pitch * 65536.0f);
     s->vol        = (int)(volume * 4096.0f);
     s->cat        = (unsigned char)cat;
+    // Compiler barrier: the mixer thread must never observe playing == 1
+    // before every field above is visible (single core, in-order MIPS).
+    __asm__ __volatile__("" ::: "memory");
     s->playing    = 1;
 }
 
