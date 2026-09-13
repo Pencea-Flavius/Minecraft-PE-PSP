@@ -17,7 +17,7 @@ static const int CHICKEN_FOODS[] = { ITEM_SEEDS_WHEAT };
 Chicken::Chicken(Level* level) : Animal(level) {
     setSize(0.4f, 0.7f);
     heightOffset = 0.0f;
-    walkingSpeed = 0.1f;
+    runSpeed = 0.25f;
     entityRendererId = ER_CHICKEN_RENDERER;
     health = getMaxHealth();
     eggTime = sharedRandom.nextInt(6000) + 6000;

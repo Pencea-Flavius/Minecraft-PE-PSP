@@ -34,10 +34,13 @@ bool TileItem::useOn(ItemInstance* item, Player* player, World* world, int x, in
     if (!item || item->isNull()) return false;
 
     int nx = x, ny = y, nz = z;
+
     if (!isReplaceable(worldBlock(world, x, y, z))) {
         nx += kFaceNeighbor[face][0];
         ny += kFaceNeighbor[face][1];
         nz += kFaceNeighbor[face][2];
+    } else {
+        face = F_TOP;
     }
 
     Tile* tile = Tile::tiles[tileId & 0xFF];
@@ -186,10 +189,11 @@ bool FlintAndSteelItem::useOn(ItemInstance*, Player* player, World* w, int x, in
     int fz = z + kFaceNeighbor[face][2];
     if (worldBlock(w, fx, fy, fz) == BLOCK_AIR && fireMayPlace(w, fx, fy, fz)) {
         firePlace(w, fx, fy, fz);
-        g_level.playSound(fx + 0.5f, fy + 0.5f, fz + 0.5f, "fire.ignite", 1.0f, 1.0f);
 
-        if (player) player->inventory->hurtSelected(1);
-        return true;
+        g_level.playSound(fx + 0.5f, fy + 0.5f, fz + 0.5f, "fire.ignite", 1.0f,
+                          (rand() / (float)RAND_MAX) * 0.4f + 0.8f);
     }
-    return false;
+
+    if (player) player->inventory->hurtSelected(1);
+    return true;
 }

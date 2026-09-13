@@ -12,10 +12,12 @@ public:
         : Item(id), nutrition(nutrition), icon(icon), meat(isMeat) {}
     virtual bool isFood() const { return true; }
     virtual int  getIcon(short data) const { return icon; }
-    int  getUseDuration() const { return EAT_TICKS; }
-    int  getNutrition() const { return nutrition; }
 
-    virtual short getFoodRemainder() const { return 0; }
+    virtual void use(ItemInstance* item, Player* player, World* world);
+    virtual int  getMaxUseDuration() const { return EAT_TICKS; }
+    virtual void useTimeDepleted(ItemInstance* item, Player* player);
+    virtual int  getUseAnimation() const { return 1; }
+    int  getNutrition() const { return nutrition; }
     bool isMeat() const { return meat; }
 protected:
     int  nutrition;
@@ -28,7 +30,7 @@ public:
     BowlFoodItem(short id, int nutrition, int icon) : FoodItem(id, nutrition, false, icon) {
         maxStackSize = 1;
     }
-    virtual short getFoodRemainder() const { return ITEM_BOWL; }
+    virtual void useTimeDepleted(ItemInstance* item, Player* player);
 };
 
 class SeedFoodItem : public FoodItem {

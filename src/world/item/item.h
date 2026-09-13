@@ -118,6 +118,8 @@ public:
 
 struct World;
 class Player;
+class Mob;
+class Entity;
 
 class Item {
 public:
@@ -153,6 +155,14 @@ public:
     }
     virtual void use(ItemInstance* item, Player* player, World* world) {}
 
+    virtual int  getMaxUseDuration() const { return 0; }
+
+    virtual void useTimeDepleted(ItemInstance* item, Player* player) {}
+
+    virtual int  getUseAnimation() const { return 0; }
+
+    virtual void releaseUsing(ItemInstance* item, Player* player, int duration) {}
+
     virtual int getMaxStackSize(const ItemInstance* item) const { return maxStackSize; }
 
     virtual bool isLiquidClipItem(short data) const { return false; }
@@ -164,19 +174,19 @@ public:
     virtual short plantedTileId() const { return 0; }
 
     virtual bool isHoe() const { return false; }
+
     virtual bool mineBlock(ItemInstance* item, World* world, int blockId, int x, int y, int z, Player* player) {
         return false;
     }
+    virtual void hurtEnemy(ItemInstance* item, Mob* target, Player* attacker) {}
 
     virtual bool isTool() const { return maxDamage > 0; }
     virtual bool isHandEquipped() const { return false; }
 
     virtual float getDestroySpeed(int blockId) const { return 1.0f; }
-    virtual int   getAttackDamage() const { return 1; }
-    virtual bool  canDestroySpecial(int blockId) const { return false; }
 
-    virtual int   getMineDurabilityCost() const { return 1; }
-    virtual int   getHurtEnemyDurabilityCost() const { return 2; }
+    virtual int   getAttackDamage(Entity* target) const { return 1; }
+    virtual bool  canDestroySpecial(int blockId) const { return false; }
     virtual bool  isFood() const { return false; }
 
     virtual bool  isSeed() const { return false; }

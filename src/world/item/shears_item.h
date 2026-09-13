@@ -16,6 +16,7 @@ public:
     }
     virtual bool canDestroySpecial(int blockId) const { return blockId == BLOCK_COBWEB; }
 
+    virtual bool mineBlock(ItemInstance* item, World* world, int blockId, int x, int y, int z, Player* player);
     virtual int getIcon(short) const { return icon; }
 private:
     int icon;

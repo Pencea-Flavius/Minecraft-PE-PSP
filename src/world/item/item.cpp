@@ -18,8 +18,33 @@
 #include "world/item/compass_item.h"
 #include "world/item/minecart_item.h"
 #include "world/entity/entity_types.h"
+#include "world/entity/player.h"
+#include "world/inventory/inventory.h"
 
 Item* Item::items[4096];
+
+void WeaponItem::hurtEnemy(ItemInstance*, Mob*, Player* attacker) {
+    attacker->inventory->hurtSelected(1);
+}
+bool WeaponItem::mineBlock(ItemInstance*, World*, int, int, int, int, Player* player) {
+    player->inventory->hurtSelected(2);
+    return true;
+}
+void DiggerItem::hurtEnemy(ItemInstance*, Mob*, Player* attacker) {
+    attacker->inventory->hurtSelected(2);
+}
+bool DiggerItem::mineBlock(ItemInstance*, World*, int, int, int, int, Player* player) {
+    player->inventory->hurtSelected(1);
+    return true;
+}
+bool ShearsItem::mineBlock(ItemInstance* item, World* world, int blockId,
+                           int x, int y, int z, Player* player) {
+
+    if (blockId != BLOCK_LEAVES && blockId != BLOCK_COBWEB)
+        return Item::mineBlock(item, world, blockId, x, y, z, player);
+    player->inventory->hurtSelected(1);
+    return true;
+}
 
 Item::Item(short id) : id(id), maxStackSize(64), maxDamage(0), category(-1), creativeTab(0) {
     items[id] = this;

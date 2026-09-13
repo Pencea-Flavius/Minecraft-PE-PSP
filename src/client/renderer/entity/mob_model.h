@@ -76,7 +76,7 @@ inline unsigned int mobFaceLitColor(const float* m, int face, unsigned int brCol
 #endif
 }
 
-void mobDrawPartLit(const MobVertex* base, unsigned int brCol);
+void mobDrawPartLit(const MobVertex* base, unsigned int brCol, const float* toWorld = 0);
 
 struct SkinVertex { float u, v; unsigned int color; float x, y, z; };
 

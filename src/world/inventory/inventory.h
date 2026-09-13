@@ -3,6 +3,8 @@
 
 #include "world/inventory/filling_container.h"
 
+class Entity;
+
 class Inventory : public FillingContainer {
 public:
     static const int HOTBAR   = 8;
@@ -22,6 +24,8 @@ public:
     bool          replaceSelected(short id, unsigned char data);
 
     bool          hurtSelected(int amount);
+
+    int           getAttackDamage(Entity* target);
 
     void          ensureHotbar(short id, short data);
     void          selectSlot(int slot) { selected = slot; }

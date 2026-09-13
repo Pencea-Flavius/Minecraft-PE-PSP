@@ -30,7 +30,6 @@ static inline int ifloor(float v) { int i = (int)v; return (v < 0 && v != i) ? i
 Mob::Mob(Level* level)
 :   Entity(level), flying(false),
     xxa(0), yya(0), yRotA(0), jumping(false),
-    walkingSpeed(0.1f),
 
     flyingSpeed(0.02f), flySlowdown(1.0f), defaultLookAngle(0.0f),
     health(10), lastHealth(0), lastHurt(0),
@@ -158,12 +157,16 @@ void Mob::travel(float xs, float yf) {
         }
         float f3 = friction * friction * friction;
         float friction2 = (0.6f * 0.6f * 0.91f * 0.91f * 0.6f * 0.91f) / f3;
-        moveRelative(xs, yf, onGround ? walkingSpeed * friction2 : flyingSpeed);
+
+        moveRelative(xs, yf, onGround ? getSpeed() * getWalkingSpeedModifier() * friction2
+                                      : flyingSpeed);
 
         bool ladder = onLadder();
         if (ladder) {
             fallDistance = 0.0f;
             if (yd < -0.15f) yd = -0.15f;
+
+            if (isSneaking() && yd < 0.0f) yd = 0.0f;
         }
 
         move(xd, yd, zd);
@@ -247,12 +250,24 @@ void Mob::baseTick() {
 
 void Mob::updateWalkAnim() {
     walkAnimSpeedO = walkAnimSpeed;
+    float amp = (isOnFire() || hurtTime > 0) ? 1.5f : 1.0f;
+    if (!onGround && yd > 0.0f) amp *= 0.35f;
     float xxd = x - xo, zzd = z - zo;
     float wst = sqrtf(xxd * xxd + zzd * zzd) * 4.0f;
     if (wst > 1.0f) wst = 1.0f;
-    walkAnimSpeed += (wst - walkAnimSpeed) * 0.4f;
+    if (wst <= 0.0f) {
+        float turn = fabsf(yHeadRot - yHeadRotO) * 0.15f;
+        wst = (turn > 0.5f) ? 0.5f : turn;
+    }
+    walkAnimSpeed += (wst * amp - walkAnimSpeed) * 0.4f;
     walkAnimPosO = walkAnimPos;
     walkAnimPos += walkAnimSpeed;
+}
+
+void Mob::outOfWorld() {
+    int before = health;
+    hurt(0, 4);
+    if (health >= before) actuallyHurt(4);
 }
 
 void Mob::jumpFromGround() { yd = 0.42f; }
@@ -366,11 +381,10 @@ void Mob::aiStep() {
 
     xxa *= 0.98f; yya *= 0.98f; yRotA *= 0.9f;
 
-    float ns = walkingSpeed, nf = flyingSpeed;
-    walkingSpeed *= getWalkingSpeedModifier();
-    flyingSpeed  *= getWalkingSpeedModifier();
+    float nf = flyingSpeed;
+    flyingSpeed *= getWalkingSpeedModifier();
     travel(xxa, yya);
-    walkingSpeed = ns; flyingSpeed = nf;
+    flyingSpeed = nf;
 
     if (!farAway) {
         AABB region = bb.grow(0.2f, 0.0f, 0.2f);

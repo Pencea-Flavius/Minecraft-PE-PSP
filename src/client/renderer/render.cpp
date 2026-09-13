@@ -120,14 +120,26 @@ struct ColorVertex {
 };
 }
 
-#define SKY_DOME_COLOR 0xFFBF5424u
+#define SKY_DOME_COLOR 0xFFFFA779u
 
-#define SKY_DOME_OFFSET 32.0f
+#define SKY_DOME_OFFSET 16.0f
+
+#define VOID_PLANE_Y    63.0f
+#define VOID_CAP_GAP    8.0f
 
 #define SKY_FOG_FAR 150.0f
 
+#define SKY_SECTORS 24
+
+static const float SKY_RING_R[] = { 0.0f, 2.0f, 6.0f, 14.0f, 30.0f, 60.0f, 110.0f, 160.0f, 210.0f };
+#define SKY_RINGS      ((int)(sizeof(SKY_RING_R) / sizeof(SKY_RING_R[0])))
+#define SKY_MESH_VERTS (SKY_SECTORS * 3 + (SKY_RINGS - 2) * SKY_SECTORS * 6)
+
 unsigned int g_skyColorNow = SKY_COLOR;
+
+unsigned int g_clearColorNow = SKY_COLOR;
 static unsigned int g_skyDomeColorNow = SKY_DOME_COLOR;
+static unsigned int g_voidColorNow    = 0xFF201008u;
 static unsigned int g_cloudColorNow = 0xCCFFFFFFu;
 
 static unsigned int scaleABGR(unsigned int c, float fr, float fg, float fb) {
@@ -176,8 +188,7 @@ static void updateDayColors(float alpha) {
 
     float sb = c * 2.0f + 0.5f;
     if (sb < 0.0f) sb = 0.0f;
-    if (sb > 0.75f) sb = 0.75f;
-    sb /= 0.75f;
+    if (sb > 1.0f) sb = 1.0f;
 
     float fb = c * 2.0f + 0.5f;
     if (fb < 0.0f) fb = 0.0f;
@@ -215,6 +226,19 @@ static void updateDayColors(float alpha) {
             g_skyDomeColorNow = scaleABGR(g_skyDomeColorNow, yy, yy, yy);
 
         }
+    }
+
+    {
+        float dr = ( g_skyDomeColorNow        & 0xFF) / 255.0f;
+        float dg = ((g_skyDomeColorNow >> 8)  & 0xFF) / 255.0f;
+        float db = ((g_skyDomeColorNow >> 16) & 0xFF) / 255.0f;
+        float vr = dr * 0.2f + 0.04f, vg = dg * 0.2f + 0.04f, vb = db * 0.6f + 0.1f;
+        if (vr > 1.0f) vr = 1.0f;
+        if (vg > 1.0f) vg = 1.0f;
+        if (vb > 1.0f) vb = 1.0f;
+        g_voidColorNow = 0xFF000000u | ((unsigned int)(vb * 255.0f) << 16)
+                                     | ((unsigned int)(vg * 255.0f) << 8)
+                                     |  (unsigned int)(vr * 255.0f);
     }
 }
 
@@ -385,18 +409,61 @@ static void skyBackdrop(unsigned int color) {
 
 }
 
-static unsigned int skyDomeFog(unsigned int dome, unsigned int fog, float x, float z) {
-    float d = sqrtf(x * x + z * z + SKY_DOME_OFFSET * SKY_DOME_OFFSET);
+static unsigned char s_eyeBlk = 0;
+static bool liquidEyeFog(int bx, int by, int bz,
+                         float* fogNear, float* fogFar, unsigned int* fogCol) {
+    if (!isWaterId(s_eyeBlk) && !isLavaId(s_eyeBlk)) return false;
+    unsigned int m = g_brightColor[lightRawAt(&g_world, bx, by, bz)] & 0xFF;
+    unsigned int b, g, r;
+    if (isWaterId(s_eyeBlk)) { b = (230 * m) / 255; g = (102 * m) / 255; r = ( 25 * m) / 255;
+                               *fogNear = 0.0f; *fogFar = 25.0f; }
+    else                     { b = ( 25 * m) / 255; g = ( 51 * m) / 255; r = (204 * m) / 255;
+                               *fogNear = 0.0f; *fogFar = 3.0f;  }
+    *fogCol = 0xFF000000u | (b << 16) | (g << 8) | r;
+    return true;
+}
+
+static unsigned int skyRadialColor(unsigned int inner, unsigned int outer, float r, float yoff) {
+    float d = sqrtf(r * r + yoff * yoff);
     float t = d / SKY_FOG_FAR;
     if (t > 1.0f) t = 1.0f;
     float f = t * t * (3.0f - 2.0f * t);
     unsigned int out = 0xFF000000u;
     for (int ch = 0; ch < 3; ch++) {
-        int a = (int)((dome >> (ch * 8)) & 0xFF);
-        int b = (int)((fog  >> (ch * 8)) & 0xFF);
+        int a = (int)((inner >> (ch * 8)) & 0xFF);
+        int b = (int)((outer >> (ch * 8)) & 0xFF);
         out |= (unsigned int)(a + (int)((b - a) * f + 0.5f)) << (ch * 8);
     }
     return out;
+}
+
+static void skyBuildDisc(ColorVertex* v, unsigned int inner, unsigned int outer, float yoff) {
+    const float STEP = 6.2831853f / (float)SKY_SECTORS;
+    int i = 0;
+    for (int sct = 0; sct < SKY_SECTORS; sct++) {
+        float a0 = (float)sct * STEP, a1 = (float)(sct + 1) * STEP;
+        float c0 = cosf(a0), n0 = sinf(a0), c1 = cosf(a1), n1 = sinf(a1);
+
+        float r1 = SKY_RING_R[1];
+        unsigned int cc = skyRadialColor(inner, outer, 0.0f, yoff);
+        unsigned int c1c = skyRadialColor(inner, outer, r1, yoff);
+        v[i].color=cc;  v[i].x=0;       v[i].y=0; v[i].z=0;       i++;
+        v[i].color=c1c; v[i].x=r1 * c0; v[i].y=0; v[i].z=r1 * n0; i++;
+        v[i].color=c1c; v[i].x=r1 * c1; v[i].y=0; v[i].z=r1 * n1; i++;
+        for (int ring = 1; ring + 1 < SKY_RINGS; ring++) {
+            float ra = SKY_RING_R[ring], rb = SKY_RING_R[ring + 1];
+
+            unsigned int ca = skyRadialColor(inner, outer, ra, yoff);
+            unsigned int cb = skyRadialColor(inner, outer, rb, yoff);
+            v[i].color=ca; v[i].x=ra*c0; v[i].y=0; v[i].z=ra*n0; i++;
+            v[i].color=cb; v[i].x=rb*c0; v[i].y=0; v[i].z=rb*n0; i++;
+            v[i].color=cb; v[i].x=rb*c1; v[i].y=0; v[i].z=rb*n1; i++;
+            v[i].color=ca; v[i].x=ra*c0; v[i].y=0; v[i].z=ra*n0; i++;
+            v[i].color=cb; v[i].x=rb*c1; v[i].y=0; v[i].z=rb*n1; i++;
+            v[i].color=ca; v[i].x=ra*c1; v[i].y=0; v[i].z=ra*n1; i++;
+        }
+    }
+    dcacheFlush(v, (size_t)SKY_MESH_VERTS * sizeof(ColorVertex));
 }
 
 static void renderSky(float px, float py, float pz) {
@@ -407,19 +474,16 @@ static void renderSky(float px, float py, float pz) {
     sceGuDisable(GU_DEPTH_TEST);
     sceGuDepthMask(GU_TRUE);
 
-    const int s = 16, d = 12;
     ScePspFVector3 t = { px, py + SKY_DOME_OFFSET, pz };
     sceGumTranslate(&t);
 
-    const int cells = (2 * d) * (2 * d);
-    const int n = cells * 6;
     const unsigned int dc = g_skyDomeColorNow;
     const unsigned int fc = g_skyColorNow;
 
     static ColorVertex* v = 0;
     static unsigned int builtDc = 0, builtFc = 0;
     if (!v) {
-        v = (ColorVertex*)memalign(16, (size_t)n * sizeof(ColorVertex));
+        v = (ColorVertex*)memalign(16, (size_t)SKY_MESH_VERTS * sizeof(ColorVertex));
         if (!v) {
 
             sceGuEnable(GU_DEPTH_TEST);
@@ -429,29 +493,60 @@ static void renderSky(float px, float py, float pz) {
     }
     if (dc != builtDc || fc != builtFc) {
         builtDc = dc; builtFc = fc;
-        int i = 0;
-        for (int xx = -s * d; xx < s * d; xx += s) {
-            for (int zz = -s * d; zz < s * d; zz += s) {
-                float wx0 = (float)xx, wx1 = (float)(xx + s);
-                float wz0 = (float)zz, wz1 = (float)(zz + s);
-
-                unsigned int c00 = skyDomeFog(dc, fc, wx0, wz0), c10 = skyDomeFog(dc, fc, wx1, wz0);
-                unsigned int c01 = skyDomeFog(dc, fc, wx0, wz1), c11 = skyDomeFog(dc, fc, wx1, wz1);
-                v[i].color=c01; v[i].x=wx0; v[i].y=0; v[i].z=wz1; i++;
-                v[i].color=c11; v[i].x=wx1; v[i].y=0; v[i].z=wz1; i++;
-                v[i].color=c10; v[i].x=wx1; v[i].y=0; v[i].z=wz0; i++;
-                v[i].color=c01; v[i].x=wx0; v[i].y=0; v[i].z=wz1; i++;
-                v[i].color=c10; v[i].x=wx1; v[i].y=0; v[i].z=wz0; i++;
-                v[i].color=c00; v[i].x=wx0; v[i].y=0; v[i].z=wz0; i++;
-            }
-        }
-
-        dcacheFlush(v, (size_t)n * sizeof(ColorVertex));
+        skyBuildDisc(v, dc, fc, SKY_DOME_OFFSET);
     }
 
     sceGuDisable(GU_FOG);
-    sceGumDrawArray(GU_TRIANGLES, GU_COLOR_8888 | GU_VERTEX_32BITF | GU_TRANSFORM_3D, n, 0, v);
+    sceGumDrawArray(GU_TRIANGLES, GU_COLOR_8888 | GU_VERTEX_32BITF | GU_TRANSFORM_3D,
+                    SKY_MESH_VERTS, 0, v);
     sceGuEnable(GU_FOG);
+
+    {
+
+        float dy = py - VOID_PLANE_Y;
+        if (dy < 0.0f) dy = -dy;
+        int dyKey = (int)(dy * 0.125f);
+        const unsigned int vc = g_voidColorNow;
+
+        static ColorVertex* vv = 0;
+        static unsigned int vBuiltVc = 0, vBuiltFc = 0;
+        static int vBuiltDy = -1;
+        if (!vv) vv = (ColorVertex*)memalign(16, (size_t)SKY_MESH_VERTS * sizeof(ColorVertex));
+        if (vv && (vc != vBuiltVc || fc != vBuiltFc || dyKey != vBuiltDy)) {
+            vBuiltVc = vc; vBuiltFc = fc; vBuiltDy = dyKey;
+            skyBuildDisc(vv, vc, fc, (float)dyKey * 8.0f);
+        }
+        if (vv) {
+            sceGumLoadIdentity();
+            ScePspFVector3 vt = { px, VOID_PLANE_Y, pz };
+            sceGumTranslate(&vt);
+            sceGuDisable(GU_FOG);
+            sceGumDrawArray(GU_TRIANGLES, GU_COLOR_8888 | GU_VERTEX_32BITF | GU_TRANSFORM_3D,
+                            SKY_MESH_VERTS, 0, vv);
+            sceGuEnable(GU_FOG);
+            sceGumLoadIdentity();
+        }
+
+        if (py < VOID_PLANE_Y) {
+            static ColorVertex* cv = 0;
+            static unsigned int cBuiltFc = 0;
+            if (!cv) cv = (ColorVertex*)memalign(16, (size_t)SKY_MESH_VERTS * sizeof(ColorVertex));
+            if (cv && fc != cBuiltFc) {
+                cBuiltFc = fc;
+                skyBuildDisc(cv, 0xFF000000u, fc, VOID_CAP_GAP);
+            }
+            if (cv) {
+                sceGumLoadIdentity();
+                ScePspFVector3 bt = { px, py - VOID_CAP_GAP, pz };
+                sceGumTranslate(&bt);
+                sceGuDisable(GU_FOG);
+                sceGumDrawArray(GU_TRIANGLES, GU_COLOR_8888 | GU_VERTEX_32BITF | GU_TRANSFORM_3D,
+                                SKY_MESH_VERTS, 0, cv);
+                sceGuEnable(GU_FOG);
+                sceGumLoadIdentity();
+            }
+        }
+    }
 
     sceGuDepthMask(GU_FALSE);
     sceGuEnable(GU_DEPTH_TEST);
@@ -464,14 +559,18 @@ static float        s_worldFogNear  = 0.0f;
 static float        s_worldFogFar   = WORLD_VIEW_DIST;
 static unsigned int s_worldFogColor = SKY_COLOR;
 
+static bool         s_worldFogLiquid = false;
+
 #define CLOUD_FAST_HEIGHT 128.33f
 
 #define CLOUD_HEIGHT      CLOUD_FAST_HEIGHT
 
 #define CLOUD_FAR         320.0f
 
-#define CLOUD_FAST_SUB   8
-#define CLOUD_FAST_CELLS 9
+#define CLOUD_SECTORS 24
+static const float CLOUD_RING_R[] = { 0.0f, 2.0f, 6.0f, 14.0f, 30.0f, 60.0f, 110.0f, 180.0f, 256.0f };
+#define CLOUD_RINGS      ((int)(sizeof(CLOUD_RING_R) / sizeof(CLOUD_RING_R[0])))
+#define CLOUD_DISC_VERTS (CLOUD_SECTORS * 3 + (CLOUD_RINGS - 2) * CLOUD_SECTORS * 6)
 
 static void renderCloudsFast(float alpha, float px, float py, float pz) {
     if (!g_haveClouds) return;
@@ -485,8 +584,6 @@ static void renderCloudsFast(float alpha, float px, float py, float pz) {
     sceGuDisable(GU_CULL_FACE);
     sceGuTexWrap(GU_REPEAT, GU_REPEAT);
 
-    const int s = 32;
-    const int d = 256 / s;
     const float scale = 1.0f / 2048.0f;
 
     float time = (float)g_cloudTicks + alpha;
@@ -497,44 +594,43 @@ static void renderCloudsFast(float alpha, float px, float py, float pz) {
 
     unsigned int color = g_cloudColorNow;
 
-    bool nearLayer = fabsf(py - CLOUD_FAST_HEIGHT) < 16.0f;
-
-    int cells = (2 * d) * (2 * d);
-    int maxVerts = cells * 6 +
-                   (nearLayer ? CLOUD_FAST_CELLS * (CLOUD_FAST_SUB * CLOUD_FAST_SUB - 1) * 6 : 0);
-    CloudVertex* v = (CloudVertex*)guFrameAlloc(maxVerts * sizeof(CloudVertex));
-
-    if (!v && nearLayer) {
-        nearLayer = false;
-        v = (CloudVertex*)guFrameAlloc(cells * 6 * sizeof(CloudVertex));
-    }
+    CloudVertex* v = (CloudVertex*)guFrameAlloc(CLOUD_DISC_VERTS * sizeof(CloudVertex));
 
     if (!v) return;
+
+    static float s_cs[CLOUD_SECTORS + 1], s_sn[CLOUD_SECTORS + 1];
+    static bool s_ringsReady = false;
+    if (!s_ringsReady) {
+        for (int k = 0; k <= CLOUD_SECTORS; k++) {
+            float ang = (float)k * (6.2831853f / (float)CLOUD_SECTORS);
+            s_cs[k] = cosf(ang); s_sn[k] = sinf(ang);
+        }
+        s_ringsReady = true;
+    }
+
     int n = 0;
-    for (int xx = -s * d; xx < s * d; xx += s) {
-        for (int zz = -s * d; zz < s * d; zz += s) {
-
-            int sub = (nearLayer && xx >= -s && xx <= s && zz >= -s && zz <= s) ? CLOUD_FAST_SUB : 1;
-            float step = (float)s / sub;
-            for (int i = 0; i < sub; i++) {
-                for (int j = 0; j < sub; j++) {
-
-                    float wx0 = xx + i * step,  wx1 = xx + (i + 1) * step;
-                    float wz0 = zz + j * step,  wz1 = zz + (j + 1) * step;
-                    float u0 = (wx0 + xo) * scale, u1 = (wx1 + xo) * scale;
-                    float v0 = (wz0 + zo) * scale, v1 = (wz1 + zo) * scale;
-
-                    v[n].u=u0; v[n].v=v1; v[n].color=color; v[n].x=wx0; v[n].y=0; v[n].z=wz1; n++;
-                    v[n].u=u1; v[n].v=v1; v[n].color=color; v[n].x=wx1; v[n].y=0; v[n].z=wz1; n++;
-                    v[n].u=u1; v[n].v=v0; v[n].color=color; v[n].x=wx1; v[n].y=0; v[n].z=wz0; n++;
-
-                    v[n].u=u0; v[n].v=v1; v[n].color=color; v[n].x=wx0; v[n].y=0; v[n].z=wz1; n++;
-                    v[n].u=u1; v[n].v=v0; v[n].color=color; v[n].x=wx1; v[n].y=0; v[n].z=wz0; n++;
-                    v[n].u=u0; v[n].v=v0; v[n].color=color; v[n].x=wx0; v[n].y=0; v[n].z=wz0; n++;
-                }
-            }
+    #define CLOUD_PUT(RX, RZ) do {                                            \
+        float wx_ = (RX), wz_ = (RZ);                                         \
+        v[n].u = (wx_ + xo) * scale; v[n].v = (wz_ + zo) * scale;             \
+        v[n].color = color; v[n].x = wx_; v[n].y = 0.0f; v[n].z = wz_; n++;   \
+    } while (0)
+    for (int k = 0; k < CLOUD_SECTORS; k++) {
+        float c0 = s_cs[k], n0 = s_sn[k], c1 = s_cs[k + 1], n1 = s_sn[k + 1];
+        float r1 = CLOUD_RING_R[1];
+        CLOUD_PUT(0.0f, 0.0f);
+        CLOUD_PUT(r1 * c0, r1 * n0);
+        CLOUD_PUT(r1 * c1, r1 * n1);
+        for (int ring = 1; ring + 1 < CLOUD_RINGS; ring++) {
+            float ra = CLOUD_RING_R[ring], rb = CLOUD_RING_R[ring + 1];
+            CLOUD_PUT(ra * c0, ra * n0);
+            CLOUD_PUT(rb * c0, rb * n0);
+            CLOUD_PUT(rb * c1, rb * n1);
+            CLOUD_PUT(ra * c0, ra * n0);
+            CLOUD_PUT(rb * c1, rb * n1);
+            CLOUD_PUT(ra * c1, ra * n1);
         }
     }
+    #undef CLOUD_PUT
 
     sceGumDrawArray(GU_TRIANGLES,
                    GU_TEXTURE_32BITF | GU_COLOR_8888 | GU_VERTEX_32BITF | GU_TRANSFORM_3D,
@@ -546,7 +642,9 @@ static void renderCloudsFast(float alpha, float px, float py, float pz) {
 #define CLOUD_CELL       12.0f
 #define CLOUD_CELLS      32
 
-#define CLOUD_SUB        12
+#define CLOUD_SUB        10
+#define CLOUD_SUB_NEAR   3
+#define CLOUD_NEAR_GAP   24.0f
 #define CLOUD_SUB_VERTS  ((CLOUD_SUB * CLOUD_SUB * 2 + 4 * CLOUD_SUB * (int)CLOUD_THICKNESS) * 6)
 
 #define CLOUD_MAX_VERTS  (CLOUD_CELLS * CLOUD_CELLS * 36)
@@ -556,6 +654,7 @@ static float g_lastCloudPx = -999999.0f;
 static float g_lastCloudPz = -999999.0f;
 static float g_lastCloudSnappedOffset = -999999.0f;
 static bool  g_lastWasInClouds = false;
+static bool  g_lastWasNearLayer = false;
 
 #define CLOUD_TINT_KEY(c) ((c) & 0x00F8F8F8u)
 static unsigned int g_lastCloudColor = 0xFFFFFFFFu;
@@ -575,6 +674,8 @@ static void renderCloudsFancy(float alpha, float px, float py, float pz) {
     unsigned char baseR =  g_cloudColorNow        & 0xFF;
 
     bool inClouds = (py >= CLOUD_HEIGHT - CLOUD_THICKNESS - 2.0f && py <= CLOUD_HEIGHT + 2.0f);
+
+    bool nearLayer = fabsf(py - CLOUD_HEIGHT) < CLOUD_NEAR_GAP;
     unsigned int aTop = inClouds ? 0xC0 : 0xD0, aSide = inClouds ? 0xB0 : 0xC0,
                  aBot = inClouds ? 0x90 : 0xAA;
     #define CLOUD_COL(a, f) (((unsigned int)(a) << 24) \
@@ -592,9 +693,11 @@ static void renderCloudsFancy(float alpha, float px, float py, float pz) {
 
     if (gridPx != g_lastCloudPx || gridPz != g_lastCloudPz ||
         snappedOffset != g_lastCloudSnappedOffset || inClouds != g_lastWasInClouds ||
+        nearLayer != g_lastWasNearLayer ||
         CLOUD_TINT_KEY(g_cloudColorNow) != g_lastCloudColor) {
         g_lastCloudPx = gridPx; g_lastCloudPz = gridPz;
         g_lastCloudSnappedOffset = snappedOffset; g_lastWasInClouds = inClouds;
+        g_lastWasNearLayer = nearLayer;
         g_lastCloudColor = CLOUD_TINT_KEY(g_cloudColorNow);
 
         const unsigned short* px16 = (const unsigned short*)g_clouds.data;
@@ -638,7 +741,10 @@ static void renderCloudsFancy(float alpha, float px, float py, float pz) {
                 bool openL = !isSolid(x0 - qS, z0), openR = !isSolid(x0 + qS, z0);
                 bool openF = !isSolid(x0, z0 - qS), openB = !isSolid(x0, z0 + qS);
 
-                int sub  = (inClouds && cx >= -1 && cx <= 1 && cz >= -1 && cz <= 1) ? CLOUD_SUB : 1;
+                bool inner = (cx >= -1 && cx <= 1 && cz >= -1 && cz <= 1);
+                bool ring  = (cx >= -2 && cx <= 2 && cz >= -2 && cz <= 2);
+                int sub  = (inClouds && inner) ? CLOUD_SUB
+                         : (nearLayer && ring) ? CLOUD_SUB_NEAR : 1;
                 int vsub = (sub == 1) ? 1 : (int)CLOUD_THICKNESS;
                 float sx = qS / sub, sy = CLOUD_THICKNESS / vsub;
 
@@ -728,7 +834,8 @@ static void renderCloudPass(float a, float px, float py, float pz) {
     float cloudFogNear = distToCloud * 0.8f;
     if (cloudFogNear < 32.0f) cloudFogNear = 32.0f;
 
-    sceGuFog(cloudFogNear, fancy ? 280.0f : distToCloud + 64.0f, g_skyColorNow);
+    if (!s_worldFogLiquid)
+        sceGuFog(cloudFogNear, fancy ? 280.0f : distToCloud + 64.0f, g_skyColorNow);
 
     if (fancy) renderCloudsFancy(a, px, py, pz);
     else       renderCloudsFast(a, px, py, pz);
@@ -1484,6 +1591,8 @@ void gameRender(MenuState& s) {
 
     float fov = isWaterId(eyeBlk) ? 60.0f : 70.0f;
 
+    s_eyeBlk = eyeBlk;
+
     float targetNearZ = nearSolid * 0.4f;
     if (targetNearZ > 0.25f) targetNearZ = 0.25f;
 
@@ -1562,12 +1671,17 @@ void gameRender(MenuState& s) {
 
         sceGuFog(0.0f, SKY_FOG_FAR, g_skyColorNow);
 
-        skyBackdrop(g_skyColorNow);
-        renderSky(px0, py0, pz0);
+        float mN, mF; unsigned int mC;
+        const bool eyeSubmerged = liquidEyeFog((int)floorf(px0), (int)floorf(py0),
+                                               (int)floorf(pz0), &mN, &mF, &mC);
+        skyBackdrop(eyeSubmerged ? mC : g_skyColorNow);
+        if (!eyeSubmerged) {
+            renderSky(px0, py0, pz0);
 
-        renderSunOrMoon(a, true,  px0, py0, pz0);
-        renderSunOrMoon(a, false, px0, py0, pz0);
-        renderStars(a, px0, py0, pz0);
+            renderSunOrMoon(a, true,  px0, py0, pz0);
+            renderSunOrMoon(a, false, px0, py0, pz0);
+            renderStars(a, px0, py0, pz0);
+        }
         sceGumMatrixMode(GU_PROJECTION);
         sceGumPopMatrix();
 
@@ -1604,24 +1718,16 @@ void gameRender(MenuState& s) {
 
     #define SET_WORLD_FOG(n, f, c) do { \
         s_worldFogNear = (n); s_worldFogFar = (f); s_worldFogColor = (c); \
+        g_clearColorNow = s_worldFogColor; \
         sceGuFog(s_worldFogNear, s_worldFogFar, s_worldFogColor); \
     } while (0)
-    int eyeBr = lightRawAt(&g_world, (int)floorf(ix), (int)floorf(iy), (int)floorf(iz));
-    unsigned int M = g_brightColor[eyeBr] & 0xFF;
+    float lqNear, lqFar; unsigned int lqCol;
+    if (liquidEyeFog((int)floorf(ix), (int)floorf(iy), (int)floorf(iz), &lqNear, &lqFar, &lqCol)) {
 
-    if (isWaterId(eyeBlk)) {
-        unsigned int b = (230 * M) / 255;
-        unsigned int g = (102 * M) / 255;
-        unsigned int r = (25 * M) / 255;
-        SET_WORLD_FOG(0.0f, 25.0f, 0xFF000000u | (b << 16) | (g << 8) | r);
-        g_fogCullDist = 25.0f + 24.0f;
-    }
-    else if (isLavaId(eyeBlk)) {
-        unsigned int b = (25 * M) / 255;
-        unsigned int g = (51 * M) / 255;
-        unsigned int r = (204 * M) / 255;
-        SET_WORLD_FOG(0.0f, 3.0f, 0xFF000000u | (b << 16) | (g << 8) | r);
-        g_fogCullDist = 3.0f + 24.0f;
+        SET_WORLD_FOG(lqNear, lqFar, lqCol);
+        s_worldFogLiquid = true;
+
+        g_fogCullDist = lqFar + 24.0f;
     }
     else {
 
@@ -1638,7 +1744,8 @@ void gameRender(MenuState& s) {
             }
         }
 
-        SET_WORLD_FOG(fogDist * 0.25f, fogDist, g_skyColorNow);
+        SET_WORLD_FOG(fogDist * 0.7f, fogDist, g_skyColorNow);
+        s_worldFogLiquid = false;
 
         if (fogDist < vdEff) g_fogCullDist = fogDist + 24.0f;
     }

@@ -111,6 +111,8 @@ OBJS = \
 	src/world/item/tile_item.o src/world/item/bucket_item.o \
 	src/world/item/hoe_item.o \
 	src/world/item/seed_item.o \
+	src/world/item/food_item.o \
+	src/world/item/bow_item.o \
 	src/world/item/hanging_entity_item.o \
 	src/world/item/sign_item.o \
 	src/world/item/bonemeal_item.o \

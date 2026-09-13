@@ -22,7 +22,7 @@ Creeper::Creeper(Level* level)
     setSize(0.6f, 1.8f);
     entityRendererId = ER_CREEPER_RENDERER;
 
-    runSpeed = 0.54f;
+    runSpeed = 0.25f;
     health = getMaxHealth();
 
     goalSelector.addGoal(1, new FloatGoal(this));

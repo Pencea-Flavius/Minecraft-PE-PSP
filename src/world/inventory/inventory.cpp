@@ -1,5 +1,7 @@
 #include "world/inventory/inventory.h"
 #include "world/item/item.h"
+#include "world/level/level.h"
+#include "world/entity/local_player.h"
 
 static const short kStarter[Inventory::HOTBAR] = {
     BLOCK_STONE, BLOCK_COBBLESTONE, BLOCK_BRICKS, BLOCK_TORCH, BLOCK_DIRT, BLOCK_PLANKS,
@@ -68,8 +70,20 @@ bool Inventory::hurtSelected(int amount) {
     if (!it || it->maxDamage <= 0) return false;
     held->hurt(amount);
 
-    if (held->count <= 0) { clearSlot(selected); return true; }
+    if (held->count <= 0) {
+        clearSlot(selected);
+
+        if (g_level.player)
+            g_level.playSound(g_level.player, "random.break", 1.0f, 0.9f);
+        return true;
+    }
     return false;
+}
+
+int Inventory::getAttackDamage(Entity* target) {
+    ItemInstance* sel = getSelected();
+    if (sel && !sel->isNull() && sel->getItem()) return sel->getItem()->getAttackDamage(target);
+    return 1;
 }
 
 void Inventory::ensureHotbar(short id, short data) {

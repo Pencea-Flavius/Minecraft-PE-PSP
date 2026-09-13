@@ -10,8 +10,11 @@ public:
         if (blockId >= 0 && blockId < 256 && mineable[blockId]) return speed;
         return 1.0f;
     }
-    virtual int  getAttackDamage() const { return attackDamage; }
+    virtual int  getAttackDamage(Entity* target) const { return attackDamage; }
     virtual bool isHandEquipped() const { return true; }
+
+    virtual void hurtEnemy(ItemInstance* item, Mob* target, Player* attacker);
+    virtual bool mineBlock(ItemInstance* item, World* world, int blockId, int x, int y, int z, Player* player);
     virtual int  getIcon(short data) const { return icon; }
 
 protected:
@@ -99,7 +102,6 @@ public:
         addTile(BLOCK_PLANKS); addTile(BLOCK_BOOKSHELF);
         addTile(BLOCK_LOG);
         addTile(BLOCK_CHEST);
-        addTile(BLOCK_DOUBLE_SLAB); addTile(BLOCK_SLAB);
 
         addTile(BLOCK_WOOD_SLAB_DOUBLE); addTile(BLOCK_WOOD_SLAB);
     }

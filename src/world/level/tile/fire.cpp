@@ -35,6 +35,14 @@ void fireInitFlammables() {
     setFlammable(BLOCK_TNT,     15, 100);
     setFlammable(BLOCK_WOOL,    30,  60);
     setFlammable(BLOCK_CARPET,  30,  60);
+
+    setFlammable(BLOCK_FENCE,      5,  20);
+    setFlammable(BLOCK_FENCE_GATE, 5,  20);
+    setFlammable(BLOCK_SIGN,       5,  20);
+    setFlammable(BLOCK_WALL_SIGN,  5,  20);
+    setFlammable(BLOCK_TALLGRASS, 60, 100);
+    setFlammable(BLOCK_HAY_BLOCK, 60,  20);
+    setFlammable(BLOCK_SPONGE,    30,  60);
 }
 
 bool fireCanBurn(const World* w, int x, int y, int z) {

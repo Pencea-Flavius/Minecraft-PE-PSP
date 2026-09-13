@@ -557,7 +557,7 @@ int main(int argc, char* argv[]) {
 
         worldIconsSetLoaded(s.screen == SCREEN_WORLDS || s.screen == SCREEN_DELETE);
 
-        if (!guStartFrame(s.screen == SCREEN_GAME ? g_skyColorNow : 0xFF000000u)) continue;
+        if (!guStartFrame(s.screen == SCREEN_GAME ? g_clearColorNow : 0xFF000000u)) continue;
         fpsFrames++;
 
         if (s.screen == SCREEN_GAME) {

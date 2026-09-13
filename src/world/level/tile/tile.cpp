@@ -98,8 +98,12 @@ Drop Tile::getResource(int data) {
         case BLOCK_LEAVES:              return { BLOCK_SAPLING, 1, (short)(data & 3) };
         case BLOCK_SAPLING:             return { BLOCK_SAPLING, 1, (short)(data & 3) };
 
-        case BLOCK_DOUBLE_SLAB:         return { BLOCK_SLAB, 2, (short)(data & DSLAB_MAT_MASK) };
-        case BLOCK_SLAB:                return { BLOCK_SLAB, 1, (short)(data & DSLAB_MAT_MASK) };
+        case BLOCK_DOUBLE_SLAB:
+            return ((data & DSLAB_MAT_MASK) == 2) ? Drop{ BLOCK_WOOD_SLAB, 2, 0 }
+                                                  : Drop{ BLOCK_SLAB, 2, (short)(data & DSLAB_MAT_MASK) };
+        case BLOCK_SLAB:
+            return ((data & DSLAB_MAT_MASK) == 2) ? Drop{ BLOCK_WOOD_SLAB, 1, 0 }
+                                                  : Drop{ BLOCK_SLAB, 1, (short)(data & DSLAB_MAT_MASK) };
 
         case BLOCK_WOOD_SLAB_DOUBLE:    return { BLOCK_WOOD_SLAB, 2, (short)(data & DSLAB_MAT_MASK) };
         case BLOCK_WOOD_SLAB:           return { BLOCK_WOOD_SLAB, 1, (short)(data & DSLAB_MAT_MASK) };
@@ -149,7 +153,8 @@ Drop Tile::getResource(int data) {
         case BLOCK_SNOW_BLOCK:          return { ITEM_SNOWBALL, 4, 0 };
         case BLOCK_GLASS: case BLOCK_GLASS_PANE:
         case BLOCK_ICE:
-        case BLOCK_MELON_STEM:
+
+        case BLOCK_MELON_STEM: case BLOCK_PUMPKIN_STEM:
         case BLOCK_BEDROCK:
         case BLOCK_WATER: case BLOCK_CALM_WATER: case BLOCK_LAVA: case BLOCK_CALM_LAVA:
             return { 0, 0, 0 };
@@ -971,6 +976,8 @@ struct GrassTile : Tile { GrassTile(unsigned char i) : Tile(i) { randomTicks = t
         int lightAbove = lightRawAt(w, x, y + 1, z);
         unsigned char blockAbove = worldBlock(w, x, y + 1, z);
         if (lightAbove < 4 && lightOpacity(blockAbove) > 0) {
+
+            if (rand() % 4 != 0) return;
             worldSetBlockAndData(w, x, y, z, BLOCK_DIRT, 0);
             worldNotifyNeighborsChanged(w, x, y, z);
         } else if (lightAbove >= 9) {
@@ -991,7 +998,9 @@ static bool shearsHeld(const ItemInstance* held) {
 static bool shearPopSelf(World* w, int x, int y, int z, unsigned char id, short aux,
                          const ItemInstance* held) {
     if (!shearsHeld(held)) return true;
-    Tile::popResource(x, y, z, ItemInstance(id, 1, aux));
+
+    if (!g_gameMode || !g_gameMode->isCreative())
+        Tile::popResource(x, y, z, ItemInstance(id, 1, aux));
     return false;
 }
 
@@ -1140,7 +1149,17 @@ static void meltTick(World* w, int x, int y, int z, unsigned char id, int lightB
 
 struct IceTile : Tile { IceTile(unsigned char i) : Tile(i) { randomTicks = true; }
     void randomTick(World* w, int x, int y, int z) {
-        meltTick(w, x, y, z, id, lightBlock, BLOCK_WATER); } };
+        meltTick(w, x, y, z, id, lightBlock, BLOCK_WATER); }
+
+    bool playerDestroy(World* w, int x, int y, int z, int, const ItemInstance*) {
+        unsigned char below = worldBlock(w, x, y - 1, z);
+        if (isSolidPhys(below) || isLiquidId(below)) {
+            worldSetBlockAndData(w, x, y, z, BLOCK_WATER, 0);
+
+            worldScheduleTick(w, x, y, z, BLOCK_WATER, 5);
+        }
+        return false;
+    } };
 
 struct SnowLayerTile : SupportTile { SnowLayerTile(unsigned char i) : SupportTile(i) { randomTicks = true; }
     void randomTick(World* w, int x, int y, int z) {
@@ -1330,7 +1349,10 @@ static float rawSlipperiness(int id) {
 
 static float rawDestroySpeed(int id) {
     switch (id) {
-        case BLOCK_STONE: case BLOCK_STONE_BRICKS: case BLOCK_BOOKSHELF:
+
+        case BLOCK_STONE:
+            return 1.0f;
+        case BLOCK_STONE_BRICKS: case BLOCK_BOOKSHELF:
         case BLOCK_STAIRS_STONE_BRICK:
             return 1.5f;
         case BLOCK_DIRT: case BLOCK_SAND:

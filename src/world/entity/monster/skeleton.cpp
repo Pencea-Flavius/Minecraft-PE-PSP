@@ -19,7 +19,7 @@ static const float SK_RADDEG = 180.0f / 3.14159265f;
 Skeleton::Skeleton(Level* level) : Monster(level) {
     setSize(0.6f, 1.8f);
     entityRendererId = ER_SKELETON_RENDERER;
-    runSpeed = 0.54f;
+    runSpeed = 0.25f;
     attackDamage = 2;
     health = getMaxHealth();
 
@@ -36,7 +36,7 @@ Skeleton::Skeleton(Level* level) : Monster(level) {
 
 void Skeleton::aiStep() {
     updateSunburn();
-    Mob::aiStep();
+    Monster::aiStep();
 }
 
 int Skeleton::getEntityTypeId() const { return EntityTypes::IdSkeleton; }

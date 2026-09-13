@@ -55,6 +55,8 @@ void FillingContainer::clearSlot(int slot) {
 }
 
 bool FillingContainer::linkEmptySlot(int inventorySlot) {
+
+    if (_isCreative) return false;
     for (int i = 0; i < numLinkedSlots; ++i)
         if (linkedSlots[i].inventorySlot == inventorySlot) return true;
     for (int i = 0; i < numLinkedSlots; ++i)
@@ -63,6 +65,8 @@ bool FillingContainer::linkEmptySlot(int inventorySlot) {
 }
 
 void FillingContainer::compressLinkedSlotList(int slot) {
+
+    if (_isCreative) return;
     int i = slot - 1, j = 0;
     while (++i < numLinkedSlots) {
         linkedSlots[i - j] = linkedSlots[i];

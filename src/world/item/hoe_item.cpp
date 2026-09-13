@@ -31,8 +31,10 @@ bool HoeItem::useOn(ItemInstance* item, Player* player, World* world, int x, int
             float xo = (rand() / (float)RAND_MAX) * s + (1 - s) * 0.5f;
             float yo = (rand() / (float)RAND_MAX) * s + (1 - s) * 2.5f;
             float zo = (rand() / (float)RAND_MAX) * s + (1 - s) * 0.5f;
+
+            short seed = (rand() % 15 == 0) ? ITEM_SEEDS_BEETROOT : ITEM_SEEDS_WHEAT;
             ItemEntity* e = new ItemEntity(&g_level, x + xo, y + yo, z + zo,
-                                           ItemInstance(ITEM_SEEDS_WHEAT, 1, 0));
+                                           ItemInstance(seed, 1, 0));
             e->throwTime = 10;
             g_level.addEntity(e);
         }

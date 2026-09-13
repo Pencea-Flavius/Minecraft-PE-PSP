@@ -6,6 +6,8 @@ struct World;
 
 enum { WORLD_TYPE_OLD = 0, WORLD_TYPE_FLAT = 1, WORLD_TYPE_COUNT = 2 };
 
+extern bool g_bedrockFog;
+
 class LevelSource {
 public:
     virtual ~LevelSource() {}
@@ -18,7 +20,9 @@ public:
 
     virtual bool supportsGenFeatures() const { return true; }
 
-    virtual bool hasBedrockFog() const { return true; }
+    bool hasBedrockFog() const { return g_bedrockFog && worldTypeHasBedrockFog(); }
+
+    virtual bool worldTypeHasBedrockFog() const { return true; }
     virtual float clearColorScale() const { return 1.0f / 32.0f; }
 
     virtual int forcedGameType() const { return -1; }

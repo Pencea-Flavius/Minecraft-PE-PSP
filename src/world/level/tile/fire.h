@@ -4,7 +4,7 @@
 struct World;
 class Entity;
 
-static const int FIRE_TICK_DELAY = 10;
+static const int FIRE_TICK_DELAY = 30;
 
 void fireInitFlammables();
 bool fireCanBurn(const World* w, int x, int y, int z);

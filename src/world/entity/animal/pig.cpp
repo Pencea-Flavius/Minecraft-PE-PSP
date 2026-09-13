@@ -10,13 +10,16 @@
 #include "world/entity/ai/goals/random_stroll_goal.h"
 #include "world/entity/ai/goals/look_at_player_goal.h"
 #include "world/entity/ai/goals/random_look_around_goal.h"
+#include "world/level/pathfinder/path_navigation.h"
 
 static const int PIG_FOODS[] = { ITEM_POTATO, ITEM_CARROT, ITEM_BEETROOT };
 
 Pig::Pig(Level* level) : Animal(level) {
     setSize(0.9f, 0.9f);
     heightOffset = 0.0f;
-    walkingSpeed = 0.1f;
+    runSpeed = 0.25f;
+
+    getNavigation()->setAvoidWater(true);
     entityRendererId = ER_PIG_RENDERER;
     health = getMaxHealth();
 

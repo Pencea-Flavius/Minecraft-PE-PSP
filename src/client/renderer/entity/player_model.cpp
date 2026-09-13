@@ -221,9 +221,11 @@ void playerModelRender(float a) {
 
     ItemInstance* selHeld = g_level.player->inventory->getSelected();
     bool holding = selHeld && !selHeld->isNull();
-    bool aiming = holding && selHeld->id == ITEM_BOW && p->bowPull > 0.0f;
 
-    int  bowStage = aiming ? bowStageIcon(p->bowTimeHeld)
+    Item* useItem = p->isUsingItem() ? p->getUseItem()->getItem() : 0;
+    bool aiming = holding && useItem && useItem->getUseAnimation() == 4;
+
+    int  bowStage = aiming ? bowStageIcon((float)p->getTicksUsingItem())
                            : (holding ? itemAnimStage(selHeld->id, p) : -1);
 
     if (holding) parts[P_ARM0].xRot = parts[P_ARM0].xRot * 0.5f - PIF / 2.0f * 0.2f;

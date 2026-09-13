@@ -12,10 +12,11 @@ public:
     }
 
     virtual float getDestroySpeed(int blockId) const { return blockId == BLOCK_COBWEB ? 15.0f : 1.5f; }
-    virtual int   getAttackDamage() const { return damage; }
+    virtual int   getAttackDamage(Entity* target) const { return damage; }
     virtual bool  canDestroySpecial(int blockId) const { return blockId == BLOCK_COBWEB; }
-    virtual int   getMineDurabilityCost() const { return 2; }
-    virtual int   getHurtEnemyDurabilityCost() const { return 1; }
+
+    virtual void hurtEnemy(ItemInstance* item, Mob* target, Player* attacker);
+    virtual bool mineBlock(ItemInstance* item, World* world, int blockId, int x, int y, int z, Player* player);
     virtual bool  isHandEquipped() const { return true; }
     virtual int   getIcon(short data) const { return icon; }
 private:

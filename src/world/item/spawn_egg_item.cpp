@@ -46,7 +46,7 @@ static void spawnEggRefused(int why) {
     }
 }
 
-bool SpawnEggItem::useOn(ItemInstance* item, Player* player, World* ,
+bool SpawnEggItem::useOn(ItemInstance* item, Player* player, World* world,
                          int x, int y, int z, int face, float, float, float) {
     if (face < 0 || face > 5) return true;
     int nx = x + kFaceNeighbor[face][0];
@@ -66,7 +66,9 @@ bool SpawnEggItem::useOn(ItemInstance* item, Player* player, World* ,
         spawnEggRefused(MobCap::NO_ROOM);
         return true;
     }
-    m->moveTo(nx + 0.5f, (float)ny, nz + 0.5f, (float)(rand() % 360), 0.0f);
+
+    float yo = (face == F_TOP && worldBlock(world, x, y, z) == BLOCK_FENCE) ? 0.5f : 0.0f;
+    m->moveTo(nx + 0.5f, (float)ny + yo, nz + 0.5f, (float)(rand() % 360), 0.0f);
     g_level.addEntity(m);
     if (player) player->inventory->consumeSelected();
     return true;

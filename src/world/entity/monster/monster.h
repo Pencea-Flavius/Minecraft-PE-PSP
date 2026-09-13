@@ -14,6 +14,7 @@ public:
 
     bool canSpawn();
 
+    virtual void aiStep();
     virtual bool doHurtTarget(Entity* target);
     virtual int  getAttackTime() { return 20; }
 

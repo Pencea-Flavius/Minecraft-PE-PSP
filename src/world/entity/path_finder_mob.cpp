@@ -44,17 +44,7 @@ void PathfinderMob::updateAi() {
         }
     }
 
-    if (holdGround) {
-        xxa = 0; yya = 0; jumping = false;
-        if (attackTarget) {
-            float dx = attackTarget->x - x, dz = attackTarget->z - z;
-            yRot = atan2f(dz, dx) * 180.0f / PF_PI - 90.0f;
-        }
-        applySwimUrge();
-        return;
-    }
-
-    if (attackTarget) {
+    if (attackTarget && !holdGround) {
         float dx = attackTarget->x - x, dz = attackTarget->z - z;
         if (dx * dx + dz * dz < 25.0f && canSee(attackTarget)) {
             float want = atan2f(dz, dx) * 180.0f / PF_PI - 90.0f;
@@ -73,7 +63,7 @@ void PathfinderMob::updateAi() {
     }
 
     bool doStroll = false;
-    if (attackTarget && (path.isEmpty() || sharedRandom.nextInt(20) == 0)) {
+    if (attackTarget && !holdGround && (path.isEmpty() || sharedRandom.nextInt(20) == 0)) {
         level->findPath(&path, this, attackTarget, maxDist, false, false);
     } else {
         if (path.isEmpty() && sharedRandom.nextInt(180) == 0) {
@@ -113,6 +103,17 @@ void PathfinderMob::updateAi() {
         if (rotDiff < -MAX_TURN) rotDiff = -MAX_TURN;
         yRot += rotDiff;
         if (dy > 0) jumping = true;
+    }
+
+    if (holdGround && attackTarget) {
+        float dx = attackTarget->x - x, dz = attackTarget->z - z;
+        float want = atan2f(dz, dx) * 180.0f / PF_PI - 90.0f;
+        float turned = yRot - want;
+        yRot = want;
+        float rad = (turned + 90.0f) * PF_PI / 180.0f;
+        float fwd = yya;
+        xxa = -sinf(rad) * fwd;
+        yya =  cosf(rad) * fwd;
     }
 
     if (horizontalCollision && (!isPathFinding() || attackTarget != 0)) jumping = true;

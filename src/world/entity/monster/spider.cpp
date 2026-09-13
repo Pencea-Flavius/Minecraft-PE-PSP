@@ -7,7 +7,7 @@
 Spider::Spider(Level* level) : Monster(level), climbing(false) {
     setSize(1.4f, 0.9f);
     entityRendererId = ER_SPIDER_RENDERER;
-    runSpeed = 0.5f;
+    runSpeed = 0.3f;
     attackDamage = 2;
     health = getMaxHealth();
 }

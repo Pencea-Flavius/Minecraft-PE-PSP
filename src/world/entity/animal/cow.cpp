@@ -14,13 +14,16 @@
 #include "world/entity/ai/goals/random_stroll_goal.h"
 #include "world/entity/ai/goals/look_at_player_goal.h"
 #include "world/entity/ai/goals/random_look_around_goal.h"
+#include "world/level/pathfinder/path_navigation.h"
 
 static const int COW_FOODS[] = { ITEM_WHEAT };
 
 Cow::Cow(Level* level) : Animal(level) {
     setSize(0.9f, 1.3f);
     heightOffset = 0.0f;
-    walkingSpeed = 0.1f;
+    runSpeed = 0.2f;
+
+    getNavigation()->setAvoidWater(true);
     entityRendererId = ER_COW_RENDERER;
     health = getMaxHealth();
     milkedTicks = 0;

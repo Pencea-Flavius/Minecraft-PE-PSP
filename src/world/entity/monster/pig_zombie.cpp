@@ -12,7 +12,7 @@ PigZombie::PigZombie(Level* level)
     playAngrySoundIn(0),
     stunedTime(TicksPerSecond * 3)
 {
-    runSpeed = 0.7f;
+    runSpeed = 0.25f;
     attackDamage = 5;
     fireImmune = true;
     health = getMaxHealth();

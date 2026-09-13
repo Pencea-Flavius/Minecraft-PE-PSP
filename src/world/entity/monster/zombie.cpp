@@ -25,7 +25,7 @@ void Zombie::addZombieGoals() {
 Zombie::Zombie(Level* level) : Monster(level) {
     setSize(0.6f, 1.8f);
     entityRendererId = ER_ZOMBIE_RENDERER;
-    runSpeed = 0.5f;
+    runSpeed = 0.23f;
     attackDamage = 4;
     health = getMaxHealth();
     addZombieGoals();
@@ -37,7 +37,7 @@ Zombie::Zombie(Level* level) : Monster(level) {
 Zombie::Zombie(Level* level, int rendererId) : Monster(level) {
     setSize(0.6f, 1.8f);
     entityRendererId = (EntityRendererId)rendererId;
-    runSpeed = 0.5f;
+    runSpeed = 0.23f;
     attackDamage = 4;
     health = getMaxHealth();
     addZombieGoals();
@@ -45,7 +45,7 @@ Zombie::Zombie(Level* level, int rendererId) : Monster(level) {
 
 void Zombie::aiStep() {
     updateSunburn();
-    Mob::aiStep();
+    Monster::aiStep();
 }
 
 int Zombie::getEntityTypeId() const { return EntityTypes::IdZombie; }

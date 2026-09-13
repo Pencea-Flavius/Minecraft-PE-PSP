@@ -9,8 +9,9 @@ static void relight(World* w, int x, int y, int z) {
 }
 
 void redstoneOreInteract(World* w, int x, int y, int z) {
-    if (worldBlock(w, x, y, z) != BLOCK_ORE_REDSTONE) return;
+
     particlesRedstonePoof(w, x, y, z);
+    if (worldBlock(w, x, y, z) != BLOCK_ORE_REDSTONE) return;
     worldSetBlockAndData(w, x, y, z, BLOCK_ORE_REDSTONE_LIT, worldData(w, x, y, z));
     relight(w, x, y, z);
     worldScheduleTick(w, x, y, z, BLOCK_ORE_REDSTONE_LIT, REDSTONE_LIT_DELAY);

@@ -24,7 +24,7 @@ public:
 
     float xxa, yya, yRotA;
     bool  jumping;
-    float walkingSpeed, flyingSpeed;
+    float flyingSpeed;
 
     float flySlowdown;
     float defaultLookAngle;
@@ -63,6 +63,7 @@ public:
     virtual bool playerInteract() { return false; }
     virtual int  getMaxHealth() { return 10; }
     virtual bool isBaby() { return false; }
+    virtual void outOfWorld();
     virtual bool isImmobile() { return health <= 0; }
 
     virtual bool useNewAi() { return false; }
@@ -81,7 +82,7 @@ public:
     GoalSelector goalSelector;
     GoalSelector goalSelector2;
 
-    virtual float getBaseSpeed() { return 0.7f; }
+    virtual float getBaseSpeed() { return 0.1f; }
     float getSpeed() { return useNewAi() ? speed : getBaseSpeed(); }
     void  setSpeed(float s) { speed = s; yya = s; }
     void  setYya(float v) { yya = v; }

@@ -43,7 +43,7 @@ public:
 
     bool supportsGenFeatures() const { return false; }
 
-    bool hasBedrockFog() const { return false; }
+    bool worldTypeHasBedrockFog() const { return false; }
     float clearColorScale() const { return 1.0f; }
 
     int forcedGameType() const { return 1; }

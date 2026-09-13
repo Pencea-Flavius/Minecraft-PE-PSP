@@ -21,6 +21,7 @@
 #include "world/entity/ai/goals/look_at_player_goal.h"
 #include "world/entity/ai/goals/random_look_around_goal.h"
 #include <math.h>
+#include "world/level/pathfinder/path_navigation.h"
 
 extern World g_world;
 
@@ -58,7 +59,9 @@ static const float MTH_PI = 3.14159265f;
 Sheep::Sheep(Level* level) : Animal(level), woolColor(0), sheared(false) {
     setSize(0.9f, 1.3f);
     heightOffset = 0.0f;
-    walkingSpeed = 0.1f;
+    runSpeed = 0.25f;
+
+    getNavigation()->setAvoidWater(true);
     entityRendererId = ER_SHEEP_RENDERER;
     health = getMaxHealth();
     woolColor = getSheepColor(sharedRandom);

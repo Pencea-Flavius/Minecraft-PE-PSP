@@ -17,6 +17,8 @@ public:
     void drop(ItemInstance* item);
     void drop(ItemInstance* item, bool randomly);
 
+    void attack(Entity* target);
+
     Inventory* inventory;
 
     static const int NUM_ARMOR = 4;
@@ -30,12 +32,27 @@ public:
     float bob, oBob, tilt, oTilt;
 
     float xBob, yBob, xBobO, yBobO;
-    float bowPull, bowTimeHeld;
-    float eatAnim;
+
+    ItemInstance item;
+    int useItemDuration;
+
+    bool isUsingItem() const        { return !item.isNull(); }
+    ItemInstance* getUseItem()      { return &item; }
+    int  getUseItemDuration() const { return useItemDuration; }
+
+    int  getTicksUsingItem() const;
+    void startUsingItem(const ItemInstance& used, int duration);
+    void stopUsingItem();
+    void releaseUsingItem();
+    void completeUsingItem();
+
+    void spawnEatParticles(const ItemInstance* used, int count);
 
     virtual bool isPlayer() { return true; }
 
     virtual float getRidingHeight() { return heightOffset - 0.5f; }
+
+    virtual float getBaseSpeed() { return 0.1f; }
     virtual int  getEntityTypeId() const;
     virtual int  getMaxHealth() { return 20; }
 

@@ -17,7 +17,6 @@ Monster::Monster(Level* level)
 {
     entityRendererId = ER_HUMANOID_RENDERER;
     heightOffset = 0.0f;
-    walkingSpeed = 0.1f;
 }
 
 void Monster::updateSunburn() {
@@ -34,7 +33,6 @@ void Monster::updateSunburn() {
     int yt = (int)floorf(y - heightOffset);
     int zt = (int)floorf(z);
     if (!worldCanSeeSky(level->w, xt, yt, zt)) return;
-    if (sharedRandom.nextFloat() * 3.5f >= (br - 0.4f)) return;
 
     setOnFire(8);
     for (int i = 0; i < 2; i++) {
@@ -95,6 +93,12 @@ bool Monster::isDarkEnoughToSpawn() {
     if (sky > sharedRandom.nextInt(32)) return false;
 
     return lightRawAt(level->w, xt, yt, zt) <= sharedRandom.nextInt(8);
+}
+
+void Monster::aiStep() {
+
+    if (getBrightness(1.0f) > 0.5f) noActionTime += 2;
+    Mob::aiStep();
 }
 
 bool Monster::doHurtTarget(Entity* target) {

@@ -47,8 +47,9 @@ void mobBuildBox(MobVertex* out, float x0, float y0, float z0,
     addPoly(x0,y0,z1, x1,y0,z1, x1,y1,z1, x0,y1,z1, (tx+2*d+2*w)/W,(ty+d)/H, (tx+2*d+w)/W,(ty+d+h)/H);
 }
 
-void mobDrawPartLit(const MobVertex* base, unsigned int brCol) {
+void mobDrawPartLit(const MobVertex* base, unsigned int brCol, const float* toWorld) {
 #if !MOB_LIGHTING
+    (void)toWorld;
 
     sceGuColor(brCol);
     sceGumDrawArray(GU_TRIANGLES,
@@ -57,6 +58,19 @@ void mobDrawPartLit(const MobVertex* base, unsigned int brCol) {
 #else
     ScePspFMatrix4 m;
     sceGumStoreMatrix(&m);
+    if (toWorld) {
+
+        const float* a = toWorld;
+        const float* b = (const float*)&m;
+        float c[16];
+        for (int i = 0; i < 16; i++) c[i] = b[i];
+        for (int col = 0; col < 3; col++)
+            for (int row = 0; row < 3; row++)
+                c[col * 4 + row] = a[row] * b[col * 4]
+                                 + a[4 + row] * b[col * 4 + 1]
+                                 + a[8 + row] * b[col * 4 + 2];
+        for (int i = 0; i < 16; i++) ((float*)&m)[i] = c[i];
+    }
     for (int f = 0; f < 6; f++) {
         sceGuColor(mobFaceLitColor((const float*)&m, f, brCol));
         sceGumDrawArray(GU_TRIANGLES,

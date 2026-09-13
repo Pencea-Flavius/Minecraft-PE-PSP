@@ -9,6 +9,7 @@
 #include "client/player/player_state.h"
 #include "client/renderer/item_hand.h"
 #include "client/renderer/particle.h"
+#include "world/inventory/inventory.h"
 #include "world/level/tile/redstone_ore.h"
 #include <cmath>
 #include <cstdlib>
@@ -76,7 +77,7 @@ void LocalPlayer::aiStep(unsigned int btn, unsigned char lx, unsigned char ly,
 
         if (isAlive() && isInWall()) hurt(0, 1);
 
-        if (isAlive() && y < -64.0f) { health = 0; die(0); }
+        if (isAlive() && y < -64.0f) outOfWorld();
 
         if (level->getDifficulty() == Difficulty::PEACEFUL && isAlive() && health < getMaxHealth()) {
             static int s_regenTick = 0;
@@ -182,7 +183,7 @@ void LocalPlayer::aiStep(unsigned int btn, unsigned char lx, unsigned char ly,
     if (riding && sneaking) { ride(0); sneaking = false; }
     if (sneaking) { xs *= 0.3f; yf *= 0.3f; }
 
-    if (bowPull > 0.0f) { xs *= 0.35f; yf *= 0.35f; }
+    if (isUsingItem()) { xs *= 0.35f; yf *= 0.35f; }
 
     walkDistO = walkDist;
 
@@ -254,7 +255,9 @@ void LocalPlayer::aiStep(unsigned int btn, unsigned char lx, unsigned char ly,
         int fx = (int)floorf(x);
         int fy = (int)floorf(y - PLAYER_EYE - 0.2f);
         int fz = (int)floorf(z);
-        if (worldBlock(&g_world, fx, fy, fz) == BLOCK_ORE_REDSTONE)
+
+        unsigned char under = worldBlock(&g_world, fx, fy, fz);
+        if (under == BLOCK_ORE_REDSTONE || under == BLOCK_ORE_REDSTONE_LIT)
             redstoneOreInteract(&g_world, fx, fy, fz);
     }
 
@@ -286,6 +289,19 @@ void LocalPlayer::aiStep(unsigned int btn, unsigned char lx, unsigned char ly,
     }
     if (splashWet && !s_wasInWater) doWaterSplashEffect();
     s_wasInWater = splashWet;
+
+    if (isUsingItem()) {
+        ItemInstance* sel = inventory->getSelected();
+        if (sel && item.matches(sel)) {
+            --useItemDuration;
+
+            if (useItemDuration <= 25 && (useItemDuration & 3) == 0)
+                spawnEatParticles(sel, 5);
+            if (useItemDuration == 0) completeUsingItem();
+        } else {
+            stopUsingItem();
+        }
+    }
 }
 
 void LocalPlayer::move(float xa, float ya, float za) {
@@ -342,12 +358,13 @@ void LocalPlayer::doWaterSplashEffect() {
 }
 
 #include "world/entity/item_entity.h"
-#include "world/inventory/inventory.h"
 #include "util/mth.h"
 
 void LocalPlayer::die(Entity* source) {
 
     stopSleepInBed(true, false);
+
+    stopUsingItem();
 
     auto dropOnDeath = [this](const ItemInstance& it) { drop(new ItemInstance(it), true); };
     if (!inventory->isCreative()) {

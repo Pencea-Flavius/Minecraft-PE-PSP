@@ -5,15 +5,19 @@
 #include "world/level/level.h"
 #include "world/difficulty.h"
 #include "client/gamemode/gamemode.h"
+#include "client/renderer/particle.h"
+#include "client/gui/hud.h"
+#include "world/item/item.h"
 #include "util/mth.h"
 #include <cmath>
+#include <stdlib.h>
 
 Player::Player(Level* level)
     : Mob(level), inventory(new Inventory(true)),
       bob(0), oBob(0), tilt(0), oTilt(0),
       xBob(0), yBob(0), xBobO(0), yBobO(0),
-      bowPull(0), bowTimeHeld(0),
-      eatAnim(0), score(0), sleeping(false), sleepCounter(0), bedX(0), bedY(0), bedZ(0),
+      useItemDuration(0),
+      score(0), sleeping(false), sleepCounter(0), bedX(0), bedY(0), bedZ(0),
       respawnX(0), respawnY(-1), respawnZ(0) {}
 
 Player::~Player() { delete inventory; }
@@ -22,6 +26,8 @@ int  Player::getEntityTypeId() const { return EntityTypes::IdLocalPlayer; }
 
 bool Player::hurt(Entity* source, int dmg) {
     if (g_gameMode && g_gameMode->isCreative()) return false;
+
+    if (isSleeping()) stopSleepInBed(true, true);
 
     if (source && (source->getCreatureBaseType() == EntityTypes::BaseEnemy ||
                    source->isEntityType(EntityTypes::IdArrow))) {
@@ -182,6 +188,78 @@ ItemInstance* Player::getArmor(int slot) {
     if (slot < 0 || slot >= NUM_ARMOR) return nullptr;
     if (armor[slot].isNull()) return nullptr;
     return &armor[slot];
+}
+
+void Player::attack(Entity* target) {
+    int dmg = inventory->getAttackDamage(target);
+    if (dmg <= 0) return;
+    target->hurt(this, dmg);
+    ItemInstance* sel = inventory->getSelected();
+
+    if (sel && !sel->isNull() && sel->getItem() && target->isMob() &&
+        !(g_gameMode && g_gameMode->isCreative()))
+        sel->getItem()->hurtEnemy(sel, (Mob*)target, this);
+}
+
+int Player::getTicksUsingItem() const {
+    if (!isUsingItem()) return 0;
+    Item* used = item.getItem();
+    return used ? used->getMaxUseDuration() - useItemDuration : 0;
+}
+
+void Player::startUsingItem(const ItemInstance& used, int duration) {
+
+    if (item.matches(&used) && item.count == used.count) return;
+    item = used;
+    useItemDuration = duration;
+}
+
+void Player::stopUsingItem() {
+    item.setNull();
+    useItemDuration = 0;
+
+}
+
+void Player::releaseUsingItem() {
+    if (!item.isNull()) {
+        Item* used = item.getItem();
+        if (used) used->releaseUsing(&item, this, useItemDuration);
+    }
+    stopUsingItem();
+}
+
+void Player::completeUsingItem() {
+    if (item.isNull()) return;
+    spawnEatParticles(&item, 10);
+
+    ItemInstance* selected = inventory->getSelected();
+    bool sameStack = selected && item.matches(selected);
+    Item* used = item.getItem();
+    if (used) used->useTimeDepleted(&item, this);
+    if (sameStack) {
+
+        if (item.isNull())                        inventory->consumeSelected();
+        else if (item.id != selected->id)         inventory->replaceSelected(item.id, (unsigned char)item.data);
+        else                                      *selected = item;
+    }
+    stopUsingItem();
+}
+
+void Player::spawnEatParticles(const ItemInstance* used, int count) {
+    if (!used || used->isNull()) return;
+    Item* usedItem = used->getItem();
+    int anim = usedItem ? usedItem->getUseAnimation() : 0;
+    if (anim == 2) {
+        level->playSound(this, "random.drink", 0.5f, (rand() / (float)RAND_MAX) * 0.1f + 0.9f);
+        return;
+    }
+    if (anim != 1) return;
+    int iconCell = itemFlatIcon(used->id, (unsigned char)used->data);
+
+    particlesEat(x, y + getHeadHeight(), z, yRot, xRot, iconCell, count);
+
+    float r1 = rand() / (float)RAND_MAX, r2 = rand() / (float)RAND_MAX;
+    level->playSound(this, "random.eat", 0.5f + 0.5f * (rand() % 2), (r1 - r2) * 0.2f + 1.0f);
 }
 
 void Player::setArmor(int slot, const ItemInstance* item) {

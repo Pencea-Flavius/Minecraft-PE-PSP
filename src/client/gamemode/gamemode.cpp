@@ -21,6 +21,7 @@
 #include "world/item/item.h"
 #include "world/item/tile_item.h"
 #include "world/item/food_item.h"
+#include "world/item/bow_item.h"
 #include "world/level/chunk/chunk.h"
 #include "world/level/tile/entity/sign_tile_entity.h"
 #include "world/level/tile/entity/chest_tile_entity.h"
@@ -58,19 +59,6 @@ static int countTripodCameras() {
         if (e && !e->removed && e->getEntityTypeId() == EntityTypes::IdTripodCamera) n++;
     }
     return n;
-}
-
-static bool s_drawing = false;
-
-static bool canDrawBow() {
-    if (g_level.player->inventory->isCreative()) return true;
-
-    for (int i = g_level.player->inventory->firstGridSlot();
-         i < g_level.player->inventory->getContainerSize(); i++) {
-        ItemInstance* it = g_level.player->inventory->getItem(i);
-        if (it && it->id == ITEM_ARROW && it->count > 0) return true;
-    }
-    return false;
 }
 
 static bool tileNeedsTool(unsigned char id, unsigned char ) {
@@ -183,17 +171,8 @@ static bool breakHangingEntityUnderCrosshair() {
     Entity* best = pickEntityOnViewRay(range, blockT, false);
     if (best) {
 
-        int dmg = 1;
-        ItemInstance* held = g_level.player->inventory->getSelected();
-        if (held && !held->isNull() && Item::items[held->id])
-            dmg = Item::items[held->id]->getAttackDamage();
-        best->hurt(g_level.player, dmg);
+        g_level.player->attack(best);
         playerSwing();
-
-        if (!g_gameMode->isCreative() && held && !held->isNull() &&
-            Item::items[held->id] && Item::items[held->id]->maxDamage > 0)
-            if (g_level.player->inventory->hurtSelected(Item::items[held->id]->getHurtEnemyDurabilityCost()))
-                g_level.playSound(g_level.player, "random.break", 1.0f, 1.0f);
         return true;
     }
     return false;
@@ -209,18 +188,6 @@ static bool interactEntityUnderCrosshair() {
     const float range = 3.0f;
     Entity* best = pickEntityOnViewRay(range, range, false);
     return best ? best->interact() : false;
-}
-
-static void spawnEatParticles(int iconCell, int count) {
-
-    particlesEat(g_level.player->x,
-                 g_level.player->y + g_level.player->getHeadHeight(),
-                 g_level.player->z,
-                 g_level.player->yRot, g_level.player->xRot, iconCell, count);
-
-    float r1 = rand() / (float)RAND_MAX, r2 = rand() / (float)RAND_MAX;
-    g_level.playSound(g_level.player, "random.eat",
-                      0.5f + 0.5f * (rand() % 2), (r1 - r2) * 0.2f + 1.0f);
 }
 
 unsigned int g_breakRefuse = 0;
@@ -272,8 +239,16 @@ static void breakTargetedBlock(const BlockHit& hit) {
             couldDestroy = it && it->canDestroySpecial(brokenId);
         }
 
+        particlesDestroyBlock(&g_world, hit.x, hit.y, hit.z, brokenId, brokenData);
+        if (!worldSetBlockAndData(&g_world, hit.x, hit.y, hit.z, BLOCK_AIR, 0))
+            BREAK_REFUSE("storage");
+        playTileBreakSound(brokenId, hit.x, hit.y, hit.z);
+
+        if (!g_gameMode->isCreative() && sel && !sel->isNull() && sel->getItem())
+            sel->getItem()->mineBlock(sel, &g_world, brokenId, hit.x, hit.y, hit.z,
+                                      g_level.player);
         bool normalDrops = true;
-        if (couldDestroy && !g_gameMode->isCreative())
+        if (couldDestroy)
             normalDrops = Tile::tiles[brokenId]->playerDestroy(
                               &g_world, hit.x, hit.y, hit.z, brokenData, sel);
         if (couldDestroy && normalDrops)
@@ -281,26 +256,6 @@ static void breakTargetedBlock(const BlockHit& hit) {
 
         if (couldDestroy && brokenId == BLOCK_TOPSNOW && !g_gameMode->isCreative())
             Tile::popResource(hit.x, hit.y, hit.z, ItemInstance(ITEM_SNOWBALL, 1, 0));
-
-        if (!g_gameMode->isCreative() && sel && !sel->isNull()) {
-            Item* tool = Item::items[sel->id];
-            if (tool && tool->maxDamage > 0 &&
-                g_level.player->inventory->hurtSelected(tool->getMineDurabilityCost()))
-                g_level.playSound(g_level.player, "random.break", 1.0f, 1.0f);
-        }
-
-        particlesDestroyBlock(&g_world, hit.x, hit.y, hit.z, brokenId, brokenData);
-        playTileBreakSound(brokenId, hit.x, hit.y, hit.z);
-
-        unsigned char leaves = BLOCK_AIR;
-        if (brokenId == BLOCK_ICE) {
-            unsigned char below = worldBlock(&g_world, hit.x, hit.y - 1, hit.z);
-            if (isSolidPhys(below) || isLiquidId(below)) leaves = BLOCK_WATER;
-        }
-        if (!worldSetBlockAndData(&g_world, hit.x, hit.y, hit.z, leaves, 0))
-            BREAK_REFUSE("storage");
-
-        if (isLiquidId(leaves)) worldScheduleTick(&g_world, hit.x, hit.y, hit.z, leaves, 5);
         worldNotifyNeighborsChanged(&g_world, hit.x, hit.y, hit.z);
 
         worldUpdateLights(&g_world);
@@ -342,12 +297,6 @@ static bool continueMining(const BlockHit& hit) {
     bool canDestroy = !tileNeedsTool(id, data) || (it && it->canDestroySpecial(id));
     float speed = canDestroy ? (it ? it->getDestroySpeed(id) : 1.0f) : 1.0f;
 
-    LocalPlayer* p = g_level.player;
-    if (p) {
-        unsigned char eyeBlk = worldBlock(&g_world, Mth::floor(p->x), Mth::floor(p->y), Mth::floor(p->z));
-        if (isWaterId(eyeBlk)) speed /= 5.0f;
-        if (!p->onGround)      speed /= 5.0f;
-    }
     float perTick = (speed / dt) / (canDestroy ? 30.0f : 100.0f);
 
     float ticks = (now - s_lastUs) / 50000.0f;
@@ -434,59 +383,10 @@ void GameMode::handleInput(unsigned int pressed, unsigned int held) {
 
     if (g_worldBuilt) pressed |= autoRepeatClicks(pressed, held);
 
-    if (g_worldBuilt) {
-        static unsigned int s_startUs = 0;
-        ItemInstance* sel = g_level.player->inventory->getSelected();
-        if (sel && sel->id == ITEM_BOW) {
-            bool lHeld = (held & PSP_CTRL_LTRIGGER) != 0;
-
-            bool hasArrow = canDrawBow();
-            if (lHeld && !s_drawing && (pressed & PSP_CTRL_LTRIGGER) && hasArrow) {
-                s_drawing = true; s_startUs = sceKernelGetSystemTimeLow();
-            }
-            if (lHeld && s_drawing) {
-
-                float ticks = (sceKernelGetSystemTimeLow() - s_startUs) / 50000.0f;
-                g_level.player->bowTimeHeld = ticks;
-                float p = ticks / 20.0f;
-                p = ((p * p) + p * 2) / 3.0f;
-                if (p > 1) p = 1;
-                g_level.player->bowPull = p;
-                if (pressed & PSP_CTRL_RTRIGGER) BREAK_REFUSE("bowdraw");
-                pressed &= ~PSP_CTRL_RTRIGGER;
-            } else {
-                if (s_drawing) {
-                    s_drawing = false;
-                    float pow = g_level.player->bowPull;
-
-                    if (pow >= 0.1f &&
-                        g_level.player->inventory->removeResource(ItemInstance(ITEM_ARROW, 1, 0), true) == 0) {
-
-                        g_level.addEntity(new Arrow(&g_level, g_level.player->x,
-                                                    g_level.player->y + g_level.player->getHeadHeight(),
-                                                    g_level.player->z,
-                                                    g_level.player->yRot, g_level.player->xRot, pow * 2.0f, pow >= 1.0f,
-                                                     true));
-
-                        g_level.playSound(g_level.player, "random.bow", 1.0f,
-                                          1.0f / ((rand() / (float)RAND_MAX) * 0.4f + 1.2f) + pow * 0.5f);
-
-                        if (g_level.player->inventory->hurtSelected(1))
-                            g_level.playSound(g_level.player, "random.break", 1.0f, 1.0f);
-                    }
-                }
-                g_level.player->bowPull = 0.0f;
-                g_level.player->bowTimeHeld = 0.0f;
-            }
-
-            if (s_drawing || hasArrow)
-                pressed &= ~PSP_CTRL_LTRIGGER;
-        } else {
-
-            s_drawing = false;
-            g_level.player->bowPull = 0.0f;
-            g_level.player->bowTimeHeld = 0.0f;
-        }
+    if (g_worldBuilt && g_level.player->isUsingItem()) {
+        if (!(held & PSP_CTRL_LTRIGGER)) g_level.player->releaseUsingItem();
+        pressed &= ~(PSP_CTRL_LTRIGGER | PSP_CTRL_RTRIGGER);
+        held    &= ~(PSP_CTRL_LTRIGGER | PSP_CTRL_RTRIGGER);
     }
 
     if (g_worldBuilt) {
@@ -502,7 +402,8 @@ void GameMode::handleInput(unsigned int pressed, unsigned int held) {
                 playerSwing();
 
                 g_level.playSound(g_level.player, "random.bow", 0.5f,
-                                  0.4f / ((rand() / (float)RAND_MAX) * 0.4f + 0.8f));
+                                  (sel->id == ITEM_EGG ? 0.5f : 0.4f) /
+                                  ((rand() / (float)RAND_MAX) * 0.4f + 0.8f));
 
                 if (!isCreative()) g_level.player->inventory->consumeSelected();
             }
@@ -545,84 +446,6 @@ void GameMode::handleInput(unsigned int pressed, unsigned int held) {
                 if (handled) playerSwing();
             }
             pressed &= ~PSP_CTRL_LTRIGGER;
-        }
-    }
-
-    if (g_worldBuilt) {
-        static bool s_eating = false;
-        static unsigned int s_eatStart = 0;
-        static int s_lastEmit = 0;
-        ItemInstance* sel = g_level.player->inventory->getSelected();
-        bool isFoodSel = sel && sel->getItem() && sel->getItem()->isFood();
-        if (isFoodSel) {
-            bool lHeld = (held & PSP_CTRL_LTRIGGER) != 0;
-
-            bool canEat = g_gameMode->isCreative() ||
-                          g_level.player->health < g_level.player->getMaxHealth();
-
-            if (canEat && sel->getItem()->plantedTileId()) {
-                BlockHit plantHit = worldPick(&g_world, g_level.player->x, g_level.player->y,
-                                              g_level.player->z, g_level.player->yRot,
-                                              g_level.player->xRot, 5.0f, false);
-                if (plantHit.hit && placementWouldWork(sel, plantHit)) canEat = false;
-            }
-
-            if (canEat) {
-                Entity* fed = pickEntityOnViewRay(3.0f, 3.0f, true);
-                if (fed && fed->getCreatureBaseType() == EntityTypes::BaseCreature &&
-                    ((Animal*)fed)->isFood(sel)) canEat = false;
-            }
-            if (lHeld && !s_eating && (pressed & PSP_CTRL_LTRIGGER) && canEat) {
-                s_eating = true; s_eatStart = sceKernelGetSystemTimeLow(); s_lastEmit = 0;
-            }
-            if (lHeld && s_eating) {
-                float ticks = (sceKernelGetSystemTimeLow() - s_eatStart) / 50000.0f;
-                float progress = ticks / (float)FoodItem::EAT_TICKS;
-                if (progress > 1.0f) progress = 1.0f;
-                g_level.player->eatAnim = progress;
-                int icon = itemFlatIcon(sel->id, (unsigned char)sel->data);
-
-                int t4 = (int)ticks / 4;
-                if ((int)ticks >= 4 && t4 != s_lastEmit) {
-                    s_lastEmit = t4;
-                    spawnEatParticles(icon, 5);
-                }
-                if (ticks >= (float)FoodItem::EAT_TICKS) {
-                    spawnEatParticles(icon, 10);
-
-                    if (!g_gameMode->isCreative()) {
-                        int nutrition = ((FoodItem*)sel->getItem())->getNutrition();
-                        g_level.player->heal(nutrition);
-                        g_level.playSound(g_level.player, "random.burp", 0.5f,
-                                          (rand() / (float)RAND_MAX) * 0.1f + 0.9f);
-
-                        short remainder = ((FoodItem*)sel->getItem())->getFoodRemainder();
-                        if (!remainder || !g_level.player->inventory->replaceSelected(remainder, 0))
-                            g_level.player->inventory->consumeSelected();
-
-                        ItemInstance* next = g_level.player->inventory->getSelected();
-                        bool moreFood = next && next->getItem() && next->getItem()->isFood();
-                        bool stillHurt = g_level.player->health < g_level.player->getMaxHealth();
-                        if (lHeld && moreFood && stillHurt) {
-                            s_eatStart = sceKernelGetSystemTimeLow(); s_lastEmit = 0;
-                            g_level.player->eatAnim = 0.0f;
-                        } else {
-                            s_eating = false;
-                            g_level.player->eatAnim = 0.0f;
-                        }
-                    } else {
-                        s_eatStart = sceKernelGetSystemTimeLow(); s_lastEmit = 0;
-                        g_level.player->eatAnim = 0.0f;
-                    }
-                }
-                pressed &= ~PSP_CTRL_LTRIGGER;
-            } else {
-                s_eating = false;
-                g_level.player->eatAnim = 0.0f;
-            }
-        } else {
-            s_eating = false;
-            g_level.player->eatAnim = 0.0f;
         }
     }
 
@@ -695,6 +518,12 @@ void GameMode::handleInput(unsigned int pressed, unsigned int held) {
                 }
             }
         }
+
+        if (pressed & PSP_CTRL_LTRIGGER) {
+            ItemInstance* sel = g_level.player->inventory->getSelected();
+            if (sel && !sel->isNull() && sel->getItem())
+                sel->getItem()->use(sel, g_level.player, &g_world);
+        }
     }
 }
 
@@ -758,14 +587,14 @@ CrosshairTarget gameModeCrosshairTarget() {
     if (!g_worldBuilt || !g_level.player) return t;
 
     ItemInstance* sel = g_level.player->inventory->getSelected();
-    if (sel && sel->id == ITEM_BOW) {
-        if (s_drawing)    { t.useLabel = "Release"; return t; }
-        if (canDrawBow())   t.useLabel = "Draw";
+    if (g_level.player->isUsingItem()) { t.useLabel = "Release"; return t; }
+    if (sel && sel->id == ITEM_BOW && BowItem::hasArrow(g_level.player)) {
+        t.useLabel = "Draw";
     }
 
     if (sel && sel->getItem() && sel->getItem()->isFood() && g_gameMode &&
-        (g_gameMode->isCreative() ||
-         g_level.player->health < g_level.player->getMaxHealth())) {
+        !g_gameMode->isCreative() &&
+        g_level.player->health < g_level.player->getMaxHealth()) {
         t.useLabel = "Eat";
         return t;
     }
@@ -842,7 +671,7 @@ CrosshairTarget gameModeCrosshairTarget() {
     if (!t.useLabel) {
 
         if (sel && sel->id == ITEM_BONEMEAL && sel->data == DYE_WHITE &&
-            (id == BLOCK_SAPLING || id == BLOCK_WHEAT || id == BLOCK_MELON_STEM ||
+            (id == BLOCK_SAPLING || isCropTile(id) || isStemTile(id) ||
              id == BLOCK_GRASS   || id == BLOCK_REEDS))                t.useLabel = "Grow";
         else if (id == BLOCK_TNT && sel && sel->id == ITEM_FLINT_AND_STEEL) t.useLabel = "Ignite";
 

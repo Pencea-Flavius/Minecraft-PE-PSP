@@ -4,8 +4,9 @@
 
 #include "client/gui/screens/menu.h"
 
-#define SKY_COLOR 0xFFE0A860u
+#define SKY_COLOR 0xFFFFD8C0u
 
+extern unsigned int g_clearColorNow;
 extern unsigned int g_skyColorNow;
 
 extern float g_camX, g_camY, g_camZ;

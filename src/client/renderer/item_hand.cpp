@@ -12,6 +12,7 @@
 #include "client/player/player.h"
 #include "client/player/player_state.h"
 #include "world/item/item.h"
+#include "world/item/bow_item.h"
 #include "client/gui/hud.h"
 #include "client/gui/screens/menu.h"
 #include "client/renderer/tileentity/tile_entity_renderer.h"
@@ -436,6 +437,15 @@ void itemHandDraw(float a, float bs, float bc) {
     bool hasItem = (id != BLOCK_AIR);
     bool isFlat  = hasItem && isFlat2DItem(id);
 
+    LocalPlayer* pl = g_level.player;
+    Item* useItem   = pl->isUsingItem() ? pl->getUseItem()->getItem() : 0;
+    const int useAnim = useItem ? useItem->getUseAnimation() : 0;
+
+    const float bowPull  = (useAnim == 4)
+                         ? ((BowItem*)useItem)->_getLaunchPower(pl->getUseItemDuration())
+                         : 0.0f;
+    const float bowTicks = (float)pl->getTicksUsingItem();
+
     int px = (int)g_level.player->x, py = (int)g_level.player->y, pz = (int)g_level.player->z;
     if (g_level.player->x < 0 && px != g_level.player->x) px--;
     if (g_level.player->y < 0 && py != g_level.player->y) py--;
@@ -445,9 +455,8 @@ void itemHandDraw(float a, float bs, float bc) {
 
     static ItemModelRenderer s_model;
     if (hasItem) {
-        int bowStage = (id == ITEM_BOW && g_level.player->bowPull > 0.0f)
-                       ? bowStageIcon(g_level.player->bowTimeHeld)
-                       : itemAnimStage(id, g_level.player);
+        int bowStage = (useAnim == 4) ? bowStageIcon(bowTicks)
+                                      : itemAnimStage(id, g_level.player);
 
         if (!s_model.build((short)id, (unsigned char)data, bowStage)) {
             hasItem = false;
@@ -476,12 +485,11 @@ void itemHandDraw(float a, float bs, float bc) {
     }
 
     float swing     = getAttackAnim(a);
-    if (hasItem && id == ITEM_BOW && g_level.player->bowPull > 0.0f) {
+    if (hasItem && useAnim == 4) {
         swing = 0.0f;
     }
 
-    const bool eating = hasItem && g_level.player->eatAnim > 0.0f &&
-                        Item::items[id] && Item::items[id]->isFood();
+    const bool eating = hasItem && useAnim == 1;
     if (eating) swing = 0.0f;
     const float sqrtSwing = sqrtf(swing);
     const float swing1    = sinf(swing * PIF);
@@ -513,12 +521,14 @@ void itemHandDraw(float a, float bs, float bc) {
         sceGumRotateX(tiltv * DEG2RAD);
     }
 
+    float camPitch = 0.0f, camYaw = 0.0f;
     {
         const Player* p = g_level.player;
         float xr  = p->xRotO + (p->xRot - p->xRotO) * a;
         float yr  = p->yRotO + (p->yRot - p->yRotO) * a;
         float xrr = p->xBobO + (p->xBob - p->xBobO) * a;
         float yrr = p->yBobO + (p->yBob - p->yBobO) * a;
+        camPitch = xr; camYaw = yr;
         sceGumRotateX((xr - xrr) * 0.1f * DEG2RAD);
         sceGumRotateY((yr - yrr) * 0.1f * DEG2RAD);
     }
@@ -527,8 +537,8 @@ void itemHandDraw(float a, float bs, float bc) {
 
         if (eating) {
 
-            float progress = g_level.player->eatAnim;
-            float t   = (1.0f - progress) * 32.0f;
+            float t   = (float)pl->getUseItemDuration();
+            float progress = 1.0f - t / (float)useItem->getMaxUseDuration();
             float is  = 1.0f - progress; is = is*is*is; is = is*is*is; is = is*is*is;
             float iss = 1.0f - is;
             ScePspFVector3 e0 = { 0.0f, fabsf(cosf(t / 4.0f * PIF) * 0.1f) * (progress > 0.2f ? 1.0f : 0.0f), 0.0f };
@@ -557,9 +567,9 @@ void itemHandDraw(float a, float bs, float bc) {
         ScePspFVector3 sc = { 0.4f, 0.4f, 0.4f };
         sceGumScale(&sc);
 
-        if (id == ITEM_BOW && g_level.player->bowPull > 0.0f) {
-            float pow = g_level.player->bowPull;
-            float timeHeld = g_level.player->bowTimeHeld;
+        if (useAnim == 4) {
+            float pow = bowPull;
+            float timeHeld = bowTicks;
             sceGumRotateZ(-18.0f * DEG2RAD);
             sceGumRotateY(-12.0f * DEG2RAD);
             sceGumRotateX( -8.0f * DEG2RAD);
@@ -627,10 +637,19 @@ void itemHandDraw(float a, float bs, float bc) {
 
         if (g_haveChar) {
             textureBind(&g_charTex);
-            sceGuColor(brCol);
-            sceGumDrawArray(GU_TRIANGLES,
-                        GU_TEXTURE_32BITF | GU_VERTEX_32BITF | GU_TRANSFORM_3D,
-                        36, 0, s_armMeshBase);
+
+            const float cp = cosf(camPitch * DEG2RAD), sp = sinf(camPitch * DEG2RAD);
+            const float cy = cosf(camYaw   * DEG2RAD), sy = sinf(camYaw   * DEG2RAD);
+            const float fx = -cp * sy, fy = sp, fz = cp * cy;
+            const float sx = -cy,      sy_ = 0.0f, sz = -sy;
+            const float ux = sy * sp,  uy = cp,    uz = -cy * sp;
+            const float toWorld[16] = {
+                sx,  sy_, sz,  0.0f,
+                ux,  uy,  uz,  0.0f,
+               -fx, -fy, -fz,  0.0f,
+                0.0f, 0.0f, 0.0f, 1.0f,
+            };
+            mobDrawPartLit(s_armMeshBase, brCol, toWorld);
             sceGuColor(0xFFFFFFFFu);
         }
 

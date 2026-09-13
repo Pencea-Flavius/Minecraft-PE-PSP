@@ -271,7 +271,6 @@ static void tickLiquid(World* w, int x, int y, int z, unsigned char id) {
     int dropOff = 1;
     if (isLavaId(id)) dropOff = 2;
 
-    bool becomeStatic = true;
     if (depth > 0) {
         int highest = -100;
         int maxCount = 0;
@@ -299,11 +298,9 @@ static void tickLiquid(World* w, int x, int y, int z, unsigned char id) {
             }
         }
 
-        if (isLavaId(id) && depth < 8 && newDepth < 8 && newDepth > depth) {
-            if (rand() % 4 != 0) {
-                newDepth = depth;
-                becomeStatic = false;
-            }
+        int tickDelay = liquidTickDelay(id);
+        if (isLavaId(id) && depth <= 7 && newDepth <= 7 && newDepth > depth) {
+            if (rand() % 4 != 0) tickDelay *= 4;
         }
 
         if (newDepth != depth) {
@@ -314,20 +311,11 @@ static void tickLiquid(World* w, int x, int y, int z, unsigned char id) {
                 worldUpdateNeighbors(w, x, y, z, id);
             } else {
                 worldSetData(w, x, y, z, depth);
-                worldScheduleTick(w, x, y, z, id, liquidTickDelay(id));
+                worldScheduleTick(w, x, y, z, id, tickDelay);
                 worldUpdateNeighbors(w, x, y, z, id);
             }
         } else {
-            if (becomeStatic) {
-                setStatic(w, x, y, z, id);
-            } else {
-
-                worldScheduleTick(w, x, y, z, id, 30);
-
-                static const signed char nb6[6][3] = {{-1,0,0},{1,0,0},{0,-1,0},{0,1,0},{0,0,-1},{0,0,1}};
-                for (int i = 0; i < 6; i++)
-                    wakeLiquid(w, x + nb6[i][0], y + nb6[i][1], z + nb6[i][2], id);
-            }
+            setStatic(w, x, y, z, id);
         }
     } else {
         setStatic(w, x, y, z, id);

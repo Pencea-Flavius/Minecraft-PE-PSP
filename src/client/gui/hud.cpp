@@ -733,6 +733,7 @@ const char* getBlockName(short id, unsigned char data) {
         case BLOCK_POTATOES: return "Potatoes";
         case BLOCK_BEETROOT: return "Beetroot";
         case BLOCK_PUMPKIN_STEM: return "Pumpkin Stem";
+        case BLOCK_MELON_STEM: return "Melon Stem";
         case BLOCK_LEAVES: {
             int t = data & LEAF_TYPE_MASK;
             if (t == LEAF_SPRUCE) return "Spruce Leaves";
@@ -1176,7 +1177,7 @@ void hotbarDraw(MenuState& s) {
         }
     }
 
-    if (!g_invOpen && s.haveGui) {
+    if (!g_invOpen && s.haveGui && !g_thirdPerson) {
         sceGuBlendFunc(GU_ADD, GU_ONE_MINUS_OTHER_COLOR, GU_ONE_MINUS_OTHER_COLOR, 0, 0);
         textureBind(&s.guiAtlas);
         float cx = 240.0f - 8.0f * HUD_S;
@@ -1405,7 +1406,6 @@ void gameHintsDraw(MenuState& s) {
             n += hudHint(&h[n], ACT_CRAFT, "Crafting");
         n += hudHint(&h[n], ACT_INVENTORY, "Inventory");
 
-        extern int g_thirdPerson;
         static const char* kNextView[3] = { "Third Person", "Front View", "First Person" };
         if (g_level.player->inventory->selected == HOTBAR_SLOTS)
             n += hudHint(&h[n], PSP_CTRL_UP,
