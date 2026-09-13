@@ -503,8 +503,8 @@ static void renderSky(float px, float py, float pz) {
 
     {
 
+        if (py > VOID_PLANE_Y) {
         float dy = py - VOID_PLANE_Y;
-        if (dy < 0.0f) dy = -dy;
         int dyKey = (int)(dy * 0.125f);
         const unsigned int vc = g_voidColorNow;
 
@@ -525,6 +525,7 @@ static void renderSky(float px, float py, float pz) {
                             SKY_MESH_VERTS, 0, vv);
             sceGuEnable(GU_FOG);
             sceGumLoadIdentity();
+        }
         }
 
         if (py < VOID_PLANE_Y) {
@@ -558,8 +559,6 @@ int g_cloudMode = 1;
 static float        s_worldFogNear  = 0.0f;
 static float        s_worldFogFar   = WORLD_VIEW_DIST;
 static unsigned int s_worldFogColor = SKY_COLOR;
-
-static bool         s_worldFogLiquid = false;
 
 #define CLOUD_FAST_HEIGHT 128.33f
 
@@ -834,8 +833,7 @@ static void renderCloudPass(float a, float px, float py, float pz) {
     float cloudFogNear = distToCloud * 0.8f;
     if (cloudFogNear < 32.0f) cloudFogNear = 32.0f;
 
-    if (!s_worldFogLiquid)
-        sceGuFog(cloudFogNear, fancy ? 280.0f : distToCloud + 64.0f, g_skyColorNow);
+    sceGuFog(cloudFogNear, fancy ? 280.0f : distToCloud + 64.0f, g_clearColorNow);
 
     if (fancy) renderCloudsFancy(a, px, py, pz);
     else       renderCloudsFast(a, px, py, pz);
@@ -1681,13 +1679,11 @@ void gameRender(MenuState& s) {
         const bool eyeSubmerged = liquidEyeFog((int)floorf(px0), (int)floorf(py0),
                                                (int)floorf(pz0), &mN, &mF, &mC);
         skyBackdrop(eyeSubmerged ? mC : g_skyColorNow);
-        if (!eyeSubmerged) {
-            renderSky(px0, py0, pz0);
+        if (!eyeSubmerged) renderSky(px0, py0, pz0);
 
-            renderSunOrMoon(a, true,  px0, py0, pz0);
-            renderSunOrMoon(a, false, px0, py0, pz0);
-            renderStars(a, px0, py0, pz0);
-        }
+        renderSunOrMoon(a, true,  px0, py0, pz0);
+        renderSunOrMoon(a, false, px0, py0, pz0);
+        renderStars(a, px0, py0, pz0);
         sceGumMatrixMode(GU_PROJECTION);
         sceGumPopMatrix();
 
@@ -1731,7 +1727,6 @@ void gameRender(MenuState& s) {
     if (liquidEyeFog((int)floorf(ix), (int)floorf(iy), (int)floorf(iz), &lqNear, &lqFar, &lqCol)) {
 
         SET_WORLD_FOG(lqNear, lqFar, lqCol);
-        s_worldFogLiquid = true;
 
         g_fogCullDist = lqFar + 24.0f;
     }
@@ -1751,7 +1746,6 @@ void gameRender(MenuState& s) {
         }
 
         SET_WORLD_FOG(fogDist * 0.7f, fogDist, g_skyColorNow);
-        s_worldFogLiquid = false;
 
         if (fogDist < vdEff) g_fogCullDist = fogDist + 24.0f;
     }
