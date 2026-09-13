@@ -2,6 +2,8 @@
 #ifndef MCPSP_WORLD_ENTITY_AI_GOAL_H
 #define MCPSP_WORLD_ENTITY_AI_GOAL_H
 
+#include <cstddef>
+
 class Goal {
 public:
 
@@ -10,7 +12,7 @@ public:
     Goal() : controlFlags(0) {}
     virtual ~Goal() {}
 
-    static void* operator new(unsigned n);
+    static void* operator new(size_t n);
     static void  operator delete(void* p);
 
     virtual bool canUse() = 0;

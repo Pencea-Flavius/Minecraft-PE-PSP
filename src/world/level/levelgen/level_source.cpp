@@ -46,6 +46,8 @@ public:
     bool worldTypeHasBedrockFog() const { return false; }
     float clearColorScale() const { return 1.0f; }
 
+    float horizonHeight() const { return 0.0f; }
+
     int forcedGameType() const { return 1; }
     const char* label() const { return "Flat"; }
 };

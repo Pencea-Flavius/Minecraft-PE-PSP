@@ -32,7 +32,7 @@ int Entity::freeSlots() {
     return n;
 }
 
-void* Entity::operator new(unsigned n) {
+void* Entity::operator new(size_t n) {
     if (n <= ENTITY_SLOT) {
         for (int i = 0; i < ENTITY_POOL; i++)
             if (!s_slotUsed[i]) { s_slotUsed[i] = true; return s_pool[i]; }

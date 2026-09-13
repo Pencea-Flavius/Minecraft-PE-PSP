@@ -79,7 +79,6 @@ bool    g_haveParticles = false;
 
 extern int g_cloudTicks;
 
-int g_beautifulSkies = 0;
 int g_animateTextures = 1;
 int g_hideGui = 0;
 
@@ -124,7 +123,7 @@ struct ColorVertex {
 
 #define SKY_DOME_OFFSET 16.0f
 
-#define VOID_PLANE_Y    63.0f
+#define VOID_PLANE_Y    activeLevelSource().horizonHeight()
 #define VOID_CAP_GAP    8.0f
 
 #define SKY_FOG_FAR 150.0f
@@ -1309,8 +1308,8 @@ void gameRender(MenuState& s) {
                     if (!worldInitTerrain(a->w, a->seed, a->worldType)) g_worldAllocFailed = true;
 
                     { int sx, sz, feetY; worldFindSpawn(a->w, &sx, &sz, &feetY);
-                      g_level.player->x = sx + 0.5f; g_level.player->z = sz + 0.5f;
-                      g_level.player->y = feetY + PLAYER_EYE; }
+                      g_level.player->setPos(sx + 0.5f, feetY + PLAYER_EYE, sz + 0.5f);
+                      g_level.setSpawnPos(sx, feetY + 1, sz); }
                     g_genPhase = 1;
                     g_saveShowProgress = false;
                     LevelStorage::save(a->w, a->dir, a->seed, a->gamemode, a->name, true);
@@ -1336,8 +1335,8 @@ void gameRender(MenuState& s) {
                         g_worldAllocFailed = true;
 
                     { int sx, sz, feetY; worldFindSpawn(&g_world, &sx, &sz, &feetY);
-                      g_level.player->x = sx + 0.5f; g_level.player->z = sz + 0.5f;
-                      g_level.player->y = feetY + PLAYER_EYE; }
+                      g_level.player->setPos(sx + 0.5f, feetY + PLAYER_EYE, sz + 0.5f);
+                      g_level.setSpawnPos(sx, feetY + 1, sz); }
                     g_genPhase = 1;
                     g_saveShowProgress = false;
                     LevelStorage::save(&g_world, tArgs.dir, seedVal, tArgs.gamemode, tArgs.name, true);
@@ -1663,7 +1662,7 @@ void gameRender(MenuState& s) {
     updateDayColors(a);
 
     profBegin(PROF_SKY);
-    if (g_beautifulSkies) {
+    {
 
         sceGumMatrixMode(GU_PROJECTION);
         sceGumPushMatrix();
@@ -1776,7 +1775,7 @@ void gameRender(MenuState& s) {
     guGlobalsCheck(GU_PHASE_ENTITY);
     profEnd(PROF_ENTITY);
 
-    if (g_worldBuilt && g_beautifulSkies && g_cloudMode) {
+    if (g_worldBuilt && g_cloudMode) {
         loadWorldView(ex, ey, ez, ctrX, ctrY, ctrZ, roll, 0.0f, 0.0f, 0.0f);
         renderCloudPass(a, px0, py0, pz0);
         loadWorldView(ex, ey, ez, ctrX, ctrY, ctrZ, roll, g_relBaseX, g_relBaseY, g_relBaseZ);

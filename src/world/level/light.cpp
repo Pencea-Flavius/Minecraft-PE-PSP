@@ -49,6 +49,11 @@ static void lightFlood(World* w, int layer) {
     while (head < g_lightBfs.size()) {
 
         if (g_lightYield && (head & 1023) == 0) sceKernelDelayThread(100);
+
+        if (head >= 65536 && head * 2 >= g_lightBfs.size()) {
+            g_lightBfs.erase(g_lightBfs.begin(), g_lightBfs.begin() + head);
+            head = 0;
+        }
         unsigned int p = g_lightBfs[head++];
         int x, y, z; lunpack(w, p, &x, &y, &z);
         int cur = (layer == 0) ? lightSkyGet(w, x, y, z) : lightBlockGet(w, x, y, z);
@@ -116,6 +121,8 @@ void worldInitLight(World* w) {
                 if (lightSkyGet(w, nx, ny, nz) < s - 1) { g_lightBfs.push_back(lpack(w, x, y, z)); break; }
             }
         }
+
+        if (g_lightBfs.size() >= 65536) lightFlood(w, 0);
     }
     lightFlood(w, 0);
     g_terrainProgress = 80;

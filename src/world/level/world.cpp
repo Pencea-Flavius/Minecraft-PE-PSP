@@ -193,6 +193,17 @@ static void clampToArea(int cx0, int cz0, int* x, int* z, int step) {
     if (*z >= oz + hi) *z -= step;
 }
 
+static bool nearestValidSpawn(World* w, int* x, int* z) {
+    const int maxR = w->slotN * 16;
+    for (int r = 0; r <= maxR; r += 2)
+        for (int dx = -r; dx <= r; dx += 2)
+            for (int dz = -r; dz <= r; dz += 2) {
+                if (dx != -r && dx != r && dz != -r && dz != r) continue;
+                if (isValidSpawn(w, *x + dx, *z + dz)) { *x += dx; *z += dz; return true; }
+            }
+    return false;
+}
+
 static void spawnSearchArea(World* w, int x, int z) {
     worldEnsureArea(w, x >> 4, z >> 4, SPAWN_SEARCH_CHUNKS);
 }
@@ -210,9 +221,14 @@ void worldValidateSpawn(World* w, int* x, int* y, int* z) {
         zs += random.nextInt(8) - random.nextInt(8);
         clampToArea(cx0, cz0, &xs, &zs, 8);
     }
-    if (xs != *x || zs != *z) {
+    if (!isValidSpawn(w, xs, zs)) nearestValidSpawn(w, &xs, &zs);
+
+    const bool standing = isSolidPhys(worldBlock(w, xs, *y - 2, zs)) &&
+                          !isSolidPhys(worldBlock(w, xs, *y - 1, zs)) &&
+                          !isSolidPhys(worldBlock(w, xs, *y, zs));
+    if (xs != *x || zs != *z || !standing) {
         int ty; columnTop(w, xs, zs, &ty);
-        *y = ty;
+        *y = ty + 2;
     }
     *x = xs; *z = zs;
 }
@@ -240,6 +256,7 @@ void worldFindSpawn(World* w, int* outX, int* outZ, int* outFeetY) {
         clampToArea(cx0, cz0, &xSpawn, &zSpawn, 8);
     }
 
+    if (!isValidSpawn(w, xSpawn, zSpawn)) nearestValidSpawn(w, &xSpawn, &zSpawn);
     int ty; columnTop(w, xSpawn, zSpawn, &ty);
 
     if (!isValidSpawn(w, xSpawn, zSpawn)) ty = 63;

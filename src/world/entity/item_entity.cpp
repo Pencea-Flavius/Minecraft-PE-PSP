@@ -222,18 +222,21 @@ bool ItemEntity::checkInTile(float px, float py, float pz) {
 void ItemEntity::addAdditonalSaveData(CompoundTag* tag) {
     tag->putShort("Health", (short)(health & 0xff));
     tag->putShort("Age", (short)age);
-
-    tag->putShort("ItemId", (short)item.id);
-    tag->putShort("ItemCount", (short)item.count);
-    tag->putShort("ItemData", (short)item.data);
+    CompoundTag* it = new CompoundTag();
+    it->putShort("id", (short)item.id);
+    it->putByte("Count", (char)item.count);
+    it->putShort("Damage", (short)item.data);
+    tag->put("Item", it);
 }
 
 void ItemEntity::readAdditionalSaveData(CompoundTag* tag) {
     health = tag->getShort("Health") & 0xff;
     age    = tag->getShort("Age");
-    item.id    = tag->getShort("ItemId");
-    item.count = tag->getShort("ItemCount");
-    item.data  = tag->getShort("ItemData");
+    if (CompoundTag* it = tag->getCompound("Item")) {
+        item.id    = it->getShort("id");
+        item.count = (unsigned char)it->getByte("Count");
+        item.data  = it->getShort("Damage");
+    }
 }
 
 bool ItemEntity::isItemEntity()        { return true; }

@@ -5,7 +5,7 @@
 #include "gpu/font.h"
 #include <pspgu.h>
 
-void drawGeneratingScreen(MenuState& s, int percent, const char* status) {
+void drawGeneratingScreen(MenuState& s, int percent, const char* status, const char* title) {
     guOrtho();
     sceGuDisable(GU_DEPTH_TEST);
 
@@ -16,7 +16,6 @@ void drawGeneratingScreen(MenuState& s, int percent, const char* status) {
     const float cx = VW / 2.0f, cy = VH / 2.0f;
 
     if (s.haveFont) {
-        const char* title = "Generating world";
         float tw = fontTextWidth(&s.font, title) * UI_SCALE;
         fontDrawTextShadow(&s.font, (VW * UI_SCALE - tw) / 2.0f, (cy - 4.0f - 16.0f) * UI_SCALE,
                             title, 0xFFFFFFFFu, UI_SCALE);

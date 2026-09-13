@@ -76,7 +76,6 @@ static const OptionRowDef g_optionRows[OPT_CATEGORIES][OPT_MAX_ROWS] = {
         { 0,          "Leaves",          {"Off", "Fast", "Fancy"}, 3, 0 },
         { 0,          "View Bobbing",    {"Off", "On", 0, 0}, 2, 1 },
 
-        { 0,          "Beautiful Skies", {"Off", "On", 0, 0}, 2, 1 },
         { 0,          "Animate Textures",{"Off", "On", 0, 0}, 2, 1 },
 
         { 0,          "Particles",       {"Off", "On", 0, 0}, 2, 1 },
@@ -103,7 +102,7 @@ static const OptionRowDef g_optionRows[OPT_CATEGORIES][OPT_MAX_ROWS] = {
     },
 };
 
-static const int g_optionRowCount[OPT_CATEGORIES] = { 9, 6, 12, 8 };
+static const int g_optionRowCount[OPT_CATEGORIES] = { 9, 6, 11, 8 };
 static const char* g_optionCategoryNames[OPT_CATEGORIES] = { "Game", "Controls", "Graphics", "Audio" };
 static int g_optionValueIdx[OPT_CATEGORIES][OPT_MAX_ROWS];
 
@@ -129,7 +128,6 @@ extern int   g_fineAim;
 extern int   g_thirdPerson;
 extern int   g_invertY;
 extern int   g_southpaw;
-extern int   g_beautifulSkies;
 extern int   g_animateTextures;
 extern int   g_hideGui;
 extern float g_hudOpacity;
@@ -145,14 +143,13 @@ extern World g_world;
 #define ROW_CLOUDS      1
 #define ROW_LEAVES      2
 #define ROW_BOBBING     3
-#define ROW_SKIES       4
-#define ROW_ANIMTEX     5
-#define ROW_PARTICLES   6
-#define ROW_SMOOTHLIGHT 7
-#define ROW_BRIGHTNESS  8
-#define ROW_MIPMAP      9
-#define ROW_DITHER      10
-#define ROW_BEDROCKFOG  11
+#define ROW_ANIMTEX     4
+#define ROW_PARTICLES   5
+#define ROW_SMOOTHLIGHT 6
+#define ROW_BRIGHTNESS  7
+#define ROW_MIPMAP      8
+#define ROW_DITHER      9
+#define ROW_BEDROCKFOG  10
 
 static const float kRenderDist[4] = { 16.0f, 32.0f, 48.0f, 64.0f };
 extern int g_lowMemPsp;
@@ -241,7 +238,6 @@ static void optionsApply() {
     g_analogDeadzone = g_optionValueIdx[CAT_CONTROLS][ROW_DEADZONE] * 0.05f;
     int tp = g_optionValueIdx[CAT_GAME][ROW_THIRDPERSON];
     g_thirdPerson = (tp < 0 || tp > 2) ? 0 : tp;
-    g_beautifulSkies = g_optionValueIdx[CAT_GRAPHICS][ROW_SKIES];
     g_animateTextures= g_optionValueIdx[CAT_GRAPHICS][ROW_ANIMTEX];
     g_hideGui        = g_optionValueIdx[CAT_GAME][ROW_HIDEGUI];
 
@@ -280,7 +276,6 @@ static void optionsSetDefaults() {
         *kPageSettings[i].value = kPageSettings[i].def;
 
     if (g_lowMemPsp) {
-        g_optionValueIdx[CAT_GRAPHICS][ROW_SKIES]       = 0;
         g_optionValueIdx[CAT_GRAPHICS][ROW_CLOUDS]      = 0;
         g_optionValueIdx[CAT_GRAPHICS][ROW_SMOOTHLIGHT] = 0;
     }
@@ -406,10 +401,6 @@ static bool optionRowIsBoolean(const OptionRowDef& row) {
     return row.numValues == 2 && strcmp(row.values[0], "Off") == 0 && strcmp(row.values[1], "On") == 0;
 }
 
-static bool optionRowDisabled(int category, int row) {
-    return category == CAT_GRAPHICS && row == ROW_CLOUDS &&
-           g_optionValueIdx[CAT_GRAPHICS][ROW_SKIES] == 0;
-}
 struct OptionsScreen : Screen {
     void renderContent(MenuState& s);
     void handleInput(MenuState& s, unsigned int pressed, unsigned int held);
@@ -448,7 +439,7 @@ void OptionsScreen::handleInput(MenuState& s, unsigned int pressed, unsigned int
         else               screen = SCREEN_TITLE;
     }
 
-    if (!optionRowDisabled(optCategory, optItemHighlight)) {
+    {
         const OptionRowDef& row = g_optionRows[optCategory][optItemHighlight];
         int  idx  = g_optionValueIdx[optCategory][optItemHighlight];
         int  nVal = rowValueCount(optCategory, optItemHighlight);
@@ -581,10 +572,9 @@ void OptionsScreen::renderContent(MenuState& s) {
                 fontDrawTextShadow(&font, (itemsX + 2.0f) * UI_SCALE, (rY - kOptHeaderH + 2.0f) * UI_SCALE,
                                    row.group, 0xFFFFFFFFu, UI_SCALE);
             bool rowHovered = (optFocus == 1 && optItemHighlight == r);
-            bool rowDisabled = optionRowDisabled(optCategory, r);
 
-            unsigned int labelCol = rowDisabled ? 0xFF707070u : (rowHovered ? 0xFFFFFFFFu : 0xFFBBBBBBu);
-            unsigned int togTint  = rowDisabled ? 0xFF707070u : WHITE;
+            unsigned int labelCol = rowHovered ? 0xFFFFFFFFu : 0xFFBBBBBBu;
+            unsigned int togTint  = WHITE;
 
             const float kWidgetMargin = 6.0f;
             const float togW = TOGGLE_CELL_W, togH = TOGGLE_CELL_H;
@@ -623,7 +613,7 @@ void OptionsScreen::renderContent(MenuState& s) {
                 const float bh = kOptRowH - 2.0f;
                 const float by = rY + 1.0f;
                 guiTButton(s, widgetX, by, btnW, bh, rowHovered, MENU_BEVEL);
-                guiTButtonLabel(s, widgetX, by, btnW, bh, "Open", rowHovered, !rowDisabled);
+                guiTButtonLabel(s, widgetX, by, btnW, bh, "Open", rowHovered, true);
                 if (valTxt)
                     fontDrawTextShadow(&font, (widgetX - 4.0f) * UI_SCALE - valW * UI_SCALE,
                                        (rY + (rowH - 8.0f) / 2.0f) * UI_SCALE, valTxt,

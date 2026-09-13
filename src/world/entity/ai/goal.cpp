@@ -10,7 +10,7 @@ static unsigned char s_pool[GOAL_POOL][GOAL_SLOT];
 static bool          s_used[GOAL_POOL];
 static int           s_next = 0;
 
-void* Goal::operator new(unsigned n) {
+void* Goal::operator new(size_t n) {
     if (n <= GOAL_SLOT) {
         for (int k = 0; k < GOAL_POOL; k++) {
             int i = s_next + k; if (i >= GOAL_POOL) i -= GOAL_POOL;

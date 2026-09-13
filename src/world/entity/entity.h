@@ -3,6 +3,7 @@
 #define MCPSP_WORLD_ENTITY_ENTITY_H
 
 #include "world/phys/aabb.h"
+#include <cstddef>
 #include "world/entity/entity_renderer_id.h"
 #include "world/level/levelgen/Random.h"
 
@@ -26,7 +27,7 @@ public:
     static const unsigned ENTITY_SLOT = 2688;
     static bool  hasFreeSlot();
     static int   freeSlots();
-    static void* operator new(unsigned n);
+    static void* operator new(size_t n);
     static void  operator delete(void* p);
 
     void _init();

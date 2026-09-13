@@ -25,6 +25,8 @@ public:
     virtual bool worldTypeHasBedrockFog() const { return true; }
     virtual float clearColorScale() const { return 1.0f / 32.0f; }
 
+    virtual float horizonHeight() const { return 63.0f; }
+
     virtual int forcedGameType() const { return -1; }
 
     virtual const char* label() const = 0;
