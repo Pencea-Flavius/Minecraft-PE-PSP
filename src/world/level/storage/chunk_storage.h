@@ -14,6 +14,8 @@ bool chunkStorageHasSave(const char* absDir);
 bool chunkStorageLoad(World* w, int cx, int cz, bool* outGotLight, bool* outPopulated = 0);
 extern unsigned int g_chunkCrcFails;
 
+extern unsigned int g_chunkLegacyLoaded;
+
 bool chunkStorageSave(World* w, int cx, int cz);
 
 #endif

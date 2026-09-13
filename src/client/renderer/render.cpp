@@ -1413,6 +1413,9 @@ void gameRender(MenuState& s) {
                 if (g_loadedFromDisk) LevelStorage::applyLoadedHotbar();
                 itemHandSnapEquip();
 
+                extern unsigned int g_chunkLegacyLoaded;
+                if (g_loadedFromDisk && g_chunkLegacyLoaded) g_saveRequested = true;
+
                 if (freshWorld) MobSpawner::populateInitial(&g_level);
             }
             return;

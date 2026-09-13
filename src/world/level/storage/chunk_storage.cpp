@@ -84,6 +84,7 @@ static inline int nibGet(const unsigned char* base, int idx) {
 }
 
 unsigned int g_chunkCrcFails = 0;
+unsigned int g_chunkLegacyLoaded = 0;
 
 #define REGION_CACHE 4
 
@@ -151,6 +152,7 @@ void chunkStorageInit(const char* absDir) {
     chunkStorageShutdown();
     snprintf(s_dir, sizeof(s_dir), "%s", absDir);
     s_haveDir = true;
+    g_chunkLegacyLoaded = 0;
 }
 
 void chunkStorageShutdown() {
@@ -245,6 +247,11 @@ bool chunkStorageLoad(World* w, int cx, int cz, bool* outGotLight, bool* outPopu
         }
     }
     delete[] buf;
+
+    if (haveLegacy) {
+        worldSlot(w, cx, cz)->unsaved = true;
+        g_chunkLegacyLoaded++;
+    }
     return true;
 }
 
