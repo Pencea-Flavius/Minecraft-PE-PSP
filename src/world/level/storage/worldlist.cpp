@@ -166,12 +166,23 @@ bool worldListCreate(WorldList* list, const char* inName, char* outName, int gam
         strcpy(displayName, "New world");
     }
 
+    // The name becomes a directory under saves/; keep it filesystem-safe.
+    for (char* q = displayName; *q; q++)
+        if (*q == '/' || *q == '\\' || *q == ':' || *q == '*' || *q == '?' ||
+            *q == '"' || *q == '<' || *q == '>' || *q == '|')
+            *q = '_';
+
     char candidate[64];
     snprintf(candidate, sizeof(candidate), "%s", displayName);
     char full[320];
     for (int suffix = 0; suffix < 60; suffix++) {
-        if (suffix > 0)
-            strcat(candidate, "-");
+        if (suffix > 0) {
+            size_t len = strlen(candidate);
+            if (len + 2 > sizeof(candidate))
+                break;
+            candidate[len] = '-';
+            candidate[len + 1] = '\0';
+        }
 
         bool taken = false;
         for (int i = 0; i < list->count; i++) {
@@ -209,7 +220,7 @@ bool worldListCreate(WorldList* list, const char* inName, char* outName, int gam
     list->worldTypes[list->count] = worldType;
     list->genMasks[list->count] = genMask;
 
-    strncpy(outName, candidate, 64);
+    snprintf(outName, 64, "%s", candidate);
     list->count++;
     return true;
 }

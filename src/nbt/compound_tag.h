@@ -19,6 +19,9 @@ class CompoundTag : public Tag {
 public:
     CompoundTag() : Tag("") {}
     CompoundTag(const std::string& n) : Tag(n) {}
+    // Children are owned; deleteChildren() is idempotent, so explicit calls
+    // before delete stay safe.
+    ~CompoundTag() { deleteChildren(); }
 
     void write(IDataOutput* dos) {
         for (TagMap::iterator it = tags.begin(); it != tags.end(); ++it)
@@ -37,6 +40,10 @@ public:
         }
 
         if (tag) { tag->deleteChildren(); delete tag; }
+
+        // A stream that died mid-compound leaves a half-parsed tag behind;
+        // drop the partial children so callers only need to test failed().
+        if (dis->failed()) deleteChildren();
     }
 
     char getId() const { return TAG_Compound; }
@@ -78,6 +85,16 @@ public:
 
         if (!contains(n, TAG_List)) { ListTag* l = new ListTag(n); replace(n, l); return l; }
         return (ListTag*)get(n);
+    }
+
+    // Read-only lookups: no insert side effect, safe on save-data paths that
+    // only inspect what is already there.
+    const CompoundTag* getCompoundRo(const std::string& n) const {
+        return contains(n, TAG_Compound) ? (const CompoundTag*)get(n) : NULL;
+    }
+    const ListTag* getListRo(const std::string& n) const {
+        Tag* t = get(n);
+        return (t && t->getId() == TAG_List) ? (const ListTag*)t : NULL;
     }
 
     void getAllTags(std::vector<Tag*>& out) const {

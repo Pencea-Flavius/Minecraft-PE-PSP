@@ -31,6 +31,7 @@
 #define LOGI(...) ((void)0)
 #endif
 #include <cstring>
+#include <cstdlib>
 #include <string>
 
 static const int STORAGE_VERSION = 3;
@@ -47,7 +48,8 @@ static int  s_activeWorldType = WORLD_TYPE_OLD;
 static int  s_activeGenMask = GEN_FEATURES_ALL_ON;
 
 extern bool g_saveShowProgress;
-static void saveChunks(World* w, bool onlyDirty) {
+static int saveChunks(World* w, bool onlyDirty) {
+    int failures = 0;
 
     for (int i = 0; i < w->slotN * w->slotN; i++) {
         LevelChunk* c = &w->slots[i];
@@ -57,15 +59,17 @@ static void saveChunks(World* w, bool onlyDirty) {
         if (onlyDirty && !c->unsaved) continue;
         if (!chunkStorageSave(w, c->x, c->z)) {
 
-            LOGI("LevelStorage: chunk write failed, dropping meshes\n");
-            for (int k = 0; k < WORLD_CHUNKS_X * WORLD_CHUNKS_Z; k++) {
-                chunkFreeMesh(&w->chunks[k]);
-                for (int si = 0; si < N_SECTIONS; si++) w->chunks[k].sec[si].dirty = true;
-            }
-            chunkStorageSave(w, c->x, c->z);
+            // Free only this chunk's meshes and retry once; a global mesh drop
+            // for a single failing chunk used to stall rendering for seconds.
+            LOGI("LevelStorage: chunk %d,%d write failed, dropping its meshes and retrying\n",
+                 c->x, c->z);
+            chunkFreeMesh(&w->chunks[i]);
+            for (int si = 0; si < N_SECTIONS; si++) w->chunks[i].sec[si].dirty = true;
+            if (!chunkStorageSave(w, c->x, c->z)) failures++;
         }
         if (g_saveShowProgress) g_terrainProgress = (i + 1) * 100 / (w->slotN * w->slotN);
     }
+    return failures;
 }
 
 static void loadChunks(World* w, int cxCentre, int czCentre) {
@@ -197,18 +201,26 @@ static bool saveLevelDat(World* w, const char* absDir, long seed, int gameType, 
     std::string tmp = join(absDir, "level.dat_new");
     std::string old = join(absDir, "level.dat_old");
 
+    // Write the replacement fully and verify it before rotating; a partial
+    // write (disk full, power loss) must never take the good level.dat down.
     FILE* f = fopen(tmp.c_str(), "wb");
     if (!f) return false;
     int version = STORAGE_VERSION;
     int size = (int)mw.buf.size();
-    fwrite(&version, sizeof(int), 1, f);
-    fwrite(&size, sizeof(int), 1, f);
-    if (size > 0) fwrite(&mw.buf[0], 1, size, f);
-    fclose(f);
+    bool ok = fwrite(&version, sizeof(int), 1, f) == 1 &&
+              fwrite(&size, sizeof(int), 1, f) == 1 &&
+              (size <= 0 || (size_t)fwrite(&mw.buf[0], 1, size, f) == (size_t)size);
+    ok = (fflush(f) == 0) && ok;
+    ok = (fclose(f) == 0) && ok;
+    if (!ok) {
+        LOGI("LevelStorage: level.dat_new write failed, keeping the old file\n");
+        remove(tmp.c_str());
+        return false;
+    }
 
     remove(old.c_str());
     if (fileExists(dat)) rename(dat.c_str(), old.c_str());
-    rename(tmp.c_str(), dat.c_str());
+    if (rename(tmp.c_str(), dat.c_str()) != 0) return false;
     return true;
 }
 
@@ -227,124 +239,172 @@ static void clearLoadedHotbar() {
     g_loadedPlayerPos = false;
 }
 
-static void loadLevelDat(World* w, const char* absDir, long* outSeed, int* outGameType) {
-    std::string dat = join(absDir, "level.dat");
-    FILE* f = fopen(dat.c_str(), "rb");
-    if (!f) { f = fopen(join(absDir, "level.dat_old").c_str(), "rb"); }
-    if (!f) return;
-
+// Parses one level.dat file. Returns true only if the file parsed cleanly and
+// carries a RandomSeed: without a seed an existing world cannot be streamed
+// consistently (new chunks would generate from a different seed), so callers
+// must refuse to load when this fails.
+static bool parseLevelDatFile(FILE* f, World* w, long* outSeed, int* outGameType) {
     int version = 0, size = 0;
-    if (fread(&version, sizeof(int), 1, f) == 1 &&
-        fread(&size, sizeof(int), 1, f) == 1 && size > 0 && version >= 2) {
-        unsigned char* buf = new unsigned char[size];
-        if ((int)fread(buf, 1, size, f) == size) {
-            MemReader mr(buf, size);
-            CompoundTag* tag = NbtIo::read(&mr);
-            if (tag) {
-                if (outSeed)     *outSeed = (long)tag->getLong("RandomSeed");
-                if (outGameType) *outGameType = tag->getInt("GameType");
-                w->dayTime = (long)tag->getLong("Time");
+    if (fread(&version, sizeof(int), 1, f) != 1 ||
+        fread(&size, sizeof(int), 1, f) != 1 ||
+        size <= 0 || size > (1 << 20) || version < 2)
+        return false;
 
-                if (tag->contains("SpawnY")) {
-                    g_level.setSpawnPos(tag->getInt("SpawnX"),
-                                        tag->getInt("SpawnY"),
-                                        tag->getInt("SpawnZ"));
+    unsigned char* buf = new unsigned char[size];
+    bool ok = false;
+    long seed = 0;
+    int gameType = 0;
+    if ((int)fread(buf, 1, size, f) == size) {
+        MemReader mr(buf, size);
+        CompoundTag* tag = NbtIo::read(&mr);
+        if (tag && !mr.failed() && tag->contains("RandomSeed")) {
+            seed = (long)tag->getLong("RandomSeed");
+            gameType = tag->getInt("GameType");
+            w->dayTime = (long)tag->getLong("Time");
+            ok = true;
+
+            if (tag->contains("SpawnY")) {
+                g_level.setSpawnPos(tag->getInt("SpawnX"),
+                                    tag->getInt("SpawnY"),
+                                    tag->getInt("SpawnZ"));
+            }
+            const CompoundTag* p = tag->getCompound("Player");
+            if (p) {
+                const ListTag* pos = p->getListRo("Pos");
+                const ListTag* rot = p->getListRo("Rotation");
+                if (pos && pos->size() >= 3) {
+                    float px = pos->getFloat(0), py = pos->getFloat(1), pz = pos->getFloat(2);
+
+                    if (px == px && py == py && pz == pz && py >= 0.0f) {
+                        g_level.player->x = px; g_level.player->y = py; g_level.player->z = pz;
+                        g_loadedPlayerPos = true;
+                    }
                 }
-                CompoundTag* p = tag->getCompound("Player");
-                if (p) {
-                    ListTag* pos = p->getList("Pos");
-                    ListTag* rot = p->getList("Rotation");
-                    if (pos->size() >= 3) {
-                        float px = pos->getFloat(0), py = pos->getFloat(1), pz = pos->getFloat(2);
+                if (rot && rot->size() >= 2) { g_level.player->yRot = rot->getFloat(0); g_level.player->xRot = rot->getFloat(1); }
+                if (p->contains("Health")) g_level.player->health = p->getShort("Health");
 
-                        if (px == px && py == py && pz == pz && py >= 0.0f) {
-                            g_level.player->x = px; g_level.player->y = py; g_level.player->z = pz;
-                            g_loadedPlayerPos = true;
-                        }
-                    }
-                    if (rot->size() >= 2) { g_level.player->yRot = rot->getFloat(0); g_level.player->xRot = rot->getFloat(1); }
-                    if (p->contains("Health")) g_level.player->health = p->getShort("Health");
+                if (p->getBoolean("Sleeping")) {
+                    g_level.player->sleeping = true;
+                    g_level.player->sleepCounter = p->getShort("SleepTimer");
+                    g_level.player->bedX = p->getInt("BedPositionX");
+                    g_level.player->bedY = p->getInt("BedPositionY");
+                    g_level.player->bedZ = p->getInt("BedPositionZ");
+                }
 
-                    if (p->getBoolean("Sleeping")) {
-                        g_level.player->sleeping = true;
-                        g_level.player->sleepCounter = p->getShort("SleepTimer");
-                        g_level.player->bedX = p->getInt("BedPositionX");
-                        g_level.player->bedY = p->getInt("BedPositionY");
-                        g_level.player->bedZ = p->getInt("BedPositionZ");
-                    }
+                if (p->contains("SpawnY"))
+                    g_level.player->setRespawnPosition(p->getInt("SpawnX"),
+                                                       p->getInt("SpawnY"),
+                                                       p->getInt("SpawnZ"));
 
-                    if (p->contains("SpawnY"))
-                        g_level.player->setRespawnPosition(p->getInt("SpawnX"),
-                                                           p->getInt("SpawnY"),
-                                                           p->getInt("SpawnZ"));
+                g_loadedSurvival = (gameType != 1);
+                const ListTag* inv = p->getListRo("Inventory");
 
-                    g_loadedSurvival = (outGameType && *outGameType != 1);
-                    ListTag* inv = p->getList("Inventory");
-
-                    const int LINKS = 9;
-                    bool oldFormat = g_loadedSurvival && p->contains("Hotbar");
-                    for (int i = 0; i < inv->size(); i++) {
-                        CompoundTag* slot = (CompoundTag*)inv->get(i);
-                        if (!slot) continue;
-                        int si = (unsigned char)slot->getByte("Slot");
-                        if (g_loadedSurvival) {
-                            short id  = slot->getShort("id");
-                            int   cnt = (unsigned char)slot->getByte("Count");
-                            if (!oldFormat) {
-                                if (si < LINKS) {
-                                    if (id == 255 && cnt == 255 && si < Inventory::HOTBAR) {
-                                        int link = (short)slot->getShort("Damage");
-                                        g_loadedLinks[si] = (link < 0) ? -1 : link - LINKS;
-                                    }
-                                    continue;
-                                }
-                                si -= LINKS;
-                            }
-                            if (si < 0 || si >= Inventory::SURVIVAL_SLOTS) continue;
-                            g_loadedStorage[si].id     = id;
-                            g_loadedStorage[si].damage = slot->getShort("Damage");
-                            g_loadedStorage[si].count  = cnt;
-                            g_loadedStorage[si].used   = true;
-                        } else {
-                            if (si < 0 || si >= Inventory::HOTBAR) continue;
-                            g_loadedHotbar[si].id     = slot->getShort("id");
-                            g_loadedHotbar[si].damage = slot->getShort("Damage");
-
-                            g_loadedHotbar[si].count  = (unsigned char)slot->getByte("Count");
-                            g_loadedHotbar[si].used   = true;
-                        }
-                    }
-
-                    if (p->contains("Armor")) {
-                        ListTag* ar = p->getList("Armor");
-                        int na = ar->size(); if (na > Player::NUM_ARMOR) na = Player::NUM_ARMOR;
-                        for (int i = 0; i < na; i++) {
-                            CompoundTag* slot = (CompoundTag*)ar->get(i);
-                            if (!slot) continue;
-                            g_level.player->armor[i] = ItemInstance(
-                                slot->getShort("id"),
-                                (short)(unsigned char)slot->getByte("Count"),
-                                slot->getShort("Damage"));
-                        }
-                    }
+                const int LINKS = 9;
+                bool oldFormat = g_loadedSurvival && p->contains("Hotbar");
+                for (int i = 0; inv && i < inv->size(); i++) {
+                    const CompoundTag* slot = (const CompoundTag*)inv->get(i);
+                    if (!slot) continue;
+                    int si = (unsigned char)slot->getByte("Slot");
                     if (g_loadedSurvival) {
-                        ListTag* hb = p->getList("Hotbar");
-                        for (int i = 0; i < hb->size(); i++) {
-                            CompoundTag* l = (CompoundTag*)hb->get(i);
-                            if (!l) continue;
-                            int hi = (unsigned char)l->getByte("Slot");
-                            if (hi < 0 || hi >= Inventory::HOTBAR) continue;
-                            g_loadedLinks[hi] = l->getShort("Link");
+                        short id  = slot->getShort("id");
+                        int   cnt = (unsigned char)slot->getByte("Count");
+                        if (!oldFormat) {
+                            if (si < LINKS) {
+                                if (id == 255 && cnt == 255 && si < Inventory::HOTBAR) {
+                                    int link = (short)slot->getShort("Damage");
+                                    g_loadedLinks[si] = (link < 0) ? -1 : link - LINKS;
+                                }
+                                continue;
+                            }
+                            si -= LINKS;
                         }
+                        if (si < 0 || si >= Inventory::SURVIVAL_SLOTS) continue;
+                        g_loadedStorage[si].id     = id;
+                        g_loadedStorage[si].damage = slot->getShort("Damage");
+                        g_loadedStorage[si].count  = cnt;
+                        g_loadedStorage[si].used   = true;
+                    } else {
+                        if (si < 0 || si >= Inventory::HOTBAR) continue;
+                        g_loadedHotbar[si].id     = slot->getShort("id");
+                        g_loadedHotbar[si].damage = slot->getShort("Damage");
+
+                        g_loadedHotbar[si].count  = (unsigned char)slot->getByte("Count");
+                        g_loadedHotbar[si].used   = true;
                     }
                 }
-                tag->deleteChildren();
-                delete tag;
+
+                if (p->contains("Armor")) {
+                    const ListTag* ar = p->getListRo("Armor");
+                    int na = ar ? ar->size() : 0; if (na > Player::NUM_ARMOR) na = Player::NUM_ARMOR;
+                    for (int i = 0; i < na; i++) {
+                        const CompoundTag* slot = (const CompoundTag*)ar->get(i);
+                        if (!slot) continue;
+                        g_level.player->armor[i] = ItemInstance(
+                            slot->getShort("id"),
+                            (short)(unsigned char)slot->getByte("Count"),
+                            slot->getShort("Damage"));
+                    }
+                }
+                if (g_loadedSurvival) {
+                    const ListTag* hb = p->getListRo("Hotbar");
+                    for (int i = 0; hb && i < hb->size(); i++) {
+                        const CompoundTag* l = (const CompoundTag*)hb->get(i);
+                        if (!l) continue;
+                        int hi = (unsigned char)l->getByte("Slot");
+                        if (hi < 0 || hi >= Inventory::HOTBAR) continue;
+                        g_loadedLinks[hi] = l->getShort("Link");
+                    }
+                }
             }
         }
-        delete[] buf;
+        if (tag) { tag->deleteChildren(); delete tag; }
     }
+    delete[] buf;
+
+    if (ok) {
+        if (outSeed)     *outSeed = seed;
+        if (outGameType) *outGameType = gameType;
+    }
+    return ok;
+}
+
+// Last resort: level.txt is the creation-time metadata written by
+// worldListCreate ("gamemode\nname\nseed\ntype\nmask"). It can rescue worlds
+// whose level.dat was destroyed by an interrupted save on older builds.
+static bool loadLevelTxt(World* w, const char* absDir, long* outSeed, int* outGameType) {
+    (void)w;
+    FILE* f = fopen(join(absDir, "level.txt").c_str(), "rb");
+    if (!f) return false;
+    char lineGamemode[64] = {0}, lineName[64] = {0}, lineSeed[64] = {0};
+    bool ok = fgets(lineGamemode, sizeof lineGamemode, f) != 0 &&
+              fgets(lineName, sizeof lineName, f) != 0 &&
+              fgets(lineSeed, sizeof lineSeed, f) != 0;
     fclose(f);
+    if (!ok) return false;
+
+    int gameType = atoi(lineGamemode);
+    long seed = strtol(lineSeed, NULL, 10);
+    (void)lineName; // display name only; the load path does not need it
+
+    if (outSeed)     *outSeed = seed;
+    if (outGameType) *outGameType = gameType;
+    return true;
+}
+
+static bool loadLevelDat(World* w, const char* absDir, long* outSeed, int* outGameType) {
+    // Prefer level.dat; fall back to level.dat_old whenever the primary file
+    // is missing, truncated or otherwise unparseable, then to level.txt.
+    static const char* kCandidates[2] = { "level.dat", "level.dat_old" };
+    for (int attempt = 0; attempt < 2; attempt++) {
+        FILE* f = fopen(join(absDir, kCandidates[attempt]).c_str(), "rb");
+        if (!f) continue;
+        bool ok = parseLevelDatFile(f, w, outSeed, outGameType);
+        fclose(f);
+        if (ok) return true;
+        LOGI("LevelStorage: %s is unusable%s\n", kCandidates[attempt],
+             attempt == 0 ? ", trying level.dat_old" : " and no fallback is left");
+    }
+    return loadLevelTxt(w, absDir, outSeed, outGameType);
 }
 
 static const char* tileEntityName(int type) {
@@ -377,7 +437,10 @@ static void saveEntities(World* w, const char* absDir) {
         std::vector<unsigned char>& blob = w->preservedTileEntities[i];
         if (blob.empty()) continue;
         MemReader mr(&blob[0], (int)blob.size());
-        if (CompoundTag* c = NbtIo::read(&mr)) tes->add(c);
+        if (CompoundTag* c = NbtIo::read(&mr)) {
+            if (!mr.failed()) tes->add(c);
+            else delete c;
+        }
     }
     CompoundTag root;
     root.put("Entities", ents);
@@ -413,12 +476,12 @@ static void loadEntities(World* w, const char* absDir) {
     if (fread(header, 1, 4, f) == 4 &&
         fread(&version, sizeof(int), 1, f) == 1 &&
         fread(&numBytes, sizeof(int), 1, f) == 1 &&
-        numBytes > 0 && memcmp(header, "ENT", 3) == 0) {
+        numBytes > 0 && numBytes <= (8 << 20) && memcmp(header, "ENT", 3) == 0) {
         unsigned char* buf = new unsigned char[numBytes];
         if ((int)fread(buf, 1, numBytes, f) == numBytes) {
             MemReader mr(buf, numBytes);
             CompoundTag* root = NbtIo::read(&mr);
-            if (root) {
+            if (root && !mr.failed()) {
                 if (root->contains("Entities", Tag::TAG_List)) {
                     ListTag* list = root->getList("Entities");
                     for (int i = 0; i < list->size(); i++) {
@@ -474,9 +537,13 @@ bool save(World* w, const char* absDir, long seed, int gameType, const char* lev
         }
     }
     chunkStorageInit(absDir);
-    saveChunks(w, !fullSave);
+    int chunkFailures = saveChunks(w, !fullSave);
     bool ok = saveLevelDat(w, absDir, seed, gameType, levelName);
     saveEntities(w, absDir);
+    if (chunkFailures > 0) {
+        LOGI("LevelStorage: %d chunk(s) failed to save\n", chunkFailures);
+        return false;
+    }
     return ok;
 }
 
@@ -515,15 +582,26 @@ void applyLoadedHotbar() {
 
 bool load(World* w, const char* absDir, long* outSeed, int* outGameType) {
     if (!hasSave(absDir)) return false;
-    if (!worldAllocArrays(w)) return false;
     clearLoadedHotbar();
+
+    // Parse level.dat (falling back to level.dat_old) before allocating any
+    // world storage: a corrupt file aborts the load here instead of starting
+    // a half-built world that would stream new chunks from the wrong seed.
+    long seed = 0;
+    int  gameType = 0;
+    if (!loadLevelDat(w, absDir, &seed, &gameType)) {
+        LOGI("LevelStorage: refusing to load '%s' -- no readable level.dat with a seed\n", absDir);
+        return false;
+    }
+    if (outSeed)     *outSeed = seed;
+    if (outGameType) *outGameType = gameType;
+
+    if (!worldAllocArrays(w)) return false;
     g_level.removeAllEntities();
     g_level.removeAllTileEntities();
 
-    loadLevelDat(w, absDir, outSeed, outGameType);
-
     if (levelSourceFor(s_activeWorldType).supportsGenFeatures())
-        worldGenInit(outSeed ? *outSeed : 0, s_activeGenMask);
+        worldGenInit(seed, s_activeGenMask);
 
     chunkStorageInit(absDir);
 
@@ -542,36 +620,41 @@ bool load(World* w, const char* absDir, long* outSeed, int* outGameType) {
 }
 
 bool readInfo(const char* absDir, char* nameOut, int nameCap, int* outGameType, long* outSeed) {
-    std::string dat = join(absDir, "level.dat");
-    FILE* f = fopen(dat.c_str(), "rb");
-    if (!f) { f = fopen(join(absDir, "level.dat_old").c_str(), "rb"); }
-    if (!f) return false;
+    // Lenient path used for the world list display: fall back to level.dat_old
+    // whenever the primary file is missing or fails to parse.
+    static const char* kCandidates[2] = { "level.dat", "level.dat_old" };
+    for (int attempt = 0; attempt < 2; attempt++) {
+        FILE* f = fopen(join(absDir, kCandidates[attempt]).c_str(), "rb");
+        if (!f) continue;
 
-    bool ok = false;
-    int version = 0, size = 0;
-    if (fread(&version, sizeof(int), 1, f) == 1 &&
-        fread(&size, sizeof(int), 1, f) == 1 && size > 0 && version >= 2) {
-        unsigned char* buf = new unsigned char[size];
-        if ((int)fread(buf, 1, size, f) == size) {
-            MemReader mr(buf, size);
-            CompoundTag* tag = NbtIo::read(&mr);
-            if (tag) {
-                if (nameOut && nameCap > 0) {
-                    std::string nm = tag->getString("LevelName");
-                    strncpy(nameOut, nm.c_str(), nameCap - 1);
-                    nameOut[nameCap - 1] = '\0';
+        bool ok = false;
+        int version = 0, size = 0;
+        if (fread(&version, sizeof(int), 1, f) == 1 &&
+            fread(&size, sizeof(int), 1, f) == 1 &&
+            size > 0 && size <= (1 << 20) && version >= 2) {
+            unsigned char* buf = new unsigned char[size];
+            if ((int)fread(buf, 1, size, f) == size) {
+                MemReader mr(buf, size);
+                CompoundTag* tag = NbtIo::read(&mr);
+                if (tag && !mr.failed()) {
+                    if (nameOut && nameCap > 0) {
+                        std::string nm = tag->getString("LevelName");
+                        strncpy(nameOut, nm.c_str(), nameCap - 1);
+                        nameOut[nameCap - 1] = '\0';
+                    }
+                    if (outGameType) *outGameType = tag->getInt("GameType");
+                    if (outSeed)     *outSeed = (long)tag->getLong("RandomSeed");
+                    ok = true;
+                    tag->deleteChildren();
+                    delete tag;
                 }
-                if (outGameType) *outGameType = tag->getInt("GameType");
-                if (outSeed)     *outSeed = (long)tag->getLong("RandomSeed");
-                ok = true;
-                tag->deleteChildren();
-                delete tag;
             }
+            delete[] buf;
         }
-        delete[] buf;
+        fclose(f);
+        if (ok) return true;
     }
-    fclose(f);
-    return ok;
+    return false;
 }
 
 void setActiveWorld(const char* absDir, long seed, int gameType, const char* levelName,
