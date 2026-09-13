@@ -710,6 +710,16 @@ void soundPowerResume(void) {
 }
 
 void soundMusicUpdate(void) {
+
+    extern volatile int g_powerSuspended;
+    if (g_powerSuspended) {
+        if (g_musHandle >= 0 || g_musFile) {
+            g_musPlaying = 0; g_musReady[0] = 0; g_musReady[1] = 0; g_musEnded = 1;
+            musicRelease();
+            musicArmGap();
+        }
+        return;
+    }
     if (!g_musCount || g_channel < 0) return;
     if (g_catVol[SND_CAT_MUSIC] <= 0.0f) return;
 

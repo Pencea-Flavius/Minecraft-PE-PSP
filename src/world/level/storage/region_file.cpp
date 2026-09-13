@@ -1,3 +1,4 @@
+#include <pspiofilemgr.h>
 #include "world/level/storage/region_file.h"
 
 #include <cstring>
@@ -72,6 +73,9 @@ bool RegionFile::open() {
             }
         }
     } else {
+
+        SceIoStat st;
+        if (sceIoGetstat(filename, &st) >= 0) return false;
 
         file = fopen(filename, "w+b");
         if (!file) {

@@ -78,7 +78,12 @@ static volatile int g_powerResumed = 0;
 
 static unsigned int g_powerResumes = 0;
 
+volatile int g_powerSuspended = 0;
+static volatile int g_powerStickWait = 0;
+
 static int powerCallback(int , int pwrflags, void* ) {
+    if (pwrflags & (PSP_POWER_CB_SUSPENDING | PSP_POWER_CB_STANDBY))
+        { g_powerSuspended = 1; g_powerStickWait = 0; }
     if (pwrflags & PSP_POWER_CB_RESUME_COMPLETE)
         g_powerResumed = 1;
     return 0;
@@ -431,16 +436,18 @@ int main(int argc, char* argv[]) {
             guResumeFromSleep();
             chunkStorageDropOpenFiles();
 
-            extern bool g_worldBuilt;
-            if (g_worldBuilt) {
-                extern int g_autosaveTick;
-                g_saveRequested = true;
-                g_autosaveTick  = 0;
-            }
-
+            extern bool g_worldBuilt, g_paused;
+            if (g_worldBuilt) g_paused = true;
             soundPowerResume();
+            g_powerStickWait = 1;
             scePowerTick(0);
         }
+
+        if (g_powerStickWait && g_powerStickWait++ < 300) {
+            SceUID d = sceIoDopen(savePath(""));
+            if (d >= 0) { sceIoDclose(d); g_powerStickWait = 300; }
+        }
+        if (g_powerStickWait >= 300) { g_powerStickWait = 0; g_powerSuspended = 0; }
 
         float now = nowSeconds();
 

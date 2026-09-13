@@ -101,7 +101,7 @@ static CompoundTag* buildPlayerTag(World* w) {
     (void)w;
     CompoundTag* p = new CompoundTag();
 
-    float px = g_level.player->x, py = g_level.player->y, pz = g_level.player->z;
+    float px = g_level.player->x, py = g_level.player->bb.y0 + PLAYER_EYE, pz = g_level.player->z;
     if (!(px == px) || !(py == py) || !(pz == pz) || py < 0.0f) {
         int fx, fz, feetY; worldFindSpawn(w, &fx, &fz, &feetY);
         px = fx + 0.5f; py = feetY + PLAYER_EYE; pz = fz + 0.5f;

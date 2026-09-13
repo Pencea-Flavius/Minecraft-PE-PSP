@@ -79,7 +79,8 @@ void worldRebuildStep(const World* cw, float camX, float camY, float camZ, float
     chunkMeshHeapProbe();
 
     profBegin(PROF_STREAM);
-    profAdd(PROFC_STREAMIN, worldStream(w, camX, camZ, 4));
+    extern volatile int g_powerSuspended;
+    if (!g_powerSuspended) profAdd(PROFC_STREAMIN, worldStream(w, camX, camZ, 4));
     profEnd(PROF_STREAM);
 
     profBegin(PROF_LIGHT);

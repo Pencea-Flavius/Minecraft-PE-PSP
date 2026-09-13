@@ -8,6 +8,7 @@ extern float g_attackAnim, g_oAttackAnim;
 void playerSwing(void);
 void loadCharIfNeeded(void);
 void itemHandTick(void);
+void itemHandSnapEquip(void);
 void itemHandDraw(float a, float bs, float bc);
 
 struct ChunkVertex;

@@ -1183,6 +1183,8 @@ void gameRender(MenuState& s) {
         struct SaveArgs { World* w; long seed; int gamemode; char dir[320]; char name[64]; };
         static SaveArgs sArgs;
         static volatile bool g_saveThreadDone = false;
+        extern volatile int g_powerSuspended;
+        if (saveStage == 0 && g_powerSuspended) { drawGeneratingScreen(s, 0, "Saving chunks"); return; }
         if (saveStage == 0) {
             sArgs.w = &g_world;
             const char* actDir = LevelStorage::getActiveDir();
@@ -1409,6 +1411,7 @@ void gameRender(MenuState& s) {
                 gameModeInit(gamemode);
 
                 if (g_loadedFromDisk) LevelStorage::applyLoadedHotbar();
+                itemHandSnapEquip();
 
                 if (freshWorld) MobSpawner::populateInitial(&g_level);
             }

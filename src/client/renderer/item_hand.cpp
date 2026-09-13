@@ -47,6 +47,7 @@ static float s_equipHeight = 0.0f;
 static float s_oEquipHeight = 0.0f;
 static short s_equippedId = -1;
 static unsigned char s_equippedData = 0xFF;
+static int s_equipSnapSlot = -999;
 
 void playerSwing(void) {
 
@@ -77,7 +78,7 @@ void itemHandTick(void) {
         data = (unsigned char)held->data;
     }
 
-    static int s_equippedSlot = -999;
+    int& s_equippedSlot = s_equipSnapSlot;
     int slot = g_level.player->inventory->selected;
 
     Item* itemCls = (id > 0 && id < 4096) ? Item::items[id] : 0;
@@ -99,6 +100,14 @@ void itemHandTick(void) {
         s_equippedId = id;
         s_equippedData = data;
     }
+}
+
+void itemHandSnapEquip(void) {
+    ItemInstance* held = g_level.player ? g_level.player->inventory->getSelected() : 0;
+    s_equippedId   = held ? held->id : 0;
+    s_equippedData = held ? (unsigned char)held->data : 0;
+    s_equipHeight = s_oEquipHeight = 1.0f;
+    s_equipSnapSlot = g_level.player ? g_level.player->inventory->selected : -999;
 }
 
 static float getAttackAnim(float a) {

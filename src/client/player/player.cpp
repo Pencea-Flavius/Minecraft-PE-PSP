@@ -517,7 +517,17 @@ void playerSpawnAt(float eyeY) {
     playerSpawnEnsure();
     LocalPlayer* p = g_level.player;
     p->y = eyeY;
+    p->ySlideOffset = 0.0f;
     p->setPos(p->x, p->y, p->z);
+
+    auto snapAxis = [](float& lo, float& hi, float size) {
+        float s0 = std::round(lo * 16.0f) / 16.0f, s1 = std::round(hi * 16.0f) / 16.0f;
+        if      (std::fabs(lo - s0) < 0.001f) { lo = s0; hi = s0 + size; }
+        else if (std::fabs(hi - s1) < 0.001f) { hi = s1; lo = s1 - size; }
+    };
+    snapAxis(p->bb.x0, p->bb.x1, p->bbWidth);
+    snapAxis(p->bb.y0, p->bb.y1, p->bbHeight);
+    snapAxis(p->bb.z0, p->bb.z1, p->bbWidth);
     p->xd = p->yd = p->zd = 0.0f;
     p->onGround = true;
     p->flying = false;
@@ -526,4 +536,6 @@ void playerSpawnAt(float eyeY) {
     p->onFire = 0;
     p->xo = p->xOld = p->x; p->yo = p->yOld = p->y; p->zo = p->zOld = p->z;
     p->yRotO = p->yRot; p->xRotO = p->xRot;
+
+    p->xBob = p->xBobO = p->xRot; p->yBob = p->yBobO = p->yRot;
 }
