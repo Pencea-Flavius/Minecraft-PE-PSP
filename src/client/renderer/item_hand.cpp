@@ -102,6 +102,10 @@ void itemHandTick(void) {
     }
 }
 
+void itemHandItemUsed(void) {
+    s_equipHeight = 0.0f;
+}
+
 void itemHandSnapEquip(void) {
     ItemInstance* held = g_level.player ? g_level.player->inventory->getSelected() : 0;
     s_equippedId   = held ? held->id : 0;

@@ -9,6 +9,7 @@ void playerSwing(void);
 void loadCharIfNeeded(void);
 void itemHandTick(void);
 void itemHandSnapEquip(void);
+void itemHandItemUsed(void);
 void itemHandDraw(float a, float bs, float bc);
 
 struct ChunkVertex;

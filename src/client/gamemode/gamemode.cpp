@@ -521,8 +521,13 @@ void GameMode::handleInput(unsigned int pressed, unsigned int held) {
 
         if (pressed & PSP_CTRL_LTRIGGER) {
             ItemInstance* sel = g_level.player->inventory->getSelected();
-            if (sel && !sel->isNull() && sel->getItem())
+            if (sel && !sel->isNull() && sel->getItem()) {
+
+                const int count = sel->count, id = sel->id, aux = sel->data;
                 sel->getItem()->use(sel, g_level.player, &g_world);
+                if (sel->count != count || sel->id != id || sel->data != aux)
+                    itemHandItemUsed();
+            }
         }
     }
 }
