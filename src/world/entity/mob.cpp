@@ -285,21 +285,9 @@ void Mob::causeFallDamage(float dist) {
 
 bool Mob::canSee(Entity* e) {
     if (!e) return false;
-    float ax = x, ay = (y - heightOffset) + bbHeight * 0.85f, az = z;
-    float bx = e->x, by = (e->y - e->heightOffset) + e->bbHeight * 0.85f, bz = e->z;
-    float dx = bx - ax, dy = by - ay, dz = bz - az;
-    float dist = sqrtf(dx * dx + dy * dy + dz * dz);
-    if (dist < 1e-4f) return true;
-    int steps = (int)(dist * 2.0f) + 1;
-    float inv = 1.0f / (float)steps;
-    for (int i = 1; i < steps; i++) {
-        float t = i * inv;
-        int cx = (int)floorf(ax + dx * t);
-        int cy = (int)floorf(ay + dy * t);
-        int cz = (int)floorf(az + dz * t);
-        if (level->isSolidBlockingTile(cx, cy, cz)) return false;
-    }
-    return true;
+    float ay = (y - heightOffset) + bbHeight * 0.85f;
+    float by = (e->y - e->heightOffset) + e->bbHeight * 0.85f;
+    return !worldClip(level->w, x, ay, z, e->x, by, e->z, false, false).hit;
 }
 
 void Mob::checkDespawn() {

@@ -9,6 +9,8 @@ public:
     Zombie(Level* level);
 
     virtual int  getMaxHealth() { return 12; }
+
+    virtual int  getArmorValue() { int v = Monster::getArmorValue() + 2; return v >= 20 ? 20 : v; }
     virtual void aiStep();
 
     virtual bool useNewAi() { return true; }
