@@ -17,6 +17,8 @@ public:
 
     virtual void move(float xa, float ya, float za);
 
+    void checkInTile(float px, float py, float pz);
+
     int autoJumpTime = 0;
 
     virtual void die(Entity* source);

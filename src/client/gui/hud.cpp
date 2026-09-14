@@ -156,7 +156,7 @@ static short guiBlockIcon(short id) {
         case BLOCK_LAPIS_BLOCK: return 47;
         case BLOCK_COAL_BLOCK: return 83;
         case BLOCK_ORE_REDSTONE: case BLOCK_ORE_REDSTONE_LIT: return 43;
-        case BLOCK_ORE_EMERALD: return 41;
+        case BLOCK_ORE_DIAMOND: return 41;
         case BLOCK_DIAMOND_BLOCK: return 46;
         case BLOCK_GOLD_BLOCK: return 44;
         case BLOCK_IRON_BLOCK: return 45;
@@ -653,7 +653,7 @@ const char* getBlockName(short id, unsigned char data) {
         case BLOCK_ORE_IRON: return "Iron Ore";
         case BLOCK_ORE_GOLD: return "Gold Ore";
 
-        case BLOCK_ORE_EMERALD: return "Diamond Ore";
+        case BLOCK_ORE_DIAMOND: return "Diamond Ore";
         case BLOCK_ORE_LAPIS: return "Lapis Lazuli Ore";
         case BLOCK_ORE_REDSTONE: return "Redstone Ore";
         case BLOCK_GOLD_BLOCK: return "Block of Gold";
@@ -896,7 +896,7 @@ const char* getBlockDescription(short id, unsigned char data) {
         case BLOCK_ORE_COAL: return "Can be mined with a pickaxe to collect coal.";
         case BLOCK_ORE_IRON: return "Can be mined with a stone pickaxe or better, then smelted in a furnace to produce iron ingots.";
         case BLOCK_ORE_GOLD: return "Can be mined with an iron pickaxe or better, then smelted in a furnace to produce gold ingots.";
-        case BLOCK_ORE_EMERALD: return "Can be mined with an iron pickaxe or better to collect diamonds.";
+        case BLOCK_ORE_DIAMOND: return "Can be mined with an iron pickaxe or better to collect diamonds.";
         case BLOCK_ORE_LAPIS: return "Can be mined with a stone pickaxe or better to collect lapis lazuli.";
         case BLOCK_ORE_REDSTONE: return "Can be mined with an iron pickaxe or better to collect redstone dust.";
         case BLOCK_GOLD_BLOCK: case BLOCK_IRON_BLOCK: case BLOCK_DIAMOND_BLOCK: case BLOCK_LAPIS_BLOCK:

@@ -20,6 +20,7 @@ Level::Level(World* world) : w(world), player(0), isClientSide(false),
     entities.reserve(Entity::ENTITY_POOL + 16);
     boxes.reserve(64);
     for (int i = 0; i < WORLD_CHUNKS_X * WORLD_CHUNKS_Z; i++) chunkEntityHead[i] = 0;
+    for (int i = 0; i < MAX_TILE_CRACKS; i++) tileCracks[i].id = 0;
 }
 
 void Level::validateSpawn() { worldValidateSpawn(w, &spawnX, &spawnY, &spawnZ); }
@@ -369,6 +370,21 @@ void Level::removeAllEntities() {
     for (size_t i = 0; i < entities.size(); i++) delete entities[i];
     entities.clear();
     for (int i = 0; i < WORLD_CHUNKS_X * WORLD_CHUNKS_Z; i++) chunkEntityHead[i] = 0;
+    for (int i = 0; i < MAX_TILE_CRACKS; i++) tileCracks[i].id = 0;
+}
+
+void Level::destroyTileProgress(int id, int x, int y, int z, int progress) {
+    TileCrack* slot = 0;
+    for (int i = 0; i < MAX_TILE_CRACKS; i++) {
+        if (tileCracks[i].id == id) { slot = &tileCracks[i]; break; }
+        if (!slot && tileCracks[i].id == 0) slot = &tileCracks[i];
+    }
+    if (progress < 0 || progress > 9) {
+        if (slot && slot->id == id) slot->id = 0;
+        return;
+    }
+    if (!slot) return;
+    slot->id = id; slot->x = x; slot->y = y; slot->z = z; slot->progress = progress;
 }
 
 TileEntity* Level::getTileEntity(int x, int y, int z) {

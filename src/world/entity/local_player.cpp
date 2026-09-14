@@ -188,6 +188,13 @@ void LocalPlayer::aiStep(unsigned int btn, unsigned char lx, unsigned char ly,
     walkDistO = walkDist;
 
     xxa = xs; yya = yf;
+
+    const float cw = 0.6f * 0.35f;
+    float py = bb.y0 + 0.5f;
+    checkInTile(x - cw, py, z + cw);
+    checkInTile(x - cw, py, z - cw);
+    checkInTile(x + cw, py, z - cw);
+    checkInTile(x + cw, py, z + cw);
     float wx0 = x, wz0 = z;
     if (onMount) {
 
@@ -392,4 +399,25 @@ void LocalPlayer::die(Entity* source) {
         xd = zd = 0.0f;
     }
     Mob::die(source);
+}
+
+void LocalPlayer::checkInTile(float px, float py, float pz) {
+    int xt = Mth::floor(px), yt = Mth::floor(py), zt = Mth::floor(pz);
+    float xf = px - xt, zf = pz - zt;
+    if (!level->isSolidBlockingTile(xt, yt, zt) && !level->isSolidBlockingTile(xt, yt + 1, zt)) return;
+    bool west  = !level->isSolidBlockingTile(xt - 1, yt, zt) && !level->isSolidBlockingTile(xt - 1, yt + 1, zt);
+    bool east  = !level->isSolidBlockingTile(xt + 1, yt, zt) && !level->isSolidBlockingTile(xt + 1, yt + 1, zt);
+    bool north = !level->isSolidBlockingTile(xt, yt, zt - 1) && !level->isSolidBlockingTile(xt, yt + 1, zt - 1);
+    bool south = !level->isSolidBlockingTile(xt, yt, zt + 1) && !level->isSolidBlockingTile(xt, yt + 1, zt + 1);
+    int dir = -1;
+    float closest = 9999.0f;
+    if (west  && xf < closest)        { closest = xf;        dir = 0; }
+    if (east  && 1 - xf < closest)    { closest = 1 - xf;    dir = 1; }
+    if (north && zf < closest)        { closest = zf;        dir = 4; }
+    if (south && 1 - zf < closest)    { closest = 1 - zf;    dir = 5; }
+    const float speed = 0.1f;
+    if (dir == 0) xd = -speed;
+    if (dir == 1) xd = +speed;
+    if (dir == 4) zd = -speed;
+    if (dir == 5) zd = +speed;
 }

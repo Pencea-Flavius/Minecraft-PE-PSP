@@ -83,6 +83,11 @@ public:
     int  getTopSolidBlock(int x, int z) const;
     void removeAllEntities();
 
+    struct TileCrack { int id, x, y, z, progress; };
+    enum { MAX_TILE_CRACKS = 8 };
+    TileCrack tileCracks[MAX_TILE_CRACKS];
+    void destroyTileProgress(int id, int x, int y, int z, int progress);
+
     TileEntity* getTileEntity(int x, int y, int z);
     void setTileEntity(int x, int y, int z, TileEntity* te);
     void tickTileEntities();

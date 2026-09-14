@@ -278,7 +278,7 @@ bool McpeGen::postProcessPhase(World* w, int chunkX, int chunkZ, int phase) {
     for (int i = 0; i < 20; i++) { int x = xo + random.nextInt(16), y = random.nextInt(64), z = zo + random.nextInt(16); oreFeature(w, random, x, y, z, BLOCK_ORE_IRON, 8); }
     for (int i = 0; i < 2; i++) { int x = xo + random.nextInt(16), y = random.nextInt(32), z = zo + random.nextInt(16); oreFeature(w, random, x, y, z, BLOCK_ORE_GOLD, 8); }
     for (int i = 0; i < 8; i++) { int x = xo + random.nextInt(16), y = random.nextInt(16), z = zo + random.nextInt(16); oreFeature(w, random, x, y, z, BLOCK_ORE_REDSTONE, 7); }
-    for (int i = 0; i < 1; i++) { int x = xo + random.nextInt(16), y = random.nextInt(16), z = zo + random.nextInt(16); oreFeature(w, random, x, y, z, BLOCK_ORE_EMERALD, 7); }
+    for (int i = 0; i < 1; i++) { int x = xo + random.nextInt(16), y = random.nextInt(16), z = zo + random.nextInt(16); oreFeature(w, random, x, y, z, BLOCK_ORE_DIAMOND, 7); }
     for (int i = 0; i < 1; i++) { int x = xo + random.nextInt(16), y = random.nextInt(16) + random.nextInt(16), z = zo + random.nextInt(16); oreFeature(w, random, x, y, z, BLOCK_ORE_LAPIS, 6); }
 
     return false; }

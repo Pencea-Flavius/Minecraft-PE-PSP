@@ -124,7 +124,7 @@ Drop Tile::getResource(int data) {
 
         case BLOCK_ORE_REDSTONE: case BLOCK_ORE_REDSTONE_LIT:
                                         return { ITEM_REDSTONE, 1, 0 };
-        case BLOCK_ORE_EMERALD:         return { ITEM_DIAMOND, 1, 0 };
+        case BLOCK_ORE_DIAMOND:         return { ITEM_DIAMOND, 1, 0 };
 
         case BLOCK_GLOWSTONE:           return { ITEM_GLOWSTONE_DUST, 1, 0 };
         case BLOCK_CLAY:                return { ITEM_CLAY, 4, 0 };
@@ -370,7 +370,7 @@ void Tile::getTexture(unsigned char data, int f, int* col, int* row, unsigned in
         case BLOCK_ORE_GOLD:       *col = 0;  *row = 2; break;
         case BLOCK_ORE_REDSTONE:
         case BLOCK_ORE_REDSTONE_LIT: *col = 3;  *row = 3; break;
-        case BLOCK_ORE_EMERALD:    *col = 2;  *row = 3; break;
+        case BLOCK_ORE_DIAMOND:    *col = 2;  *row = 3; break;
         case BLOCK_ORE_LAPIS:      *col = 0;  *row = 10; break;
         case BLOCK_LAVA:
         case BLOCK_CALM_LAVA:
@@ -1376,7 +1376,7 @@ static float rawDestroySpeed(int id) {
         case BLOCK_GLASS: case BLOCK_GLASS_PANE: case BLOCK_GLOWSTONE:
             return 0.3f;
         case BLOCK_ORE_GOLD: case BLOCK_ORE_IRON: case BLOCK_ORE_COAL:
-        case BLOCK_ORE_LAPIS: case BLOCK_ORE_EMERALD:
+        case BLOCK_ORE_LAPIS: case BLOCK_ORE_DIAMOND:
         case BLOCK_ORE_REDSTONE: case BLOCK_ORE_REDSTONE_LIT:
         case BLOCK_LAPIS_BLOCK: case BLOCK_GOLD_BLOCK:
         case BLOCK_DOOR_WOOD: case BLOCK_TRAPDOOR: case BLOCK_NETHER_REACTOR:
@@ -1443,7 +1443,7 @@ static float rawExplosionResistance(int id) {
 
         case BLOCK_PLANKS:
         case BLOCK_ORE_GOLD: case BLOCK_ORE_IRON: case BLOCK_ORE_COAL:
-        case BLOCK_ORE_LAPIS: case BLOCK_ORE_EMERALD:
+        case BLOCK_ORE_LAPIS: case BLOCK_ORE_DIAMOND:
         case BLOCK_ORE_REDSTONE: case BLOCK_ORE_REDSTONE_LIT:
         case BLOCK_LAPIS_BLOCK:
         case BLOCK_FENCE: case BLOCK_FENCE_GATE:

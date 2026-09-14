@@ -66,7 +66,7 @@ const CreativeEntry kItems[] = {
     { BLOCK_ORE_COAL,           1, 0 },
     { BLOCK_ORE_IRON,           1, 0 },
     { BLOCK_ORE_GOLD,           1, 0 },
-    { BLOCK_ORE_EMERALD,        1, 0 },
+    { BLOCK_ORE_DIAMOND,        1, 0 },
     { BLOCK_ORE_LAPIS,          1, 0 },
     { BLOCK_ORE_REDSTONE,       1, 0 },
     { BLOCK_GOLD_BLOCK,         1, 0 },

@@ -66,7 +66,7 @@ public:
         addTile(BLOCK_ORE_IRON); addTile(BLOCK_IRON_BLOCK);
         addTile(BLOCK_ORE_COAL);
         addTile(BLOCK_GOLD_BLOCK); addTile(BLOCK_ORE_GOLD);
-        addTile(BLOCK_ORE_EMERALD);
+        addTile(BLOCK_ORE_DIAMOND);
         addTile(BLOCK_DIAMOND_BLOCK);
         addTile(BLOCK_ICE);
         addTile(BLOCK_ORE_LAPIS); addTile(BLOCK_LAPIS_BLOCK);
@@ -75,7 +75,7 @@ public:
     virtual bool canDestroySpecial(int b) const {
 
         if (b == BLOCK_OBSIDIAN || b == BLOCK_GLOWING_OBSIDIAN) return level == 3;
-        if (b == BLOCK_DIAMOND_BLOCK || b == BLOCK_ORE_EMERALD) return level >= 2;
+        if (b == BLOCK_DIAMOND_BLOCK || b == BLOCK_ORE_DIAMOND) return level >= 2;
         if (b == BLOCK_GOLD_BLOCK || b == BLOCK_ORE_GOLD)       return level >= 2;
         if (b == BLOCK_IRON_BLOCK || b == BLOCK_ORE_IRON)       return level >= 1;
         if (b == BLOCK_LAPIS_BLOCK || b == BLOCK_ORE_LAPIS)     return level >= 1;

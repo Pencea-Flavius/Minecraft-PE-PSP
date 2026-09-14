@@ -6,13 +6,15 @@
 
 class BreakDoorGoal : public DoorInteractGoal {
 public:
-    BreakDoorGoal(Mob* mob) : DoorInteractGoal(mob), ticksLeft(0) {}
+    BreakDoorGoal(Mob* mob) : DoorInteractGoal(mob), ticksLeft(0), lastBreakProgress(-1) {}
     virtual bool canUse();
     virtual bool canContinueToUse();
     virtual void start();
+    virtual void stop();
     virtual void tick();
 private:
     int ticksLeft;
+    int lastBreakProgress;
 };
 
 #endif

@@ -927,17 +927,17 @@ static void loadWorldView(float ex, float ey, float ez,
     sceGumLookAt(&eye, &ctr, &up);
 }
 
-static void renderMiningCrack(float ex, float ey, float ez) {
-    if (!g_mining.active || g_mining.progress <= 0.0f || !g_haveTerrain) return;
-    unsigned char id   = worldBlock(&g_world, g_mining.x, g_mining.y, g_mining.z);
+static void renderCrack(float ex, float ey, float ez, int bx, int by, int bz, float progress) {
+    if (progress <= 0.0f || !g_haveTerrain) return;
+    unsigned char id   = worldBlock(&g_world, bx, by, bz);
 
     if (id == BLOCK_AIR) return;
 
-    int stage = (int)(g_mining.progress * 10.0f);
+    int stage = (int)(progress * 10.0f);
     if (stage < 0) stage = 0; else if (stage > 9) stage = 9;
 
     float boxes[3][6];
-    int nb = worldSelectionBoxes(&g_world, g_mining.x, g_mining.y, g_mining.z, boxes);
+    int nb = worldSelectionBoxes(&g_world, bx, by, bz, boxes);
     if (nb <= 0) return;
 
     const float EPS = 0.01f;
@@ -979,7 +979,7 @@ static void renderMiningCrack(float ex, float ey, float ez) {
                 v.y = c[1] ? hi[1] : lo[1];
                 v.z = c[2] ? hi[2] : lo[2];
 
-                float fx = v.x - g_mining.x, fy = v.y - g_mining.y, fz = v.z - g_mining.z;
+                float fx = v.x - bx, fy = v.y - by, fz = v.z - bz;
                 if (fx < 0) fx = 0; else if (fx > 1) fx = 1;
                 if (fy < 0) fy = 0; else if (fy > 1) fy = 1;
                 if (fz < 0) fz = 0; else if (fz > 1) fz = 1;
@@ -1023,6 +1023,26 @@ static void renderMiningCrack(float ex, float ey, float ez) {
     sceGuDepthMask(GU_FALSE);
     sceGuEnable(GU_CULL_FACE);
     sceGuBlendFunc(GU_ADD, GU_SRC_ALPHA, GU_ONE_MINUS_SRC_ALPHA, 0, 0);
+}
+
+static void renderMiningCrack(float ex, float ey, float ez) {
+    if (g_mining.active)
+        renderCrack(ex, ey, ez, g_mining.x, g_mining.y, g_mining.z, g_mining.progress);
+    for (int i = 0; i < Level::MAX_TILE_CRACKS; i++) {
+        Level::TileCrack& c = g_level.tileCracks[i];
+        if (!c.id) continue;
+        if (!g_level.getEntity(c.id)) { c.id = 0; continue; }
+
+        bool beaten = false;
+        for (int j = 0; j < Level::MAX_TILE_CRACKS && !beaten; j++) {
+            const Level::TileCrack& o = g_level.tileCracks[j];
+            if (j == i || !o.id || o.x != c.x || o.y != c.y || o.z != c.z) continue;
+            beaten = o.progress > c.progress || (o.progress == c.progress && j < i);
+        }
+        if (beaten) continue;
+
+        renderCrack(ex, ey, ez, c.x, c.y, c.z, (c.progress + 0.05f) / 10.0f);
+    }
 }
 
 int g_blockOutline = 1;
@@ -1396,7 +1416,8 @@ void gameRender(MenuState& s) {
                     const AABB& pb = g_level.player->bb;
                     bool known = g_level.hasChunksAt(Mth::floor(pb.x0), Mth::floor(pb.y0), Mth::floor(pb.z0),
                                                      Mth::floor(pb.x1), Mth::floor(pb.y1), Mth::floor(pb.z1));
-                    if (known && !g_level.getCubes(g_level.player, pb).empty())
+
+                    if (freshWorld && known && !g_level.getCubes(g_level.player, pb).empty())
                         g_level.player->resetPos(true);
                 }
 
