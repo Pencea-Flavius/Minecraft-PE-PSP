@@ -19,6 +19,7 @@
 #include <cstring>
 #include "gpu/item_icons.h"
 #include "client/renderer/item_anim_icon.h"
+#include "client/renderer/entity/player_model.h"
 #include "gpu/spawn_egg_colors.h"
 
 #define CHAT_LINES  10
@@ -1011,6 +1012,9 @@ void hotbarDraw(MenuState& s) {
                           g_craftOpen || g_armorOpen || g_paused;
 
     if (screenUp) s_lastSlotChange = gameSeconds();
+
+    extern float g_timerAlpha;
+    playerModelRenderPaperDoll(g_timerAlpha, !screenUp && g_animatedCharacter);
 
     HudAlpha hudAlpha(screenUp ? (unsigned char)255 : hudAlpha255());
     const float barW = 20.0f * HUD_N * HB_S;

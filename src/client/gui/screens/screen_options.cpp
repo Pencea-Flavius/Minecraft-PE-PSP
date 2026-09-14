@@ -52,6 +52,8 @@ static const OptionRowDef g_optionRows[OPT_CATEGORIES][OPT_MAX_ROWS] = {
         { 0,           "Hide GUI",         {"Off", "On", 0, 0}, 2, 0 },
 
         { 0,           "Interface Opacity", {0, 0, 0, 0}, 11, 8, true, 0, 10 },
+
+        { 0,           "Animated Character", {"Off", "On", 0, 0}, 2, 1 },
     },
     {
 
@@ -86,7 +88,7 @@ static const OptionRowDef g_optionRows[OPT_CATEGORIES][OPT_MAX_ROWS] = {
 
         { 0,              "Dithering",   {"Off", "On", 0, 0}, 2, 0 },
 
-        { 0,              "Bedrock Fog", {"Off", "On", 0, 0}, 2, 1 },
+        { 0,              "Bedrock Fog", {"Off", "On", 0, 0}, 2, 0 },
 
     },
     {
@@ -102,7 +104,7 @@ static const OptionRowDef g_optionRows[OPT_CATEGORIES][OPT_MAX_ROWS] = {
     },
 };
 
-static const int g_optionRowCount[OPT_CATEGORIES] = { 9, 6, 11, 8 };
+static const int g_optionRowCount[OPT_CATEGORIES] = { 10, 6, 11, 8 };
 static const char* g_optionCategoryNames[OPT_CATEGORIES] = { "Game", "Controls", "Graphics", "Audio" };
 static int g_optionValueIdx[OPT_CATEGORIES][OPT_MAX_ROWS];
 
@@ -112,13 +114,14 @@ extern int   g_fancyGraphics;
 extern int   g_fancyLeaves;
 extern int   g_cloudMode;
 
-bool g_bedrockFog = true;
+bool g_bedrockFog = false;
 extern int   g_noMipmap;
 extern int   g_showFps;
 extern int   g_showCoords;
 extern int   g_difficulty;
 extern int   g_autosave;
 extern int   g_blockOutline;
+extern int   g_animatedCharacter;
 extern int   g_autoJump;
 extern int   g_classicPick;
 extern int   g_dither;
@@ -174,6 +177,7 @@ static int renderDistChoices() { return g_lowMemPsp ? 2 : 4; }
 #define ROW_BLOCKOUTLINE 6
 #define ROW_HIDEGUI      7
 #define ROW_HUDOPACITY   8
+#define ROW_ANIMCHAR     9
 
 #define CAT_AUDIO       3
 #define ROW_SOUNDVOL    0
@@ -222,6 +226,7 @@ static void optionsApply() {
     if (ai < 0) ai = 0; else if (ai > 4) ai = 4;
     g_autosave    = kAutosaveTicks[ai];
     g_blockOutline = g_optionValueIdx[CAT_GAME][ROW_BLOCKOUTLINE];
+    g_animatedCharacter = g_optionValueIdx[CAT_GAME][ROW_ANIMCHAR];
     g_autoJump     = g_optionValueIdx[CAT_CONTROLS][ROW_AUTOJUMP];
     g_japaneseLayout = g_optionValueIdx[CAT_CONTROLS][ROW_JPLAYOUT];
     g_classicPick    = g_optionValueIdx[CAT_CONTROLS][ROW_CLASSICPICK];

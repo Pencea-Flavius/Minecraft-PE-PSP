@@ -126,7 +126,7 @@ static Texture* armorTexture(int mat, int file) {
     return g_armorOK[mat][file] ? &g_armorTex[mat][file] : 0;
 }
 
-static void drawArmorLayers(unsigned int brCol, bool lit = true) {
+static void drawArmorLayers(unsigned int brCol, bool lit, const float* toWorld) {
 
     LocalPlayer* p = g_level.player;
     if (!p) return;
@@ -165,7 +165,7 @@ static void drawArmorLayers(unsigned int brCol, bool lit = true) {
             if (parts[i].yRot != 0.0f) sceGumRotateY(parts[i].yRot);
             if (parts[i].xRot != 0.0f) sceGumRotateX(parts[i].xRot);
             if (lit) {
-                mobDrawPartLit(set[i], brCol);
+                mobDrawPartLit(set[i], brCol, toWorld);
             } else {
                 sceGumDrawArray(GU_TRIANGLES,
                     GU_TEXTURE_32BITF | GU_VERTEX_32BITF | GU_TRANSFORM_3D,
@@ -176,25 +176,15 @@ static void drawArmorLayers(unsigned int brCol, bool lit = true) {
     }
 }
 
-void playerModelRender(float a) {
-    LocalPlayer* p = g_level.player;
-    if (!p) return;
+static void setPivots(bool sneaking) {
+    parts[P_HEAD].py = sneaking ? 1.0f : 0.0f;
+    parts[P_LEG0].py = parts[P_LEG1].py = sneaking ? 9.0f : 12.0f;
+    parts[P_LEG0].pz = parts[P_LEG1].pz = sneaking ? 4.0f : 0.0f;
+    parts[P_ARM0].px = -5.0f; parts[P_ARM0].pz = 0.0f;
+    parts[P_ARM1].px =  5.0f; parts[P_ARM1].pz = 0.0f;
+}
 
-    if (p->health <= 0 && p->deathTime >= 20) return;
-    loadLocalPlayerSkinIfNeeded();
-    if (!g_haveLocalSkin) return;
-    buildParts();
-
-    float ix = p->xo + (p->x - p->xo) * a;
-    float iy = p->yo + (p->y - p->yo) * a;
-    float iz = p->zo + (p->z - p->zo) * a;
-    float iyaw   = p->yRotO + (p->yRot - p->yRotO) * a;
-    float ipitch = p->xRotO + (p->xRot - p->xRotO) * a;
-    float feet   = iy - PLAYER_EYE;
-
-    float dBody = p->yBodyRot - p->yBodyRotO; while (dBody > 180.0f) dBody -= 360.0f; while (dBody < -180.0f) dBody += 360.0f;
-    float ibody = p->yBodyRotO + dBody * a;
-    float dHead = iyaw - ibody; while (dHead > 180.0f) dHead -= 360.0f; while (dHead < -180.0f) dHead += 360.0f;
+static int posePlayer(LocalPlayer* p, float a, float headYaw, float headPitch) {
 
     float ws = p->walkAnimSpeedO + (p->walkAnimSpeed - p->walkAnimSpeedO) * a;
     if (ws > 1.0f) ws = 1.0f;
@@ -202,7 +192,7 @@ void playerModelRender(float a) {
     float t  = wp * 0.6662f;
     float tcos0 = cosf(t) * ws, tcos1 = cosf(t + PIF) * ws;
 
-    parts[P_HEAD].xRot = -ipitch * DEG2RAD; parts[P_HEAD].yRot = dHead * DEG2RAD;
+    parts[P_HEAD].xRot = headPitch; parts[P_HEAD].yRot = headYaw;
     parts[P_BODY].xRot = parts[P_BODY].yRot = parts[P_BODY].zRot = 0.0f;
     parts[P_ARM0].xRot = tcos1; parts[P_ARM0].yRot = parts[P_ARM0].zRot = 0.0f;
     parts[P_ARM1].xRot = tcos0; parts[P_ARM1].yRot = parts[P_ARM1].zRot = 0.0f;
@@ -219,7 +209,7 @@ void playerModelRender(float a) {
         parts[P_LEG1].yRot = -HALF_PI * 0.2f;
     }
 
-    ItemInstance* selHeld = g_level.player->inventory->getSelected();
+    ItemInstance* selHeld = p->inventory->getSelected();
     bool holding = selHeld && !selHeld->isNull();
 
     Item* useItem = p->isUsingItem() ? p->getUseItem()->getItem() : 0;
@@ -240,8 +230,7 @@ void playerModelRender(float a) {
     float diff = g_attackAnim - g_oAttackAnim; if (diff < 0.0f) diff += 1.0f;
     float atk = g_oAttackAnim + diff * a; if (atk > 1.0f) atk -= 1.0f;
 
-    parts[P_ARM0].px = -5.0f; parts[P_ARM0].pz = 0.0f;
-    parts[P_ARM1].px =  5.0f; parts[P_ARM1].pz = 0.0f;
+    setPivots(p->sneaking);
     if (atk > 0.001f) {
         float f = 1.0f - atk; f *= f; f *= f; f = 1.0f - f;
         float s1 = sinf(f * PIF);
@@ -268,14 +257,15 @@ void playerModelRender(float a) {
         parts[P_ARM0].xRot += bsin; parts[P_ARM1].xRot -= bsin;
     }
 
-    parts[P_HEAD].py = p->sneaking ? 1.0f : 0.0f;
-    parts[P_LEG0].py = parts[P_LEG1].py = p->sneaking ? 9.0f : 12.0f;
-    parts[P_LEG0].pz = parts[P_LEG1].pz = p->sneaking ? 4.0f : 0.0f;
     if (p->sneaking) {
         parts[P_BODY].xRot += 0.5f;
         parts[P_ARM0].xRot += 0.4f; parts[P_ARM1].xRot += 0.4f;
     }
 
+    return bowStage;
+}
+
+static unsigned int playerLightColor(LocalPlayer* p, float ix, float iy, float iz) {
     int bx = (int)floorf(ix), by = (int)floorf(iy), bz = (int)floorf(iz);
     unsigned int brCol = brightColorFloored(lightRawAt(&g_world, bx, by, bz), ENTITY_LIGHT_FLOOR);
 
@@ -286,41 +276,10 @@ void playerModelRender(float a) {
         unsigned int b  = (((brCol >> 16) & 0xFFu) * HURT_GB) / 255;
         brCol = (brCol & 0xFF000000u) | (b << 16) | (g << 8) | r;
     }
-    textureBind(&g_localSkinTex);
-    sceGuDisable(GU_CULL_FACE);
+    return brCol;
+}
 
-    sceGumMatrixMode(GU_MODEL);
-    sceGumPushMatrix();
-    sceGumLoadIdentity();
-
-    int sdir = 0;
-    float ax = ix, az = iz, af = feet;
-    if (p->isSleeping()) {
-        sdir = worldData(&g_world, p->bedX, p->bedY, p->bedZ) & 3;
-        static const float BOX[4] = {  0.0f, 1.8f,  0.0f, -1.8f };
-        static const float BOZ[4] = { -1.8f, 0.0f,  1.8f,  0.0f };
-        ax += BOX[sdir]; az += BOZ[sdir];
-    }
-    ScePspFVector3 tpos = { ax - g_relBaseX, af - g_relBaseY, az - g_relBaseZ }; sceGumTranslate(&tpos);
-    if (p->isSleeping()) {
-        static const float SLEEP_ROT[4] = { 90.0f, 0.0f, 270.0f, 180.0f };
-
-        sceGumRotateY((180.0f - SLEEP_ROT[sdir]) * DEG2RAD);
-        sceGumRotateZ(-90.0f * DEG2RAD);
-        sceGumRotateY( 90.0f * DEG2RAD);
-    } else {
-        sceGumRotateY((180.0f - ibody) * DEG2RAD);
-
-        if (p->deathTime > 0) {
-            float fall = sqrtf(((p->deathTime + a - 1.0f) / 20.0f) * 1.6f);
-            if (fall > 1.0f) fall = 1.0f;
-            sceGumRotateZ(fall * 90.0f * DEG2RAD);
-        }
-    }
-    ScePspFVector3 sc = { -1.0f/16.0f, -1.0f/16.0f, 1.0f/16.0f };  sceGumScale(&sc);
-
-    float gndY = -24.0f + (p->sneaking ? 3.0f : 0.0f);
-    ScePspFVector3 gnd = { 0.0f, gndY, 0.0f };       sceGumTranslate(&gnd);
+static void drawPlayerBody(unsigned int brCol, bool lit, const float* toWorld) {
 
     parts[P_HAT].px   = parts[P_HEAD].px;
     parts[P_HAT].py   = parts[P_HEAD].py;
@@ -332,6 +291,8 @@ void playerModelRender(float a) {
     sceGuEnable(GU_ALPHA_TEST);
     sceGuAlphaFunc(GU_GREATER, 0, 0xff);
 
+    textureBind(&g_localSkinTex);
+    sceGuDisable(GU_CULL_FACE);
     sceGuColor(brCol);
     for (int i = 0; i < P_COUNT; i++) {
         sceGumPushMatrix();
@@ -340,17 +301,25 @@ void playerModelRender(float a) {
         if (parts[i].zRot != 0.0f) sceGumRotateZ(parts[i].zRot);
         if (parts[i].yRot != 0.0f) sceGumRotateY(parts[i].yRot);
         if (parts[i].xRot != 0.0f) sceGumRotateX(parts[i].xRot);
-        mobDrawPartLit(parts[i].base, brCol);
+        if (lit) {
+            mobDrawPartLit(parts[i].base, brCol, toWorld);
+        } else {
+            sceGumDrawArray(GU_TRIANGLES,
+                            GU_TEXTURE_32BITF | GU_VERTEX_32BITF | GU_TRANSFORM_3D,
+                            36, 0, parts[i].base);
+        }
         sceGumPopMatrix();
     }
     sceGuColor(brCol);
+    drawArmorLayers(brCol, lit, toWorld);
+}
 
-    drawArmorLayers(brCol);
+static void drawHeldItem(LocalPlayer* p, int bowStage, unsigned int brCol) {
     sceGuColor(0xFFFFFFFFu);
 
     sceGuDisable(GU_BLEND);
     if (g_haveTerrain) {
-        ItemInstance* held = g_level.player->inventory->getSelected();
+        ItemInstance* held = p->inventory->getSelected();
         if (held && !held->isNull()) {
             short id = held->id; unsigned char data = held->data;
             static ItemModelRenderer model;
@@ -411,6 +380,100 @@ void playerModelRender(float a) {
     }
 
     sceGuEnable(GU_BLEND);
+}
+
+static void rotateLikeMobRenderer(LocalPlayer* p, float ibody, float a) {
+    sceGumRotateY((180.0f - ibody) * DEG2RAD);
+    if (p->deathTime > 0) {
+        float fall = sqrtf(((p->deathTime + a - 1.0f) / 20.0f) * 1.6f);
+        if (fall > 1.0f) fall = 1.0f;
+        sceGumRotateZ(fall * 90.0f * DEG2RAD);
+    }
+}
+
+static void drawPlayerModel(LocalPlayer* p, float a, float headYaw, float headPitch,
+                            unsigned int brCol, const float* toWorld) {
+    ScePspFVector3 sc = { -1.0f/16.0f, -1.0f/16.0f, 1.0f/16.0f };  sceGumScale(&sc);
+
+    float gndY = -24.0f + (p->sneaking ? 3.0f : 0.0f);
+    ScePspFVector3 gnd = { 0.0f, gndY, 0.0f };       sceGumTranslate(&gnd);
+
+    int bowStage = posePlayer(p, a, headYaw, headPitch);
+    drawPlayerBody(brCol, true, toWorld);
+    drawHeldItem(p, bowStage, brCol);
+}
+
+static float interpBodyYaw(LocalPlayer* p, float a) {
+    float dBody = p->yBodyRot - p->yBodyRotO; while (dBody > 180.0f) dBody -= 360.0f; while (dBody < -180.0f) dBody += 360.0f;
+    return p->yBodyRotO + dBody * a;
+}
+
+static void beginGuiModel(int x0, int y0, int w, int h) {
+    sceGumMatrixMode(GU_PROJECTION); sceGumPushMatrix(); sceGumLoadIdentity();
+    sceGumOrtho(0.0f, 480.0f, 272.0f, 0.0f, -200.0f, 200.0f);
+    sceGumMatrixMode(GU_VIEW); sceGumPushMatrix(); sceGumLoadIdentity();
+    sceGumMatrixMode(GU_MODEL); sceGumPushMatrix(); sceGumLoadIdentity();
+    sceGuScissor(x0 < 0 ? 0 : x0, y0 < 0 ? 0 : y0, w, h);
+    sceGuClearDepth(0);
+    sceGuClear(GU_DEPTH_BUFFER_BIT);
+    sceGuEnable(GU_DEPTH_TEST);
+}
+static void endGuiModel(bool alphaTest) {
+    if (alphaTest) sceGuEnable(GU_ALPHA_TEST); else sceGuDisable(GU_ALPHA_TEST);
+    sceGuEnable(GU_CULL_FACE);
+    sceGuFrontFace(GU_CW);
+    sceGuDisable(GU_DEPTH_TEST);
+    sceGuScissor(0, 0, 480, 272);
+    sceGumMatrixMode(GU_PROJECTION); sceGumPopMatrix();
+    sceGumMatrixMode(GU_VIEW); sceGumPopMatrix();
+    sceGumMatrixMode(GU_MODEL); sceGumPopMatrix();
+}
+
+void playerModelRender(float a) {
+    LocalPlayer* p = g_level.player;
+    if (!p) return;
+
+    if (p->health <= 0 && p->deathTime >= 20) return;
+    loadLocalPlayerSkinIfNeeded();
+    if (!g_haveLocalSkin) return;
+    buildParts();
+
+    float ix = p->xo + (p->x - p->xo) * a;
+    float iy = p->yo + (p->y - p->yo) * a;
+    float iz = p->zo + (p->z - p->zo) * a;
+    float iyaw   = p->yRotO + (p->yRot - p->yRotO) * a;
+    float ipitch = p->xRotO + (p->xRot - p->xRotO) * a;
+    float feet   = iy - PLAYER_EYE;
+
+    float ibody = interpBodyYaw(p, a);
+    float dHead = iyaw - ibody; while (dHead > 180.0f) dHead -= 360.0f; while (dHead < -180.0f) dHead += 360.0f;
+
+    unsigned int brCol = playerLightColor(p, ix, iy, iz);
+
+    sceGumMatrixMode(GU_MODEL);
+    sceGumPushMatrix();
+    sceGumLoadIdentity();
+
+    int sdir = 0;
+    float ax = ix, az = iz, af = feet;
+    if (p->isSleeping()) {
+        sdir = worldData(&g_world, p->bedX, p->bedY, p->bedZ) & 3;
+        static const float BOX[4] = {  0.0f, 1.8f,  0.0f, -1.8f };
+        static const float BOZ[4] = { -1.8f, 0.0f,  1.8f,  0.0f };
+        ax += BOX[sdir]; az += BOZ[sdir];
+    }
+    ScePspFVector3 tpos = { ax - g_relBaseX, af - g_relBaseY, az - g_relBaseZ }; sceGumTranslate(&tpos);
+    if (p->isSleeping()) {
+        static const float SLEEP_ROT[4] = { 90.0f, 0.0f, 270.0f, 180.0f };
+
+        sceGumRotateY((180.0f - SLEEP_ROT[sdir]) * DEG2RAD);
+        sceGumRotateZ(-90.0f * DEG2RAD);
+        sceGumRotateY( 90.0f * DEG2RAD);
+    } else {
+        rotateLikeMobRenderer(p, ibody, a);
+    }
+
+    drawPlayerModel(p, a, dHead * DEG2RAD, -ipitch * DEG2RAD, brCol, 0);
 
     sceGumPopMatrix();
     sceGuEnable(GU_CULL_FACE);
@@ -419,6 +482,63 @@ void playerModelRender(float a) {
 
     if (p->isOnFire())
         renderEntityFlame(ix, feet, iz, feet, p->bbWidth, p->bbHeight);
+}
+
+int g_animatedCharacter = 1;
+
+static bool dollSprintSignal(LocalPlayer* p) { return p->onGround && p->walkAnimSpeed > 0.1f; }
+
+void playerModelRenderPaperDoll(float a, bool displayGui) {
+    LocalPlayer* p = g_level.player;
+    if (!p) return;
+
+    static int characterDisplayTimer = 0;
+    if (!displayGui)                characterDisplayTimer = 0;
+    else if (p->sneaking)           characterDisplayTimer = 30;
+    else if (dollSprintSignal(p))   characterDisplayTimer = 30;
+    else if (p->flying)             characterDisplayTimer = 5;
+    else if (characterDisplayTimer > 0) --characterDisplayTimer;
+
+    const bool display = p->sneaking || dollSprintSignal(p) || p->flying || characterDisplayTimer > 0;
+    if (!displayGui || !display) return;
+    if (p->health <= 0 && p->deathTime >= 20) return;
+    loadLocalPlayerSkinIfNeeded();
+    if (!g_haveLocalSkin) return;
+    buildParts();
+
+    const float DOLL_SCALE = 20.0f;
+    const float DOLL_TOP   = 26.0f;
+    const float DOLL_X = 20.0f, DOLL_Y = DOLL_TOP + 2.0f * DOLL_SCALE;
+    const float xd = -40.0f, yd = 10.0f;
+
+    const int rx = (int)(DOLL_X - 1.5f * DOLL_SCALE), ry = (int)(DOLL_Y - 2.6f * DOLL_SCALE);
+    beginGuiModel(rx, ry, (int)(3.0f * DOLL_SCALE), (int)(3.2f * DOLL_SCALE));
+
+    ScePspFVector3 pos = { DOLL_X, DOLL_Y, 50.0f };               sceGumTranslate(&pos);
+    ScePspFVector3 ss  = { -DOLL_SCALE, DOLL_SCALE, DOLL_SCALE };  sceGumScale(&ss);
+    sceGumRotateZ(PIF);
+
+    static const float C = -0.70710678f;
+    static const float toWorld[16] = {
+         C,    0.0f, -C,   0.0f,
+         0.0f, -1.0f, 0.0f, 0.0f,
+         C,    0.0f,  C,   0.0f,
+         0.0f, 0.0f,  0.0f, 1.0f,
+    };
+    sceGumRotateX(-atanf(yd / 40.0f) * 20.0f * DEG2RAD);
+    float ibody = interpBodyYaw(p, a);
+
+    sceGumRotateY((ibody - atanf(xd / 40.0f) * 20.0f) * DEG2RAD);
+
+    rotateLikeMobRenderer(p, ibody, a);
+    float ix = p->xo + (p->x - p->xo) * a;
+    float iy = p->yo + (p->y - p->yo) * a;
+    float iz = p->zo + (p->z - p->zo) * a;
+
+    drawPlayerModel(p, a, 0.0f, -atanf(yd / 40.0f) * 20.0f * DEG2RAD,
+                    playerLightColor(p, ix, iy, iz), toWorld);
+
+    endGuiModel(true);
 }
 
 void playerModelRenderPreview(float sx, float sy, float scale) {
@@ -447,55 +567,14 @@ void playerModelRenderPreview(float sx, float sy, float scale) {
     float bsin = sinf(t * 0.067f) * 0.05f;
     parts[P_ARM0].zRot += bcos; parts[P_ARM1].zRot -= bcos;
     parts[P_ARM0].xRot += bsin; parts[P_ARM1].xRot -= bsin;
+    setPivots(false);
 
-    sceGumMatrixMode(GU_PROJECTION); sceGumPushMatrix(); sceGumLoadIdentity();
-    sceGumOrtho(0.0f, 480.0f, 272.0f, 0.0f, -200.0f, 200.0f);
-    sceGumMatrixMode(GU_VIEW); sceGumPushMatrix(); sceGumLoadIdentity();
-    sceGumMatrixMode(GU_MODEL); sceGumPushMatrix(); sceGumLoadIdentity();
+    beginGuiModel((int)(sx - 10.0f * scale), (int)(sy - 10.0f * scale),
+                  (int)(20.0f * scale), (int)(36.0f * scale));
 
     ScePspFVector3 pos = { sx, sy, 0.0f }; sceGumTranslate(&pos);
     ScePspFVector3 sc  = { -scale, scale, scale }; sceGumScale(&sc);
     sceGumRotateY(PIF);
-
-    {
-        int x0 = (int)(sx - 10.0f * scale), y0 = (int)(sy - 10.0f * scale);
-        int w  = (int)(20.0f * scale),      h  = (int)(36.0f * scale);
-        sceGuScissor(x0 < 0 ? 0 : x0, y0 < 0 ? 0 : y0, w, h);
-        sceGuClearDepth(0);
-        sceGuClear(GU_DEPTH_BUFFER_BIT);
-    }
-    sceGuEnable(GU_DEPTH_TEST);
-
-    textureBind(&g_localSkinTex);
-    sceGuDisable(GU_CULL_FACE);
-
-    parts[P_HAT].px   = parts[P_HEAD].px;
-    parts[P_HAT].py   = parts[P_HEAD].py;
-    parts[P_HAT].pz   = parts[P_HEAD].pz;
-    parts[P_HAT].xRot = parts[P_HEAD].xRot;
-    parts[P_HAT].yRot = parts[P_HEAD].yRot;
-    parts[P_HAT].zRot = parts[P_HEAD].zRot;
-
-    sceGuColor(0xFFFFFFFFu);
-    for (int i = 0; i < P_COUNT; i++) {
-        sceGumPushMatrix();
-        ScePspFVector3 piv = { parts[i].px, parts[i].py, parts[i].pz };
-        sceGumTranslate(&piv);
-        if (parts[i].zRot != 0.0f) sceGumRotateZ(parts[i].zRot);
-        if (parts[i].yRot != 0.0f) sceGumRotateY(parts[i].yRot);
-        if (parts[i].xRot != 0.0f) sceGumRotateX(parts[i].xRot);
-        sceGumDrawArray(GU_TRIANGLES,
-                        GU_TEXTURE_32BITF | GU_VERTEX_32BITF | GU_TRANSFORM_3D,
-                        36, 0, parts[i].base);
-        sceGumPopMatrix();
-    }
-    drawArmorLayers(0xFFFFFFFFu, false);
-    sceGuDisable(GU_ALPHA_TEST);
-    sceGuEnable(GU_CULL_FACE);
-    sceGuDisable(GU_DEPTH_TEST);
-    sceGuScissor(0, 0, 480, 272);
-
-    sceGumMatrixMode(GU_PROJECTION); sceGumPopMatrix();
-    sceGumMatrixMode(GU_VIEW); sceGumPopMatrix();
-    sceGumMatrixMode(GU_MODEL); sceGumPopMatrix();
+    drawPlayerBody(0xFFFFFFFFu, false, 0);
+    endGuiModel(false);
 }

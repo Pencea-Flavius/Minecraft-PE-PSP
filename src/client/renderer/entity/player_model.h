@@ -6,4 +6,7 @@ void playerModelRender(float a);
 
 void playerModelRenderPreview(float sx, float sy, float scale);
 
+void playerModelRenderPaperDoll(float a, bool displayGui);
+extern int g_animatedCharacter;
+
 #endif

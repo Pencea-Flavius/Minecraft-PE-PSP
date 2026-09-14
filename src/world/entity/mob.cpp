@@ -256,7 +256,7 @@ void Mob::updateWalkAnim() {
     float wst = sqrtf(xxd * xxd + zzd * zzd) * 4.0f;
     if (wst > 1.0f) wst = 1.0f;
     if (wst <= 0.0f) {
-        float turn = fabsf(yHeadRot - yHeadRotO) * 0.15f;
+        float turn = fabsf(yBodyRot - yBodyRotO) * 0.15f;
         wst = (turn > 0.5f) ? 0.5f : turn;
     }
     walkAnimSpeed += (wst * amp - walkAnimSpeed) * 0.4f;
@@ -414,7 +414,6 @@ void Mob::tick() {
     updateAttackAnim();
     Entity::tick();
     aiStep();
-    updateWalkAnim();
 
     float mdx = x - xo, mdz = z - zo;
     float sideDist = sqrtf(mdx * mdx + mdz * mdz);
@@ -457,6 +456,8 @@ void Mob::tick() {
     while (yBodyRot - yBodyRotO >= 180.0f) yBodyRotO += 360.0f;
     while (xRot - xRotO < -180.0f) xRotO -= 360.0f;
     while (xRot - xRotO >= 180.0f) xRotO += 360.0f;
+
+    updateWalkAnim();
     animStep += walkSpeed;
 }
 

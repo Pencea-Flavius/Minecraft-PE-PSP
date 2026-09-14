@@ -335,13 +335,11 @@ int main(int argc, char* argv[]) {
             if (skipAt >= 0.0f) t = INTRO_DARK_AT + (nowSeconds() - skipAt);
             if (t >= INTRO_END) break;
 
-            unsigned int ground = 0xFFFFFFFFu;
+            const unsigned int ground = 0xFFFFFFFFu;
             float dark = 0.0f;
             if (t > INTRO_DARK_AT) {
                 dark = (t - INTRO_DARK_AT) / INTRO_FADE_OUT;
                 if (dark > 1.0f) dark = 1.0f;
-                const unsigned int g = (unsigned int)(255.0f * (1.0f - dark));
-                ground = 0xFF000000u | (g << 16) | (g << 8) | g;
             }
 
             scePowerTick(0);
