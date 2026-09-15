@@ -7,7 +7,11 @@
 #include "world/item/item.h"
 #include "gpu/texture.h"
 #include "gpu/gu.h"
+#include "client/renderer/level/near_patch.h"
+#include "client/renderer/level/near_patch_cut.h"
 #include <pspgu.h>
+#include <pspgum.h>
+#include <math.h>
 #include <pspgum.h>
 #include <pspkernel.h>
 #include <math.h>
@@ -47,14 +51,52 @@ void mobBuildBox(MobVertex* out, float x0, float y0, float z0,
     addPoly(x0,y0,z1, x1,y0,z1, x1,y1,z1, x0,y1,z1, (tx+2*d+2*w)/W,(ty+d)/H, (tx+2*d+w)/W,(ty+d+h)/H);
 }
 
+static const unsigned int MOB_FMT = GU_TEXTURE_32BITF | GU_VERTEX_32BITF | GU_TRANSFORM_3D;
+
+bool mobNearMatrix(float vm[16], float* minEdge, float* safePerEdge) {
+    ScePspFMatrix4 view, model, out;
+    sceGumStoreMatrix(&model);
+    sceGumMatrixMode(GU_VIEW);
+    sceGumStoreMatrix(&view);
+    sceGumMatrixMode(GU_MODEL);
+    gumMultMatrix(&out, &view, &model);
+    const float* m = (const float*)&out;
+    for (int i = 0; i < 16; i++) vm[i] = m[i];
+    nearPatchSplitParams(minEdge, safePerEdge);
+    return true;
+}
+
+static void drawFace(const MobVertex* face, const float* vm, float minEdge, float safePerEdge) {
+    const int depth = vm ? boxFaceDepth(vm, face, minEdge, safePerEdge) : 0;
+    if (depth > 0) {
+        const int nv = boxFaceVerts(depth);
+        MobVertex* out = (MobVertex*)guFrameAlloc(nv * (int)sizeof(MobVertex));
+        if (out) {
+            boxFaceEmit(out, face, depth);
+            sceGumDrawArray(GU_TRIANGLES, MOB_FMT, nv, 0, out);
+            return;
+        }
+    }
+    sceGumDrawArray(GU_TRIANGLES, MOB_FMT, 6, 0, face);
+}
+
+static bool partNear(const MobVertex* base, float vm[16], float* minEdge, float* safePerEdge) {
+    mobNearMatrix(vm, minEdge, safePerEdge);
+    return boxPartNear(vm, base, 36, *safePerEdge);
+}
+
 void mobDrawPartLit(const MobVertex* base, unsigned int brCol, const float* toWorld) {
+    float vm[16], minEdge = 0.0f, safePerEdge = 0.0f;
+    const bool nearCam = partNear(base, vm, &minEdge, &safePerEdge);
 #if !MOB_LIGHTING
     (void)toWorld;
 
     sceGuColor(brCol);
-    sceGumDrawArray(GU_TRIANGLES,
-                    GU_TEXTURE_32BITF | GU_VERTEX_32BITF | GU_TRANSFORM_3D,
-                    36, 0, base);
+    if (!nearCam) {
+        sceGumDrawArray(GU_TRIANGLES, MOB_FMT, 36, 0, base);
+    } else {
+        for (int f = 0; f < 6; f++) drawFace(base + f * 6, vm, minEdge, safePerEdge);
+    }
 #else
     ScePspFMatrix4 m;
     sceGumStoreMatrix(&m);
@@ -73,9 +115,7 @@ void mobDrawPartLit(const MobVertex* base, unsigned int brCol, const float* toWo
     }
     for (int f = 0; f < 6; f++) {
         sceGuColor(mobFaceLitColor((const float*)&m, f, brCol));
-        sceGumDrawArray(GU_TRIANGLES,
-                        GU_TEXTURE_32BITF | GU_VERTEX_32BITF | GU_TRANSFORM_3D,
-                        6, 0, base + f * 6);
+        drawFace(base + f * 6, nearCam ? vm : 0, minEdge, safePerEdge);
     }
 #endif
 }
@@ -234,9 +274,15 @@ void mobRenderParts(Mob* mob, MobPart* parts, int count, Texture* tex,
             if (parts[i].zRot != 0.0f) sceGumRotateZ(parts[i].zRot);
             if (parts[i].yRot != 0.0f) sceGumRotateY(parts[i].yRot);
             if (parts[i].xRot != 0.0f) sceGumRotateX(parts[i].xRot);
-            sceGumDrawArray(GU_TRIANGLES,
-                            GU_TEXTURE_32BITF | GU_VERTEX_32BITF | GU_TRANSFORM_3D,
-                            36, 0, parts[i].base);
+
+            {
+                float ovm[16], oMin = 0.0f, oSafe = 0.0f;
+                if (!partNear(parts[i].base, ovm, &oMin, &oSafe)) {
+                    sceGumDrawArray(GU_TRIANGLES, MOB_FMT, 36, 0, parts[i].base);
+                } else {
+                    for (int f = 0; f < 6; f++) drawFace(parts[i].base + f * 6, ovm, oMin, oSafe);
+                }
+            }
             sceGumPopMatrix();
         }
         sceGuDisable(GU_CULL_FACE);

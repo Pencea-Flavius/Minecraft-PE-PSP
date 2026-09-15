@@ -477,6 +477,13 @@ static bool coversFrame(void) {
 
 void nearPatchReserve(void) { allocAll(); }
 
+void nearPatchSplitParams(float* minEdge, float* safePerEdge) {
+    if (s_safePerEdge > 0.0f) { *minEdge = s_minEdge; *safePerEdge = s_safePerEdge; return; }
+
+    *minEdge     = nearpatch::minEdge(NEAR_PATCH_Z, 60.0f);
+    *safePerEdge = nearpatch::safeDist(1.0f, 70.0f);
+}
+
 bool nearPatchUpdate(const World* w, float ex, float ey, float ez, float fov) {
     s_frameOpen = true;
     s_frontAtFrame = s_pieces.front;

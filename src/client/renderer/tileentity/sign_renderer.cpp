@@ -1,6 +1,7 @@
 
 #include "client/renderer/tileentity/tile_entity_renderer.h"
 #include "client/renderer/entity/mob_model.h"
+#include "client/renderer/level/near_patch_cut.h"
 #include "world/level/level.h"
 #include "world/entity/local_player.h"
 #include "world/level/level.h"
@@ -138,10 +139,26 @@ static void renderSign(SignTileEntity* sign, float a) {
     n = box(s_model, 0, col6, -12, -14, -1, 24, 12, 2, 0, 0);
     if (standing) n = box(s_model, n, col6, -1, -2, -1, 2, 14, 2, 0, 14);
 
+    const unsigned int SIGN_FMT = GU_TEXTURE_32BITF | GU_COLOR_8888 | GU_VERTEX_32BITF | GU_TRANSFORM_3D;
     void* mv = guFrameCopy(s_model, n * sizeof(PVert));
-    if (mv) sceGumDrawArray(GU_TRIANGLES,
-                    GU_TEXTURE_32BITF | GU_COLOR_8888 | GU_VERTEX_32BITF | GU_TRANSFORM_3D,
-                    n, 0, mv);
+
+    float vm[16], minEdge = 0.0f, safePerEdge = 0.0f;
+    mobNearMatrix(vm, &minEdge, &safePerEdge);
+    if (mv && !boxPartNear(vm, s_model, n, safePerEdge)) {
+        sceGumDrawArray(GU_TRIANGLES, SIGN_FMT, n, 0, mv);
+    } else if (mv) {
+        for (int f = 0; f + 6 <= n; f += 6) {
+            const int depth = boxFaceDepth(vm, s_model + f, minEdge, safePerEdge);
+            PVert* cut = depth > 0 ? (PVert*)guFrameAlloc(boxFaceVerts(depth) * (int)sizeof(PVert)) : 0;
+            if (cut) {
+                boxFaceEmit(cut, s_model + f, depth);
+                sceGumDrawArray(GU_TRIANGLES, SIGN_FMT, boxFaceVerts(depth), 0, cut);
+            } else {
+
+                sceGumDrawArray(GU_TRIANGLES, SIGN_FMT, 6, 0, (PVert*)mv + f);
+            }
+        }
+    }
     sceGumPopMatrix();
 
     if (s_fontOk) {

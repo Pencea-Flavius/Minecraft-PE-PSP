@@ -93,6 +93,8 @@ MobAnim mobAnimSetup(Mob* mob, float rot, float a);
 
 struct MobPart { MobVertex base[36]; float px, py, pz; float xRot, yRot, zRot; bool head; };
 
+bool mobNearMatrix(float vm[16], float* minEdge, float* safePerEdge);
+
 void mobBuildBox(MobVertex* out, float x0, float y0, float z0,
                  float x1, float y1, float z1, int tx, int ty, int w, int h, int d,
                  bool mirror, float grow, float texW = 64.0f, float texH = 32.0f);

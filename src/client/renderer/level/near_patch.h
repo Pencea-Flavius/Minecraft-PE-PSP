@@ -18,6 +18,8 @@ void nearPatchDraw(int range);
 struct ChunkSection;
 bool nearPatchOwnsWater(const ChunkSection* s);
 
+void nearPatchSplitParams(float* minEdge, float* safePerEdge);
+
 void nearPatchReserve(void);
 
 void nearPatchFree(void);
