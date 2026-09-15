@@ -4,6 +4,7 @@
 #include "client/player/player.h"
 #include "client/gui/hud.h"
 #include "platform/audio/sound.h"
+#include "client/renderer/item_hand.h"
 #include "world/entity/tripod_camera.h"
 #include "client/player/player_state.h"
 #include "world/level/world.h"
@@ -96,6 +97,8 @@ void playerDropSelected(bool all) {
     e->throwTime = 20 * 2;
     g_level.addEntity(e);
     soundPlay("random.pop", 0.3f, 1.0f);
+
+    itemHandItemUsed();
 }
 
 static void spillContainer(Container* c, int x, int y, int z) {
@@ -106,7 +109,6 @@ static void spillContainer(Container* c, int x, int y, int z) {
         if (it && !it->isNull()) Tile::popResource(x, y, z, *it);
     }
 }
-#include "client/renderer/item_hand.h"
 #include "client/renderer/particle.h"
 #include <cmath>
 #include <pspkernel.h>

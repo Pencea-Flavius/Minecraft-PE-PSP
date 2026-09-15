@@ -19,6 +19,8 @@ void tileForBlock(unsigned char id, unsigned char data, int f, int* col, int* ro
 
 extern unsigned int g_brightColor[16];
 
+int g_particles = 1;
+
 namespace {
 
 enum Kind { K_TERRAIN, K_FLAME, K_SMOKE, K_BUBBLE, K_REDDUST, K_EXPLODE, K_LAVA, K_CRIT, K_SPLASH, K_HEART,
@@ -40,8 +42,6 @@ const int MAX_PARTICLES = 384;
 P g_pool[MAX_PARTICLES];
 
 inline float frand() { return (float)rand() / (float)RAND_MAX; }
-
-int g_particles = 1;
 
 P* alloc() {
     if (!g_particles) return 0;

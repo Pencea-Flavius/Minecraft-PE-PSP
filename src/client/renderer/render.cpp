@@ -74,7 +74,7 @@ Texture g_sun;
 bool    g_haveSun = false;
 Texture g_moon;
 bool    g_haveMoon = false;
-Texture g_particles;
+Texture g_particlesTex;
 bool    g_haveParticles = false;
 
 extern int g_cloudTicks;
@@ -414,10 +414,11 @@ static bool liquidEyeFog(int bx, int by, int bz,
     if (!isWaterId(s_eyeBlk) && !isLavaId(s_eyeBlk)) return false;
     unsigned int m = g_brightColor[lightRawAt(&g_world, bx, by, bz)] & 0xFF;
     unsigned int b, g, r;
+
     if (isWaterId(s_eyeBlk)) { b = (230 * m) / 255; g = (102 * m) / 255; r = ( 25 * m) / 255;
-                               *fogNear = 0.0f; *fogFar = 25.0f; }
+                               *fogNear = -3.0f; *fogFar = 16.0f; }
     else                     { b = ( 25 * m) / 255; g = ( 51 * m) / 255; r = (204 * m) / 255;
-                               *fogNear = 0.0f; *fogFar = 3.0f;  }
+                               *fogNear = -0.8f; *fogFar = 1.3f;  }
     *fogCol = 0xFF000000u | (b << 16) | (g << 8) | r;
     return true;
 }
@@ -1288,7 +1289,7 @@ void gameRender(MenuState& s) {
                 g_haveMoon = loadTex(&g_moon, "data/images/environment/moon_phases.png");
             skyBuildStars();
             if (!g_haveParticles)
-                g_haveParticles = loadTex(&g_particles, "data/images/particles.png");
+                g_haveParticles = loadTex(&g_particlesTex, "data/images/particles.png");
 
             bool sel = (s.worldSelected >= 0 && s.worldSelected < s.worlds.count);
             long seedVal = sel ? s.worlds.seeds[s.worldSelected] : 0;
@@ -1814,7 +1815,7 @@ void gameRender(MenuState& s) {
     profBegin(PROF_PART);
     if (g_haveParticles)
         particlesRender(&g_world, iyaw, ipitch, a,
-                        g_haveTerrain ? &g_terrain : 0, &g_particles,
+                        g_haveTerrain ? &g_terrain : 0, &g_particlesTex,
                         g_haveGuiBlocks ? &g_guiBlocks : 0);
     profEnd(PROF_PART);
 

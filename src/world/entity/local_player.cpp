@@ -403,6 +403,8 @@ void LocalPlayer::die(Entity* source) {
 
 void LocalPlayer::checkInTile(float px, float py, float pz) {
     int xt = Mth::floor(px), yt = Mth::floor(py), zt = Mth::floor(pz);
+
+    if (!level->hasChunksAt(xt - 1, yt, zt - 1, xt + 1, yt + 1, zt + 1)) return;
     float xf = px - xt, zf = pz - zt;
     if (!level->isSolidBlockingTile(xt, yt, zt) && !level->isSolidBlockingTile(xt, yt + 1, zt)) return;
     bool west  = !level->isSolidBlockingTile(xt - 1, yt, zt) && !level->isSolidBlockingTile(xt - 1, yt + 1, zt);

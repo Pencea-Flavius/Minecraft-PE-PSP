@@ -89,18 +89,27 @@ static int powerCallback(int , int pwrflags, void* ) {
     return 0;
 }
 
+struct FaultAge { unsigned int sig; float since; };
+static bool faultFresh(FaultAge& a, unsigned int sig) {
+    const float now = nowSeconds();
+    if (sig != a.sig) { a.sig = sig; a.since = now; }
+    return sig != 0 && now - a.since < 60.0f;
+}
+
 static float drawFaultCounters(MenuState& s, float ty) {
     extern unsigned int g_listPeakBytes, g_listOverruns;
     char buf[160];
 
-    if (g_canaryBroken) {
+    static FaultAge aCanary;
+    if (faultFresh(aCanary, g_canaryBroken)) {
         std::snprintf(buf, sizeof(buf), "GE-LIST CANARY BROKEN +%u", g_canaryBroken - 1);
         fontDrawTextShadow(&s.font, 10, ty, buf, 0xFF0000FFu, 1.0f);
         ty += 12.0f;
     }
 
     extern unsigned int g_callCanaryBroken;
-    if (g_callCanaryBroken) {
+    static FaultAge aCall;
+    if (faultFresh(aCall, g_callCanaryBroken)) {
         std::snprintf(buf, sizeof(buf), "GU-STATE LIST OVERRAN +%u", g_callCanaryBroken - 1);
         fontDrawTextShadow(&s.font, 10, ty, buf, 0xFF0000FFu, 1.0f);
         ty += 12.0f;
@@ -108,7 +117,8 @@ static float drawFaultCounters(MenuState& s, float ty) {
 
     extern unsigned int g_listBadFinish, g_listBadFinishSite;
     extern int g_listBadFinishRet;
-    if (g_listBadFinish) {
+    static FaultAge aFinish;
+    if (faultFresh(aFinish, g_listBadFinish)) {
         static const char* kSite[] = { "?", "FRAME", "DIALOG", "RESUME", "PHOTO" };
         const unsigned si = (g_listBadFinishSite < 5u) ? g_listBadFinishSite : 0u;
         std::snprintf(buf, sizeof(buf), "GE-LIST BAD FINISH %u @%s 0x%08X slp%u",
@@ -119,7 +129,8 @@ static float drawFaultCounters(MenuState& s, float ty) {
     }
 
     extern unsigned int g_guStompPhase, g_guStompWhat, g_guStompCount, g_guRepairCount;
-    if (g_guStompPhase) {
+    static FaultAge aStomp;
+    if (faultFresh(aStomp, g_guStompCount ? g_guStompCount : g_guStompPhase)) {
         static const char* kPhase[] = { "?", "START", "TERRAIN", "WATER",
                                         "ENTITY", "2D", "PHOTO" };
         const unsigned ph = (g_guStompPhase < 7u) ? g_guStompPhase : 0u;
@@ -128,12 +139,14 @@ static float drawFaultCounters(MenuState& s, float ty) {
         fontDrawTextShadow(&s.font, 10, ty, buf, 0xFF0000FFu, 1.0f);
         ty += 12.0f;
     }
-    if (g_guRepairCount) {
+    static FaultAge aRepair;
+    if (faultFresh(aRepair, g_guRepairCount)) {
         std::snprintf(buf, sizeof(buf), "GU-GLOBALS REPAIRED %u", g_guRepairCount);
         fontDrawTextShadow(&s.font, 10, ty, buf, 0xFF5050FFu, 1.0f);
         ty += 12.0f;
     }
-    if (g_listOverruns) {
+    static FaultAge aOverrun;
+    if (faultFresh(aOverrun, g_listOverruns)) {
         std::snprintf(buf, sizeof(buf), "GE-LIST %uK/512K OVERRUN", g_listPeakBytes / 1024);
         fontDrawTextShadow(&s.font, 10, ty, buf, 0xFF5050FFu, 1.0f);
         ty += 12.0f;
@@ -141,7 +154,8 @@ static float drawFaultCounters(MenuState& s, float ty) {
 
     extern unsigned int g_vcSameRefresh, g_vcDrops;
     extern int g_vcLast, g_vcMin, g_vcMax;
-    if (g_vcSameRefresh) {
+    static FaultAge aPresent;
+    if (faultFresh(aPresent, g_vcSameRefresh)) {
         std::snprintf(buf, sizeof(buf), "PRESENT x2/REFRESH %u  d=%d %d..%d  drop %u",
                       g_vcSameRefresh, g_vcLast, g_vcMin, g_vcMax, g_vcDrops);
         fontDrawTextShadow(&s.font, 10, ty, buf, 0xFF50FFFFu, 1.0f);
@@ -149,7 +163,8 @@ static float drawFaultCounters(MenuState& s, float ty) {
     }
 
     extern unsigned int g_musCutShort, g_musCutLeftMs, g_musLoopStops;
-    if (g_musCutShort) {
+    static FaultAge aMusic;
+    if (faultFresh(aMusic, g_musCutShort)) {
         std::snprintf(buf, sizeof(buf), "MUSIC CUT %u  owed %ums  LOOP %u",
                       g_musCutShort, g_musCutLeftMs, g_musLoopStops);
         fontDrawTextShadow(&s.font, 10, ty, buf, 0xFF50FFFFu, 1.0f);
@@ -157,7 +172,8 @@ static float drawFaultCounters(MenuState& s, float ty) {
     }
 
     extern unsigned int g_frameAllocFails, g_frameAllocListFails;
-    if (g_frameAllocFails) {
+    static FaultAge aScratch;
+    if (faultFresh(aScratch, g_frameAllocFails)) {
 
         std::snprintf(buf, sizeof(buf), "GU-SCRATCH FULL %u LIST %u",
                       g_frameAllocFails, g_frameAllocListFails);
@@ -167,7 +183,8 @@ static float drawFaultCounters(MenuState& s, float ty) {
 
 #if MESH_RESERVE_CHECK
     extern unsigned int g_sinkOverruns;
-    if (g_sinkOverruns) {
+    static FaultAge aSink;
+    if (faultFresh(aSink, g_sinkOverruns)) {
         std::snprintf(buf, sizeof(buf), "MESH RESERVE %u", g_sinkOverruns);
         fontDrawTextShadow(&s.font, 10, ty, buf, 0xFF0000FFu, 1.0f);
         ty += 12.0f;
@@ -175,20 +192,23 @@ static float drawFaultCounters(MenuState& s, float ty) {
 #endif
 
     extern unsigned int g_deferStalls;
-    if (g_deferStalls) {
+    static FaultAge aDefer;
+    if (faultFresh(aDefer, g_deferStalls)) {
         std::snprintf(buf, sizeof(buf), "GU-DEFER STALL %u", g_deferStalls);
         fontDrawTextShadow(&s.font, 10, ty, buf, 0xFF50FFFFu, 1.0f);
         ty += 12.0f;
     }
     extern unsigned int g_drawLiveHits, g_drawLiveDrv;
-    if (g_drawLiveHits) {
+    static FaultAge aDrawLive;
+    if (faultFresh(aDrawLive, g_drawLiveHits)) {
 
         std::snprintf(buf, sizeof(buf), "DRAW-LIVE %u/%u", g_drawLiveHits, g_drawLiveDrv);
         fontDrawTextShadow(&s.font, 10, ty, buf, 0xFF50FFFFu, 1.0f);
         ty += 12.0f;
     }
     extern unsigned int g_textureBindFailures;
-    if (g_textureBindFailures) {
+    static FaultAge aTexBind;
+    if (faultFresh(aTexBind, g_textureBindFailures)) {
         std::snprintf(buf, sizeof(buf), "TEX FAIL %u", g_textureBindFailures);
         fontDrawTextShadow(&s.font, 10, ty, buf, 0xFF5050FFu, 1.0f);
         ty += 12.0f;
@@ -197,7 +217,8 @@ static float drawFaultCounters(MenuState& s, float ty) {
     extern unsigned int g_textureLoadFailures;
     extern const char*  g_textureFailReason;
     extern char g_textureLastFailed[80];
-    if (g_textureLoadFailures) {
+    static FaultAge aTexLoad;
+    if (faultFresh(aTexLoad, g_textureLoadFailures)) {
         const char* base = std::strrchr(g_textureLastFailed, '/');
 
         extern unsigned int g_textureFailHeapUsed, g_textureFailHeapBig;
@@ -212,7 +233,8 @@ static float drawFaultCounters(MenuState& s, float ty) {
     }
 
     extern World g_world;
-    if (g_blockOomDrops || g_world.lightOomDrops) {
+    static FaultAge aOom;
+    if (faultFresh(aOom, g_blockOomDrops + g_world.lightOomDrops)) {
         std::snprintf(buf, sizeof(buf), "STORAGE OOM block %u light %u",
                       g_blockOomDrops, g_world.lightOomDrops);
         fontDrawTextShadow(&s.font, 10, ty, buf, 0xFF4040FFu, 1.0f);

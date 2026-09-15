@@ -53,7 +53,7 @@ static const OptionRowDef g_optionRows[OPT_CATEGORIES][OPT_MAX_ROWS] = {
 
         { 0,           "Interface Opacity", {0, 0, 0, 0}, 11, 8, true, 0, 10 },
 
-        { 0,           "Animated Character", {"Off", "On", 0, 0}, 2, 1 },
+        { 0,           "Animated Character", {"Off", "On", 0, 0}, 2, 0 },
     },
     {
 

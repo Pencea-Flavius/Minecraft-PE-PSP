@@ -484,9 +484,9 @@ void playerModelRender(float a) {
         renderEntityFlame(ix, feet, iz, feet, p->bbWidth, p->bbHeight);
 }
 
-int g_animatedCharacter = 1;
+int g_animatedCharacter = 0;
 
-static bool dollSprintSignal(LocalPlayer* p) { return p->onGround && p->walkAnimSpeed > 0.1f; }
+static bool dollSprintSignal(LocalPlayer*) { return false; }
 
 void playerModelRenderPaperDoll(float a, bool displayGui) {
     LocalPlayer* p = g_level.player;
