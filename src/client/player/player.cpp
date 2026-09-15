@@ -14,6 +14,7 @@
 #include "platform/path.h"
 #include "platform/time.h"
 #include "client/renderer/item_hand.h"
+#include "client/renderer/level/near_patch.h"
 #include "client/renderer/particle.h"
 #include "world/level/tile/redstone_ore.h"
 #include "world/item/crafting/recipe.h"
@@ -88,6 +89,7 @@ void releaseWorldAndPlayer() {
     extern void cloudFreeMesh(void);
     skyFreeStars();
     cloudFreeMesh();
+    nearPatchFree();
     worldFree(&g_world);
     g_level.removeAllEntities();
     g_level.removeAllTileEntities();

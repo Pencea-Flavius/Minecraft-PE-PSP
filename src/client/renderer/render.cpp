@@ -3,6 +3,7 @@
 #include "world/level/level.h"
 #include "world/entity/local_player.h"
 #include "client/player/player.h"
+#include "client/renderer/level/near_patch.h"
 #include "client/gamemode/gamemode.h"
 
 #include "gpu/gu.h"
@@ -1384,6 +1385,7 @@ void gameRender(MenuState& s) {
             }
             if (g_terrainThreadDone) {
 
+                nearPatchReserve();
                 g_genStage = GS_MESHING;
             }
             return;
@@ -1480,6 +1482,8 @@ void gameRender(MenuState& s) {
     float px0 = ix, py0 = iy, pz0 = iz;
 
     float bs = 0.0f, bc = 0.0f;
+
+    float bobDx = 0.0f, bobDy = 0.0f, bobDz = 0.0f;
     if (g_viewBobbing) {
         float wda = g_level.player->walkDist - g_level.player->walkDistO;
         float b = -(g_level.player->walkDistO + wda * a);
@@ -1490,6 +1494,7 @@ void gameRender(MenuState& s) {
         bc = fabsf(cosf(b * PIF)) * bobv;
 
         float rgx = cosf(iyaw * DEG2RAD), rgz = sinf(iyaw * DEG2RAD);
+        bobDx = -rgx * bs; bobDy = -bc; bobDz = -rgz * bs;
         ix -= rgx * bs; iz -= rgz * bs;
         iy -= bc;
         ipitch -= tiltv;
@@ -1583,27 +1588,6 @@ void gameRender(MenuState& s) {
         dpCamX = nearOx - baseCamX; dpCamY = nearOy - baseCamY; dpCamZ = nearOz - baseCamZ;
     }
 
-    const float TH = 1.3f, TV = 0.75f;
-    float nearSolid = 2.0f;
-
-    for (float gridY = -1.0f; gridY <= 1.01f; gridY += 0.5f) {
-        for (float gridX = -1.0f; gridX <= 1.01f; gridX += 0.5f) {
-            float sxx = gridX * TH, syy = gridY * TV;
-            float dx = fx + rx * sxx + ux * syy, dy = fy + uy * syy, dz = fz + rz * sxx + uz * syy;
-            float len = sqrtf(dx * dx + dy * dy + dz * dz);
-            dx /= len; dy /= len; dz /= len;
-
-            for (float t = 0.1f; t <= 0.65f && t < nearSolid; t += 0.05f) {
-                if (nearBlocksView(worldBlock(&g_world, (int)floorf(nearOx + dx * t),
-                                                        (int)floorf(nearOy + dy * t),
-                                                        (int)floorf(nearOz + dz * t)))) {
-                    nearSolid = t;
-                    break;
-                }
-            }
-        }
-    }
-
     float camEyeX = nearOx, camEyeY = nearOy, camEyeZ = nearOz;
     int   camBx = Mth::floor(camEyeX), camBy = Mth::floor(camEyeY), camBz = Mth::floor(camEyeZ);
     unsigned char eyeBlk = worldBlock(&g_world, camBx, camBy, camBz);
@@ -1618,6 +1602,32 @@ void gameRender(MenuState& s) {
 
     s_eyeBlk = eyeBlk;
 
+    const bool nearPatchOk = nearPatchUpdate(&g_world,
+                                             nearOx - bobDx, nearOy - bobDy, nearOz - bobDz, fov);
+
+    const float TH = 1.3f, TV = 0.75f;
+    float nearSolid = 2.0f;
+
+    if (!nearPatchOk) {
+        for (float gridY = -1.0f; gridY <= 1.01f; gridY += 0.5f) {
+            for (float gridX = -1.0f; gridX <= 1.01f; gridX += 0.5f) {
+                float sxx = gridX * TH, syy = gridY * TV;
+                float dx = fx + rx * sxx + ux * syy, dy = fy + uy * syy, dz = fz + rz * sxx + uz * syy;
+                float len = sqrtf(dx * dx + dy * dy + dz * dz);
+                dx /= len; dy /= len; dz /= len;
+
+                for (float t = 0.1f; t <= 0.65f && t < nearSolid; t += 0.05f) {
+                    if (nearBlocksView(worldBlock(&g_world, (int)floorf(nearOx + dx * t),
+                                                            (int)floorf(nearOy + dy * t),
+                                                            (int)floorf(nearOz + dz * t)))) {
+                        nearSolid = t;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
     float targetNearZ = nearSolid * 0.4f;
     if (targetNearZ > 0.25f) targetNearZ = 0.25f;
 
@@ -1626,10 +1636,12 @@ void gameRender(MenuState& s) {
     float nearFloor = NEARZ_FLOOR_FOV70 * TAN35 / tanf(fov * 0.5f * 3.14159265f / 180.0f);
     if (targetNearZ < nearFloor) targetNearZ = nearFloor;
 
+    if (nearPatchOk) targetNearZ = NEAR_PATCH_Z;
+
     static float s_targetNearZ = 0.25f;
 
     if (fabsf(targetNearZ - s_targetNearZ) > 0.025f ||
-        targetNearZ == nearFloor || targetNearZ == 0.25f) {
+        targetNearZ == nearFloor || targetNearZ == 0.25f || nearPatchOk) {
         s_targetNearZ = targetNearZ;
     }
 

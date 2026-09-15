@@ -403,6 +403,8 @@ struct ChunkSection {
     bool         leavesCullBand;
 
     bool          skyLit;
+
+    unsigned short gen;
 };
 
 struct ChunkMesh {
@@ -434,6 +436,11 @@ bool sectionCannotEmit(const World* w, int ox, int oz, int si);
 void chunkBuildSection(ChunkMesh* c, const World* w, int si);
 
 void chunkMeshHeapProbe();
+
+#define SEAM_OVERSCALE_OPAQUE (32768.0f / 32753.0f)
+#define SEAM_OVERSCALE_TRANS  (32768.0f / 32763.0f)
+
+void chunkSetModelOrigin(int ox, int oy, int oz, float scaleMul);
 void chunkDrawSection(const ChunkSection* s);
 void chunkDrawWaterSection(const ChunkSection* s);
 void chunkDrawLeavesSection(const ChunkSection* s);

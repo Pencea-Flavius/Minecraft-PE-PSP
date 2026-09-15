@@ -689,6 +689,18 @@ int main(int argc, char* argv[]) {
                             ty += 12.0f;
                         }
                         {
+                            extern void nearPatchStats(int*, int*, unsigned int*, unsigned int*, int*);
+                            int npV, npC, npState; unsigned int npBuild, npFrame;
+                            nearPatchStats(&npV, &npC, &npBuild, &npFrame, &npState);
+                            static const char* const NP_STATE[3] = { "", " FULL", " OFF" };
+                            char npBuf[80];
+                            std::snprintf(npBuf, sizeof(npBuf), "NEAR v%d c%d  pick %uus frame %uus%s",
+                                          npV, npC, npBuild, npFrame, NP_STATE[npState]);
+                            fontDrawTextShadow(&s.font, 10, ty, npBuf,
+                                               npState ? 0xFF40C0FFu : 0xFFE0E0E0u, 1.0f);
+                            ty += 12.0f;
+                        }
+                        {
                             extern float g_viewDist, g_viewDistEff;
                             if (g_viewDistEff > 0.0f && g_viewDistEff < g_viewDist) {
                                 char rdBuf[48];

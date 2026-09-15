@@ -84,6 +84,8 @@ static const OptionRowDef g_optionRows[OPT_CATEGORIES][OPT_MAX_ROWS] = {
         { 0,          "Smooth Lighting", {"Off", "On", 0, 0}, 2, 1 },
 
         { 0,          "Brightness",      {0, 0, 0, 0}, 11, 0, true, 0, 10 },
+
+        { 0,          "30 FPS Cap",      {"Off", "On", 0, 0}, 2, 0 },
         { "Experimental", "Mipmapping",  {"Off", "On", 0, 0}, 2, 1 },
 
         { 0,              "Dithering",   {"Off", "On", 0, 0}, 2, 0 },
@@ -104,7 +106,7 @@ static const OptionRowDef g_optionRows[OPT_CATEGORIES][OPT_MAX_ROWS] = {
     },
 };
 
-static const int g_optionRowCount[OPT_CATEGORIES] = { 10, 6, 11, 8 };
+static const int g_optionRowCount[OPT_CATEGORIES] = { 10, 6, 12, 8 };
 static const char* g_optionCategoryNames[OPT_CATEGORIES] = { "Game", "Controls", "Graphics", "Audio" };
 static int g_optionValueIdx[OPT_CATEGORIES][OPT_MAX_ROWS];
 
@@ -125,6 +127,7 @@ extern int   g_animatedCharacter;
 extern int   g_autoJump;
 extern int   g_classicPick;
 extern int   g_dither;
+extern int   g_fpsCap30;
 extern int   g_barOnTop;
 extern float g_sensitivity;
 extern int   g_fineAim;
@@ -150,9 +153,10 @@ extern World g_world;
 #define ROW_PARTICLES   5
 #define ROW_SMOOTHLIGHT 6
 #define ROW_BRIGHTNESS  7
-#define ROW_MIPMAP      8
-#define ROW_DITHER      9
-#define ROW_BEDROCKFOG  10
+#define ROW_FPSCAP30    8
+#define ROW_MIPMAP      9
+#define ROW_DITHER      10
+#define ROW_BEDROCKFOG  11
 
 static const float kRenderDist[4] = { 16.0f, 32.0f, 48.0f, 64.0f };
 extern int g_lowMemPsp;
@@ -231,6 +235,7 @@ static void optionsApply() {
     g_japaneseLayout = g_optionValueIdx[CAT_CONTROLS][ROW_JPLAYOUT];
     g_classicPick    = g_optionValueIdx[CAT_CONTROLS][ROW_CLASSICPICK];
     g_dither       = g_optionValueIdx[CAT_GRAPHICS][ROW_DITHER];
+    g_fpsCap30     = g_optionValueIdx[CAT_GRAPHICS][ROW_FPSCAP30];
     g_bedrockFog   = g_optionValueIdx[CAT_GRAPHICS][ROW_BEDROCKFOG] != 0;
     g_difficulty  = g_optionValueIdx[CAT_GAME][ROW_DIFFICULTY];
     soundSetVolume(g_optionValueIdx[CAT_AUDIO][ROW_SOUNDVOL] / 10.0f);

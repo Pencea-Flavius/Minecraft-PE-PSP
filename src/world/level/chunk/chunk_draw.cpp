@@ -54,21 +54,24 @@ DrawVertex* chunkPack(const ChunkVertex* s, int n, int ox, int oy, int oz,
 
 float g_relBaseX = 0.0f, g_relBaseY = 0.0f, g_relBaseZ = 0.0f;
 
-#define SEAM_OVERSCALE_OPAQUE (32768.0f / 32753.0f)
-#define SEAM_OVERSCALE_TRANS  (32768.0f / 32763.0f)
-
-static inline void chunkSetModel(const ChunkSection* s, float scaleMul) {
+static inline void chunkSetModelAt(int ox, int oy, int oz, float scaleMul) {
     const float sm = POS_MODEL_SCALE * scaleMul;
     ScePspFMatrix4 m;
     m.x.x = sm;   m.x.y = 0.0f; m.x.z = 0.0f; m.x.w = 0.0f;
     m.y.x = 0.0f; m.y.y = sm;   m.y.z = 0.0f; m.y.w = 0.0f;
     m.z.x = 0.0f; m.z.y = 0.0f; m.z.z = sm;   m.z.w = 0.0f;
-    m.w.x = (float)s->ox - g_relBaseX;
-    m.w.y = (float)s->oy - g_relBaseY;
-    m.w.z = (float)s->oz - g_relBaseZ;
+    m.w.x = (float)ox - g_relBaseX;
+    m.w.y = (float)oy - g_relBaseY;
+    m.w.z = (float)oz - g_relBaseZ;
     m.w.w = 1.0f;
     sceGumMatrixMode(GU_MODEL);
     sceGumLoadMatrix(&m);
+}
+static inline void chunkSetModel(const ChunkSection* s, float scaleMul) {
+    chunkSetModelAt(s->ox, s->oy, s->oz, scaleMul);
+}
+void chunkSetModelOrigin(int ox, int oy, int oz, float scaleMul) {
+    chunkSetModelAt(ox, oy, oz, scaleMul);
 }
 
 void chunkDrawSection(const ChunkSection* s) {
@@ -112,6 +115,7 @@ void chunkDrawNoMipSection(const ChunkSection* s, int part) {
 void chunkFreeMesh(ChunkMesh* c) {
     for (int si = 0; si < N_SECTIONS; si++) {
         ChunkSection* s = &c->sec[si];
+        s->gen++;
         if (s->mesh)   { guDeferFree(s->mesh);   s->mesh = 0; }
         if (s->water)  { guDeferFree(s->water);  s->water = 0; }
         if (s->leaves) { guDeferFree(s->leaves); s->leaves = 0; }

@@ -15,8 +15,10 @@
 #include <math.h>
 
 #include "client/renderer/level/frustum.h"
+#include "client/renderer/level/near_patch.h"
 
 static inline void streamFreeSection(ChunkSection* s) {
+    s->gen++;
     if (s->mesh)   { guDeferFree(s->mesh);   s->mesh = 0; }
     if (s->water)  { guDeferFree(s->water);  s->water = 0; }
     if (s->leaves) { guDeferFree(s->leaves); s->leaves = 0; }
@@ -167,6 +169,8 @@ void worldDraw(const World* cw, float camX, float camY, float camZ, float viewDi
 
     if (!gameFrozen()) worldRebuildStep(w, camX, camY, camZ, viewDist);
 
+    nearPatchRefresh(w);
+
     profBegin(PROF_CULL);
 
     float keepD2 = (viewDist + 32.0f) * (viewDist + 32.0f);
@@ -237,26 +241,33 @@ void worldDraw(const World* cw, float camX, float camY, float camZ, float viewDi
         }
         chunkDrawSection(g_opaqueList[i].s);
     }
+
+    if (nearPatchHas(NEAR_PATCH_OPAQUE)) {
+        if (distMip) sceGuTexLevelMode(GU_TEXTURE_CONST, 0.0f);
+        nearPatchDraw(NEAR_PATCH_OPAQUE);
+    }
     if (distMip) textureMipAuto();
     sceGuEnable(GU_ALPHA_TEST);
 
     if (terrain) {
         bool any = false;
+        const auto bindCutout = [&]() {
+            if (any) return;
+            if (distMip) {
+                textureBind(terrain);
+                sceGuTexFilter(GU_NEAREST_MIPMAP_NEAREST, GU_NEAREST);
+            } else {
+                textureBindNoMip(terrain);
+            }
+            any = true;
+        };
         for (int i = 0; i < g_nVisChunks; i++) {
             const ChunkMesh* c = g_visChunks[i];
             float dx = c->cx - camX, dz = c->cz - camZ;
             for (int si = 0; si < N_SECTIONS; si++) {
                 const ChunkSection* s = &c->sec[si];
                 if (s->noMipCount == 0 || !s->visible) continue;
-                if (!any) {
-                    if (distMip) {
-                        textureBind(terrain);
-                        sceGuTexFilter(GU_NEAREST_MIPMAP_NEAREST, GU_NEAREST);
-                    } else {
-                        textureBindNoMip(terrain);
-                    }
-                    any = true;
-                }
+                bindCutout();
                 if (distMip) {
                     float dy = (float)(si * SECTION_SY + SECTION_SY / 2) - camY;
                     float lvl = (sqrtf(dx * dx + dy * dy + dz * dz) - MIP_CRISP_RADIUS) * (1.0f / MIP_BLOCKS_PER_LEVEL);
@@ -265,6 +276,13 @@ void worldDraw(const World* cw, float camX, float camY, float camZ, float viewDi
                 }
                 chunkDrawNoMipSection(s, g_eyeInLava ? NOMIP_NO_LAVA : NOMIP_ALL);
             }
+        }
+
+        if (nearPatchHas(NEAR_PATCH_CUTOUT) || (!g_eyeInLava && nearPatchHas(NEAR_PATCH_LAVA))) {
+            bindCutout();
+            if (distMip) sceGuTexLevelMode(GU_TEXTURE_CONST, 0.0f);
+            nearPatchDraw(NEAR_PATCH_CUTOUT);
+            if (!g_eyeInLava) nearPatchDraw(NEAR_PATCH_LAVA);
         }
 
         if (g_eyeInLava) {
@@ -279,6 +297,7 @@ void worldDraw(const World* cw, float camX, float camY, float camZ, float viewDi
                     chunkDrawNoMipSection(s, NOMIP_LAVA);
                 }
             }
+            nearPatchDraw(NEAR_PATCH_LAVA);
             sceGuFrontFace(GU_CCW);
         }
         if (distMip) textureMipAuto();
@@ -323,6 +342,11 @@ void worldDraw(const World* cw, float camX, float camY, float camZ, float viewDi
         }
     }
 
+    if (nearPatchHas(NEAR_PATCH_LEAVES)) {
+        if (distMip) sceGuTexLevelMode(GU_TEXTURE_CONST, 0.0f);
+        nearPatchDraw(NEAR_PATCH_LEAVES);
+    }
+
     if (distMip) {
         sceGuTexFilter(GU_NEAREST_MIPMAP_LINEAR, GU_NEAREST);
         textureMipAuto();
@@ -352,6 +376,7 @@ void worldDrawWater(const World* w, float camX, float camY, float camZ, float vi
         for (int si = 0; si < N_SECTIONS; si++) {
             const ChunkSection* s = &c->sec[si];
             if (s->waterCount == 0 || !s->visible) continue;
+            if (nearPatchOwnsWater(s)) continue;
             float scy = (float)(si * SECTION_SY + SECTION_SY / 2);
             float dy = scy - camY;
             g_waterList[cnt].d2 = dx * dx + dy * dy + dz * dz;
@@ -372,6 +397,11 @@ void worldDrawWater(const World* w, float camX, float camY, float camZ, float vi
             sceGuTexLevelMode(GU_TEXTURE_CONST, lvl);
         }
         chunkDrawWaterSection(g_waterList[i].s);
+    }
+
+    if (nearPatchHas(NEAR_PATCH_WATER)) {
+        if (distMip) sceGuTexLevelMode(GU_TEXTURE_CONST, 0.0f);
+        nearPatchDraw(NEAR_PATCH_WATER);
     }
     if (distMip) textureMipAuto();
     guListSync();

@@ -137,6 +137,7 @@ void chunkBuildSection(ChunkMesh* c, const World* w, int si) {
     ChunkSection* s = &c->sec[si];
 
     if (!meshHeapReserveOk()) { s->dirty = true; return; }
+    s->gen++;
 
     int y0 = si * SECTION_SY, y1 = y0 + SECTION_SY;
     int ox = c->ox, oz = c->oz;

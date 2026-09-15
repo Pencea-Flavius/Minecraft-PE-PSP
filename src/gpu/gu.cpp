@@ -496,7 +496,13 @@ void guFinishFrame(void) {
     profEnd(PROF_GESYNC);
 }
 
+int g_fpsCap30 = 0;
+
 void guPresent(void) {
+
+    if (g_fpsCap30 && s_vcPrev >= 0) {
+        while ((int)sceDisplayGetVcount() - s_vcPrev < 2) sceDisplayWaitVblankStart();
+    }
 
     {
         const int vc = (int)sceDisplayGetVcount();
