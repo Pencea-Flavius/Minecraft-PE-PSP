@@ -151,9 +151,10 @@ the way they did on console. Nothing else has to be renamed or converted.
 builds `.pck` files — put your PNGs in, save it as a pack, drop it in
 `data/skinpacks/`.
 
-**One skin, no pack:** drop a 64x32 or 64x64 PNG at `data/images/skins/skin.png`
-and it is worn whenever no pack skin is chosen. The eight LCE defaults live in
-that folder too, as `char.png` .. `char7.png`.
+**One skin, no pack:** `data/images/skins/skin.png` is what the player wears until
+a pack skin is picked — it ships as Steve, and replacing it with your own 64x32 or
+64x64 PNG is the whole of it. The eight LCE defaults sit in that folder too, as
+`char.png` .. `char7.png`.
 
 The skin you wear and your favourites are remembered in `options.txt`
 (`Skin=` and `SkinFavorites=`), so they survive a reboot.
