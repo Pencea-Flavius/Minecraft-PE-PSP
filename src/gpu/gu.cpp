@@ -224,7 +224,6 @@ static inline void* guFbAddr(int idx) {
                    | 0x40000000u);
 }
 
-static void guSignalCallback(int id);
 unsigned int g_vcSameRefresh = 0;
 unsigned int g_vcDrops       = 0;
 int g_vcLast = 0, g_vcMin = 9999, g_vcMax = 0;
@@ -366,7 +365,6 @@ void guInit(void) {
     vramAllocInit(g_vramOffset, guVramTotal());
 
     sceGuInit();
-    sceGuSetCallback(GU_CALLBACK_SIGNAL, guSignalCallback);
 
     sceDisplaySetMode(0, GU_SCR_WIDTH, GU_SCR_HEIGHT);
 
@@ -462,21 +460,10 @@ static void guCheckListCanary(void) {
     if (c) g_canaryBroken = (unsigned)c;
 }
 
-unsigned int g_geShortList = 0;
-static unsigned int s_geSignals    = 0;
-static unsigned int s_geSignalsSent = 0;
-static unsigned int s_geSignalsPrev = 0;
-#define GU_END_SIGNAL 0x11
-static void guSignalCallback(int id) {
-    if (id == GU_END_SIGNAL) s_geSignals++;
-}
-
 void guFinishFrame(void) {
 
     profBegin(PROF_GESYNC);
 
-    sceGuSignal(GU_BEHAVIOR_CONTINUE, GU_END_SIGNAL);
-    s_geSignalsSent++;
     unsigned listBytes = guFinishBytes(GUF_FRAME);
 
     if (!listBytes) listBytes = g_listUsed;
@@ -486,12 +473,6 @@ void guFinishFrame(void) {
     if (listBytes >= GU_LIST_BYTES) g_listOverruns++;
 
     sceGuSync(0, 0);
-
-    if (s_geSignals < s_geSignalsPrev) {
-        g_geShortList++;
-        s_geSignals = s_geSignalsPrev;
-    }
-    s_geSignalsPrev = s_geSignalsSent;
     guCheckListCanary();
 
     guFlushDeferredFrees();

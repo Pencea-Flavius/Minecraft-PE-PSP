@@ -171,13 +171,6 @@ static float drawFaultCounters(MenuState& s, float ty) {
         ty += 12.0f;
     }
 
-    extern unsigned int g_geShortList;
-    static FaultAge aShort;
-    if (faultFresh(aShort, g_geShortList)) {
-        std::snprintf(buf, sizeof(buf), "GE SHORT LIST %u", g_geShortList);
-        fontDrawTextShadow(&s.font, 10, ty, buf, 0xFF0000FFu, 1.0f);
-        ty += 12.0f;
-    }
     extern unsigned int g_frameAllocFails, g_frameAllocListFails, g_frameAllocNull;
     static FaultAge aScratch;
     if (faultFresh(aScratch, g_frameAllocFails)) {

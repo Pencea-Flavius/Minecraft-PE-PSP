@@ -7,7 +7,7 @@
 
 enum { P_NONE = -1, P_DISPLAYNAME, P_THEMENAME, P_CAPEPATH, P_BOX, P_ANIM, P_OFFSET };
 
-enum { T_SKIN = 0, T_CAPE = 1, T_LOCALISATION = 6 };
+enum { T_SKIN = 0, T_CAPE = 1, T_LOCALISATION = 6, T_SKINPACK = 11 };
 
 static bool locDisplayName(const unsigned char* d, unsigned int n, char* out, int cap) {
     unsigned int o = 0;
@@ -135,12 +135,7 @@ void skinPackClose(SkinPack* p) {
     memset(p, 0, sizeof(*p));
 }
 
-bool skinPackOpen(const char* path, SkinPack* out) {
-    memset(out, 0, sizeof(*out));
-    FILE* f = fopen(path, "rb");
-    if (!f) return false;
-    copyStr(out->path, sizeof(out->path), path);
-
+static bool skinPackRead(FILE* f, unsigned int base, SkinPack* out, unsigned int* nested) {
     struct Detail { unsigned int size, type; char file[32]; };
     Detail* details = 0;
     int boxCap = 0;
@@ -148,14 +143,16 @@ bool skinPackOpen(const char* path, SkinPack* out) {
     unsigned int version, nNames, nFiles;
     int map[32][2];
     int nMap = 0;
+    bool hasXmlVersion = false;
     char buf[256];
 
+    if (nested) *nested = 0;
     {
 
         unsigned char v0[4];
-        if (fread(v0, 1, 4, f) != 4) goto done;
+        if (fseek(f, (long)base, SEEK_SET) != 0 || fread(v0, 1, 4, f) != 4) goto done;
         s_be = (v0[0] == 0 && v0[1] == 0);
-        fseek(f, 0, SEEK_SET);
+        fseek(f, (long)base, SEEK_SET);
     }
     if (!rd32(f, &version) || version < 3) goto done;
     if (!rd32(f, &nNames) || nNames > 64) goto done;
@@ -165,7 +162,10 @@ bool skinPackOpen(const char* path, SkinPack* out) {
         static const char* kNames[] = { "DISPLAYNAME", "THEMENAME", "CAPEPATH", "BOX", "ANIM", "OFFSET" };
         for (int k = 0; k < 6; k++)
             if (strcmp(buf, kNames[k]) == 0 && nMap < 32) { map[nMap][0] = (int)id; map[nMap][1] = k; nMap++; }
+
+        if (strcmp(buf, "XMLVERSION") == 0) hasXmlVersion = true;
     }
+    if (hasXmlVersion) { unsigned int xmlv; if (!rd32(f, &xmlv)) goto done; }
 
     if (!rd32(f, &nFiles) || nFiles > 1024) goto done;
     details = (Detail*)malloc(sizeof(Detail) * (nFiles ? nFiles : 1));
@@ -233,7 +233,6 @@ bool skinPackOpen(const char* path, SkinPack* out) {
 
         unsigned int offset = (unsigned int)ftell(f);
         if (sk) {
-
             unsigned char hdr[24];
             int pw = 0, ph = 0;
             if (fread(hdr, 1, sizeof(hdr), f) == sizeof(hdr) &&
@@ -241,6 +240,7 @@ bool skinPackOpen(const char* path, SkinPack* out) {
                 pw = (hdr[16] << 24) | (hdr[17] << 16) | (hdr[18] << 8) | hdr[19];
                 ph = (hdr[20] << 24) | (hdr[21] << 16) | (hdr[22] << 8) | hdr[23];
             }
+
             if (pw == 64 && (ph == 32 || ph == 64)) {
                 sk->offset = offset; sk->size = d.size;
                 sk->texH = (short)ph;
@@ -254,6 +254,8 @@ bool skinPackOpen(const char* path, SkinPack* out) {
             if (blob && fread(blob, 1, d.size, f) == d.size)
                 locDisplayName(blob, d.size, out->name, sizeof(out->name));
             free(blob);
+        } else if (d.type == T_SKINPACK && nested && !*nested) {
+            *nested = offset;
         } else if (d.type == T_CAPE && out->capeCount < SKIN_MAX_SKINS) {
             SkinPack::Cape& c = out->capes[out->capeCount++];
             copyStr(c.file, sizeof(c.file), d.file);
@@ -262,11 +264,26 @@ bool skinPackOpen(const char* path, SkinPack* out) {
         if (fseek(f, (long)(offset + d.size), SEEK_SET) != 0) goto done;
     }
     ok = out->skinCount > 0;
-    printf("skinPackOpen %s: %d skins, %d boxes, %d capes\n",
-           path, out->skinCount, out->boxCount, out->capeCount);
 
 done:
     free(details);
+    return ok;
+}
+
+bool skinPackOpen(const char* path, SkinPack* out) {
+    memset(out, 0, sizeof(*out));
+    FILE* f = fopen(path, "rb");
+    if (!f) return false;
+    copyStr(out->path, sizeof(out->path), path);
+
+    unsigned int nested = 0;
+    bool ok = skinPackRead(f, 0, out, &nested);
+    if (!ok && nested) ok = skinPackRead(f, nested, out, 0);
+
+    if (ok) {
+        printf("skinPackOpen %s: %d skins, %d boxes, %d capes\n",
+               path, out->skinCount, out->boxCount, out->capeCount);
+    }
     fclose(f);
     if (!ok) skinPackClose(out);
     return ok;

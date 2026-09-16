@@ -284,5 +284,10 @@ dist: EBOOT.PBP
 	@cp -r data/. build/data/
 	@rm -rf build/data/sound/aac
 	@rm -rf build/data/sound/cave build/data/sound/extra   # WAV sources: packed into *.bin, never read at runtime
+	@# SKIN PACKS ARE NOT OURS TO SHIP. They are Mojang/4J DLC; the folder goes
+	@# out empty with a note in it saying where to put your own.
+	@rm -rf build/data/skinpacks*
+	@mkdir -p build/data/skinpacks
+	@printf 'Put your LCE skin packs here, one .pck per pack.\n\nThey are the files the 7th-gen consoles (PS3 / Xbox 360 / Vita) shipped their\nDLC skins in - both byte orders are read, and nothing has to be renamed. The\npack names in the game come from inside the files themselves.\n\n  PSP/GAME/MCPSP/data/skinpacks/Skins1.pck\n  PSP/GAME/MCPSP/data/skinpacks/SkinPack5.pck\n  ...\n\nNo packs ship with this port - they are Mojang/4J content and not mine to give\nout. Supply your own.\n\nWhat is read: 64x32 and 64x64 sheets, capes, the extra BOX parts that make the\nmob-shaped skins, and the ANIM bits. What is not: Bedrock/Java .mcpack or .zip,\nloose .png files, and 128x128 (HD) sheets - a pack whose skins are all HD will\nnot show up.\n\nMaking your own: PCK Studio (pckstudio.xyz) opens, edits and builds .pck files.\n\nOne skin without any pack: replace data/images/skins/skin.png with your own\n64x32 or 64x64 PNG.\n' > build/data/skinpacks/README.txt
 	@printf 'MCPSP - Minecraft PSP (test build)\n\n=== Run on a real PSP ===\n1. On the memory stick make a folder:  PSP/GAME/MCPSP\n2. Put EBOOT.PBP and the data/ folder inside it, so you have:\n     PSP/GAME/MCPSP/EBOOT.PBP\n     PSP/GAME/MCPSP/data/\n3. Launch it from the PSP Game menu.\n\n=== PPSSPP ===\nJust open EBOOT.PBP.\n\nKeep EBOOT.PBP and data/ together - textures load from data/ next to\nthe EBOOT, and worlds save into a saves/ folder created beside it.\n' > build/README.txt
 	@echo "Packaged -> build/  (copy its contents into ms0:/PSP/GAME/MCPSP/)"
