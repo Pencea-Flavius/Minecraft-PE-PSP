@@ -90,7 +90,8 @@ void TitleScreen::handleInput(MenuState& s, unsigned int pressed, unsigned int h
         if (sceCtrlPeekBufferPositive(&pad, 1) > 0) {
             int dx = (int)pad.Lx - 128;
             if (dx > SKIN_STICK_DZ || dx < -SKIN_STICK_DZ) {
-                s_skinRot += (float)dx * (4.0f / 127.0f);
+
+                s_skinRot -= (float)dx * (4.0f / 127.0f);
                 if (s_skinRot >= 360.0f) s_skinRot -= 360.0f;
                 if (s_skinRot < 0.0f)    s_skinRot += 360.0f;
                 stickTurning = true;

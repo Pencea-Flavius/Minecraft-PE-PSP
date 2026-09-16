@@ -18,6 +18,7 @@ Texture s_face[FACES];
 bool    s_loaded = false;
 
 bool    s_failed = false;
+int     s_faceCount = 0;
 float   s_spin   = 0.0f;
 float   s_lastT  = 0.0f;
 
@@ -36,28 +37,37 @@ bool loadFace(Texture* out, const char* rel) {
 }
 
 void panoramaSetLoaded(bool want) {
-    if (want == s_loaded) return;
     if (want) {
-        if (s_failed) return;
+        if (s_loaded || s_failed) return;
 
-        textureForgetFailures();
-        for (int i = 0; i < FACES; i++) {
-            char rel[64];
-            std::snprintf(rel, sizeof(rel), "data/images/gui/background/panorama_%d.png", i);
-            if (loadFace(&s_face[i], rel)) continue;
+        if (s_faceCount == 0) textureForgetFailures();
+        char rel[64];
+        std::snprintf(rel, sizeof(rel), "data/images/gui/background/panorama_%d.png", s_faceCount);
+        if (!loadFace(&s_face[s_faceCount], rel)) {
 
-            for (int j = 0; j < i; j++) textureFree(&s_face[j]);
+            for (int j = 0; j < s_faceCount; j++) textureFree(&s_face[j]);
+            s_faceCount = 0;
             s_failed = true;
             return;
         }
-        s_loaded = true;
-        s_lastT  = nowSeconds();
+        if (++s_faceCount == FACES) {
+            s_loaded = true;
+            s_lastT  = nowSeconds();
+        }
     } else {
-        for (int i = 0; i < FACES; i++) textureFree(&s_face[i]);
+
+        const int held = s_loaded ? FACES : s_faceCount;
+        for (int i = 0; i < held; i++) textureFree(&s_face[i]);
+        s_faceCount = 0;
         s_loaded = false;
 
         s_failed = false;
     }
+}
+
+void panoramaLoadAll(void) {
+
+    for (int i = 0; i < FACES && !s_loaded && !s_failed; i++) panoramaSetLoaded(true);
 }
 
 bool panoramaRender() {

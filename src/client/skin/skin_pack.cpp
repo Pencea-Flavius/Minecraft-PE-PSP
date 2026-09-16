@@ -56,7 +56,43 @@ static bool locDisplayName(const unsigned char* d, unsigned int n, char* out, in
     return m > 0;
 }
 
-static bool rd32(FILE* f, unsigned int* v) { return fread(v, 4, 1, f) == 1; }
+static bool s_be = false;
+
+static unsigned int skinIdAnimOverride(const char* file, unsigned int fromFile) {
+    if (strncmp(file, "dlcskin", 7) != 0) return fromFile;
+    unsigned int id = (unsigned int)strtoul(file + 7, 0, 10);
+    if (id >= 20000000u) id -= 20000000u;
+    switch (id) {
+    case 0x2:
+    case 0x3:
+    case 0xc8:
+    case 0xc9:
+    case 0x1f8:
+    case 0x220:
+    case 0x23a:
+    case 0x23d:
+    case 0x247:
+    case 0x194:
+    case 0x195:
+        return 1u << SKIN_ANIM_ARMS_OUT_FRONT;
+    case 0x1fa:
+        return (1u << SKIN_ANIM_ARMS_OUT_FRONT) | (1u << SKIN_ANIM_NO_LEG_ANIM);
+    case 0x1f4:
+        return (1u << SKIN_ANIM_ARMS_DOWN) | (1u << SKIN_ANIM_NO_LEG_ANIM);
+    case 0x1f7:
+        return 0;
+    default:
+        return fromFile;
+    }
+}
+
+static bool rd32(FILE* f, unsigned int* v) {
+    unsigned char b[4];
+    if (fread(b, 1, 4, f) != 4) return false;
+    *v = s_be ? ((unsigned)b[0] << 24) | ((unsigned)b[1] << 16) | ((unsigned)b[2] << 8) | b[3]
+              : ((unsigned)b[3] << 24) | ((unsigned)b[2] << 16) | ((unsigned)b[1] << 8) | b[0];
+    return true;
+}
 
 static bool rdWstr(FILE* f, unsigned int nch, char* out, int cap) {
     if (nch > 1024) return false;
@@ -65,7 +101,7 @@ static bool rdWstr(FILE* f, unsigned int nch, char* out, int cap) {
     for (unsigned int i = 0; i < nch; i++) {
         unsigned char c[2];
         if (fread(c, 1, 2, f) != 2) return false;
-        unsigned int w = c[0] | (c[1] << 8);
+        unsigned int w = s_be ? ((unsigned)c[0] << 8) | c[1] : c[0] | ((unsigned)c[1] << 8);
         if (w == 0) ended = true;
         if (ended || n >= cap - 1) continue;
         out[n++] = (w < 0x80) ? (char)w : '?';
@@ -114,6 +150,13 @@ bool skinPackOpen(const char* path, SkinPack* out) {
     int nMap = 0;
     char buf[256];
 
+    {
+
+        unsigned char v0[4];
+        if (fread(v0, 1, 4, f) != 4) goto done;
+        s_be = (v0[0] == 0 && v0[1] == 0);
+        fseek(f, 0, SEEK_SET);
+    }
     if (!rd32(f, &version) || version < 3) goto done;
     if (!rd32(f, &nNames) || nNames > 64) goto done;
     for (unsigned int i = 0; i < nNames; i++) {
@@ -186,6 +229,8 @@ bool skinPackOpen(const char* path, SkinPack* out) {
             default: break;
             }
         }
+        if (sk) sk->anim = skinIdAnimOverride(sk->file, sk->anim);
+
         unsigned int offset = (unsigned int)ftell(f);
         if (sk) {
 

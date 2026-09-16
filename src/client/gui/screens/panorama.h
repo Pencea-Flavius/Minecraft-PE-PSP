@@ -4,6 +4,8 @@
 
 void panoramaSetLoaded(bool want);
 
+void panoramaLoadAll(void);
+
 bool panoramaRender();
 
 #endif

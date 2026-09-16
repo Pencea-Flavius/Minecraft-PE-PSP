@@ -240,8 +240,19 @@ static void refreshSlots(bool animate) {
             }
             continue;
         }
+
+    }
+}
+
+static void topUpSlots() {
+    static const int order[NSLOT] = { 3, 4, 2, 5, 1, 6, 0 };
+    for (int o = 0; o < NSLOT; o++) {
+        const int k = order[o];
+        const int want = positionIdx(k);
+        if (want < 0 || findSlot(want)) continue;
         for (int i = 0; i < NSLOT; i++)
-            if (s_store[i].idx < 0) { loadInto(i, want[k], restRot(k)); break; }
+            if (s_store[i].idx < 0) { loadInto(i, want, restRot(k)); return; }
+        return;
     }
 }
 
@@ -436,6 +447,8 @@ static void label(MenuState& s, float cx, float y, const char* t, unsigned int c
 
 void skinPageRender(MenuState& s) {
     if (!s.haveFont) return;
+    topUpSlots();
+
     sceGuDisable(GU_DEPTH_TEST);
 
     s_ws += (0.1f - s_ws) * 0.4f;

@@ -121,6 +121,8 @@ the way they did on console. Nothing else has to be renamed or converted.
 **What works**
 
 * `.pck` version 3, the console DLC format (`DLCManager::processDLCDataFile`),
+  **little-endian or big-endian** — the PS3 wrote its packs the other way round
+  from the 360, Xbox One and Vita, and both are read as they are,
 * **64x32** skins — the classic layout every LCE pack uses,
 * **64x64** skins — the Mojang 1.8 layout with the overlay/hat layers,
 * **capes**, including the swing the LCE player renderer gives them,

@@ -27,6 +27,7 @@ Texture* worldIcon(const char* name) {
 
         if (!sl->name[0] || sl->used < victim->used) victim = sl;
     }
+
     if (victim->have) textureFree(&victim->tex);
     std::strncpy(victim->name, name, sizeof(victim->name) - 1);
     victim->name[sizeof(victim->name) - 1] = '\0';

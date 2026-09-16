@@ -2,6 +2,7 @@
 #include "client/player/player.h"
 #include "client/gui/screens/screen.h"
 #include "client/gui/screens/control_scheme.h"
+#include "client/gui/screens/panorama.h"
 #include "client/renderer/render.h"
 
 #include "world/level/world.h"
@@ -121,6 +122,8 @@ void quitToMenuNoSave(MenuState& s) {
 
     worldListScan(&s.worlds);
     s.worldSelected = 0;
+
+    panoramaLoadAll();
     s.screen = SCREEN_WORLDS;
 }
 

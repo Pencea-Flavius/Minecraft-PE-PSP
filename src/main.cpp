@@ -171,12 +171,19 @@ static float drawFaultCounters(MenuState& s, float ty) {
         ty += 12.0f;
     }
 
-    extern unsigned int g_frameAllocFails, g_frameAllocListFails;
+    extern unsigned int g_geShortList;
+    static FaultAge aShort;
+    if (faultFresh(aShort, g_geShortList)) {
+        std::snprintf(buf, sizeof(buf), "GE SHORT LIST %u", g_geShortList);
+        fontDrawTextShadow(&s.font, 10, ty, buf, 0xFF0000FFu, 1.0f);
+        ty += 12.0f;
+    }
+    extern unsigned int g_frameAllocFails, g_frameAllocListFails, g_frameAllocNull;
     static FaultAge aScratch;
     if (faultFresh(aScratch, g_frameAllocFails)) {
 
-        std::snprintf(buf, sizeof(buf), "GU-SCRATCH FULL %u LIST %u",
-                      g_frameAllocFails, g_frameAllocListFails);
+        std::snprintf(buf, sizeof(buf), "GU-SCRATCH FULL %u LIST %u NULL %u",
+                      g_frameAllocFails, g_frameAllocListFails, g_frameAllocNull);
         fontDrawTextShadow(&s.font, 10, ty, buf, 0xFF50FFFFu, 1.0f);
         ty += 12.0f;
     }
@@ -390,6 +397,8 @@ int main(int argc, char* argv[]) {
                            (al << 24) | 0x00FFFFFFu);
             }
             guEndFrame();
+
+            panoramaSetLoaded(true);
 
             if (skipAt < 0.0f && t >= INTRO_WHITE) {
                 SceCtrlData splashPad;
