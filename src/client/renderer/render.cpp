@@ -38,6 +38,7 @@
 #include <pspgu.h>
 #include <pspgum.h>
 #include <pspkernel.h>
+#include <pspdisplay.h>
 #include <psputils.h>
 
 extern World g_world;
@@ -127,12 +128,14 @@ struct ColorVertex {
 
 #define VOID_PLANE_Y    activeLevelSource().horizonHeight()
 #define VOID_CAP_GAP    8.0f
+#define VOID_MIN_GAP    0.3f
 
 #define SKY_FOG_FAR 150.0f
 
 #define SKY_SECTORS 24
 
-static const float SKY_RING_R[] = { 0.0f, 2.0f, 6.0f, 14.0f, 30.0f, 60.0f, 110.0f, 160.0f, 210.0f };
+static const float SKY_RING_R[] = { 0.0f, 0.1f, 0.25f, 0.5f, 1.0f, 2.0f, 4.0f, 8.0f, 16.0f,
+                                    30.0f, 60.0f, 110.0f, 160.0f, 210.0f };
 #define SKY_RINGS      ((int)(sizeof(SKY_RING_R) / sizeof(SKY_RING_R[0])))
 #define SKY_MESH_VERTS (SKY_SECTORS * 3 + (SKY_RINGS - 2) * SKY_SECTORS * 6)
 
@@ -520,7 +523,10 @@ static void renderSky(float px, float py, float pz) {
         }
         if (vv) {
             sceGumLoadIdentity();
-            ScePspFVector3 vt = { px, VOID_PLANE_Y, pz };
+
+            float vy = VOID_PLANE_Y;
+            if (vy > py - VOID_MIN_GAP) vy = py - VOID_MIN_GAP;
+            ScePspFVector3 vt = { px, vy, pz };
             sceGumTranslate(&vt);
             sceGuDisable(GU_FOG);
             sceGumDrawArray(GU_TRIANGLES, GU_COLOR_8888 | GU_VERTEX_32BITF | GU_TRANSFORM_3D,
@@ -562,14 +568,16 @@ static float        s_worldFogNear  = 0.0f;
 static float        s_worldFogFar   = WORLD_VIEW_DIST;
 static unsigned int s_worldFogColor = SKY_COLOR;
 
-#define CLOUD_FAST_HEIGHT 128.33f
+#define CLOUD_FAST_HEIGHT activeLevelSource().cloudHeight()
 
 #define CLOUD_HEIGHT      CLOUD_FAST_HEIGHT
 
 #define CLOUD_FAR         320.0f
 
 #define CLOUD_SECTORS 24
-static const float CLOUD_RING_R[] = { 0.0f, 2.0f, 6.0f, 14.0f, 30.0f, 60.0f, 110.0f, 180.0f, 256.0f };
+
+static const float CLOUD_RING_R[] = { 0.0f, 0.1f, 0.25f, 0.5f, 1.0f, 2.0f, 4.0f, 8.0f, 16.0f,
+                                      30.0f, 60.0f, 110.0f, 180.0f, 256.0f };
 #define CLOUD_RINGS      ((int)(sizeof(CLOUD_RING_R) / sizeof(CLOUD_RING_R[0])))
 #define CLOUD_DISC_VERTS (CLOUD_SECTORS * 3 + (CLOUD_RINGS - 2) * CLOUD_SECTORS * 6)
 
@@ -655,10 +663,26 @@ static float g_lastCloudPx = -999999.0f;
 static float g_lastCloudPz = -999999.0f;
 static float g_lastCloudSnappedOffset = -999999.0f;
 static bool  g_lastWasInClouds = false;
+static float g_lastCloudY = 0.0f;
 static bool  g_lastWasNearLayer = false;
 
 #define CLOUD_TINT_KEY(c) ((c) & 0x00F8F8F8u)
 static unsigned int g_lastCloudColor = 0xFFFFFFFFu;
+
+unsigned int skyIsoCloudColor()    { return g_cloudColorNow; }
+bool skyIsoCloudsOn()              { return g_cloudMode && g_haveClouds && g_clouds.data; }
+bool skyIsoCloudsFancy()           { return g_cloudMode == 2; }
+
+float skyIsoCloudScroll() {
+    return floorf(fmodf((float)g_cloudTicks * 0.0375f, g_clouds.texW * CLOUD_CELL) / CLOUD_CELL) * CLOUD_CELL;
+}
+bool skyIsoCloudAt(float wx, float wz) {
+    const int texW = g_clouds.texW, texH = g_clouds.texH;
+    const float off = skyIsoCloudScroll();
+    int x = (int)floorf((wx + off) / CLOUD_CELL) % texW; if (x < 0) x += texW;
+    int y = (int)floorf(wz / CLOUD_CELL) % texH;         if (y < 0) y += texH;
+    return (((const unsigned short*)g_clouds.data)[y * texW + x] & 0x8000) != 0;
+}
 
 static void renderCloudsFancy(float alpha, float px, float py, float pz) {
     if (!g_haveClouds || !g_clouds.data) return;
@@ -694,11 +718,12 @@ static void renderCloudsFancy(float alpha, float px, float py, float pz) {
 
     if (gridPx != g_lastCloudPx || gridPz != g_lastCloudPz ||
         snappedOffset != g_lastCloudSnappedOffset || inClouds != g_lastWasInClouds ||
-        nearLayer != g_lastWasNearLayer ||
+        nearLayer != g_lastWasNearLayer || CLOUD_HEIGHT != g_lastCloudY ||
         CLOUD_TINT_KEY(g_cloudColorNow) != g_lastCloudColor) {
         g_lastCloudPx = gridPx; g_lastCloudPz = gridPz;
         g_lastCloudSnappedOffset = snappedOffset; g_lastWasInClouds = inClouds;
         g_lastWasNearLayer = nearLayer;
+        g_lastCloudY = CLOUD_HEIGHT;
         g_lastCloudColor = CLOUD_TINT_KEY(g_cloudColorNow);
 
         const unsigned short* px16 = (const unsigned short*)g_clouds.data;
@@ -1183,10 +1208,65 @@ static void renderSelectionOutline(float ex, float ey, float ez) {
     sceGuEnable(GU_TEXTURE_2D);
 }
 
-bool gameProgressScreenUp() { return g_saveRequested || !g_worldBuilt; }
+bool gameProgressScreenUp() { return g_saveRequested || g_isoMapRequested || !g_worldBuilt; }
+
+unsigned int skyIsoBackdropColor() { return g_voidColorNow; }
+
+static MenuState* s_isoMenu = 0;
+static void isoMapProgress(int pct) {
+    if (!guStartFrame(0xFF000000u)) return;
+    drawGeneratingScreen(*s_isoMenu, pct, "Rendering map", "Isometric map");
+    guFinishFrame();
+    guPresent();
+    sceDisplayWaitVblankStart();
+}
 
 void gameRender(MenuState& s) {
 
+    if (g_worldBuilt && g_isoMapRequested && !g_saveRequested && !g_photoPending) {
+        static int isoStage = 0, isoHold = 0;
+        static bool isoOk = false;
+        if (isoStage == 0) {
+            drawGeneratingScreen(s, 0, "Rendering map", "Isometric map");
+            isoStage = 1;
+            return;
+        }
+        if (isoStage == 1) {
+
+            char dir[256], full[320];
+            const char* dev = pathDevice();
+            snprintf(dir, sizeof(dir), "%s/PSP", dev);                 sceIoMkdir(dir, 0777);
+            snprintf(dir, sizeof(dir), "%s/PSP/PHOTO", dev);           sceIoMkdir(dir, 0777);
+            snprintf(dir, sizeof(dir), "%s/PSP/PHOTO/Minecraft", dev); sceIoMkdir(dir, 0777);
+            for (int pass = 0; pass < 2; pass++) {
+                if (pass == 1) {
+                    strncpy(dir, assetPath("screenshots"), sizeof(dir) - 1);
+                    dir[sizeof(dir) - 1] = '\0';
+                    sceIoMkdir(dir, 0777);
+                }
+                for (int i = 0; i < 10000; i++) {
+                    snprintf(full, sizeof(full), "%s/map_%04d.png", dir, i);
+                    FILE* probe = fopen(full, "rb");
+                    if (!probe) break;
+                    fclose(probe);
+                }
+                FILE* probe = fopen(full, "wb");
+                if (probe) { fclose(probe); break; }
+            }
+            extern bool isoMapRender(World*, const Texture*, const char*, void (*)(int));
+            guFinishFrame();
+
+            sceDisplayWaitVblankStart();
+            s_isoMenu = &s;
+            isoOk = isoMapRender(&g_world, g_haveTerrain ? &g_terrain : 0, full, isoMapProgress);
+            if (!isoOk) remove(full);
+            guStartFrame(0xFF000000u);
+            isoStage = 2; isoHold = 0;
+        }
+        drawGeneratingScreen(s, 100, isoOk ? "Map saved to Photo" : "Map render failed", "Isometric map");
+        if (++isoHold >= 90) { g_isoMapRequested = false; isoStage = 0; }
+        return;
+    }
     static bool s_iconShotDone = false;
     if (g_worldBuilt && g_saveRequested && !s_iconShotDone && !g_photoPending) {
         s_iconShotDone = true;

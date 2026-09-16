@@ -89,7 +89,8 @@ static void texFree(bool vram, void* p) {
 }
 
 static bool textureLoadPsm(const char* path, Texture* out, int psm, bool wantVram = false,
-                           bool optional = false, unsigned int offset = 0) {
+                           bool optional = false, unsigned int offset = 0,
+                           const unsigned char* mem = 0, unsigned int memSize = 0) {
 #if TEXTURE_FORCE_8888
     psm = GU_PSM_8888;
 #endif
@@ -98,7 +99,7 @@ static bool textureLoadPsm(const char* path, Texture* out, int psm, bool wantVra
     memset(out, 0, sizeof(*out));
 
     int w = 0, h = 0;
-    PngReader* png = pngOpenAt(path, offset, &w, &h);
+    PngReader* png = mem ? pngOpenMem(mem + offset, memSize, &w, &h) : pngOpenAt(path, offset, &w, &h);
     if (!png) {
 
         markFailed(path, g_pngLastError[0] ? g_pngLastError : "open", optional);
@@ -178,6 +179,11 @@ bool textureLoad16Optional(const char* path, Texture* out, int psm) {
 
 bool textureLoad16At(const char* path, unsigned int offset, Texture* out, int psm) {
     return textureLoadPsm(path, out, psm, false, true, offset);
+}
+
+bool textureLoad16Mem(const char* name, const unsigned char* mem, unsigned int offset, unsigned int size,
+                      Texture* out, int psm) {
+    return textureLoadPsm(name, out, psm, false, true, offset, mem, size);
 }
 
 bool textureLoadVram(const char* path, Texture* out, int psm) {

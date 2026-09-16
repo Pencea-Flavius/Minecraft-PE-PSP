@@ -65,12 +65,15 @@ static const SlotRect kSlot[NSLOT] = {
 #define LOOK_RIGHT_EXTENT    -45.0f
 #define CHANGING_SKIN_FRAMES  15
 
-#define MAX_PACKS 32
+#define MAX_PACKS 64
 
 enum { FOCUS_SKINS, FOCUS_PACKS, FOCUS_BAR };
 
 enum { PACK_DEFAULT = 0, PACK_FAVORITES = 1, PACK_FIRST_FILE = 2 };
-#define MAX_OPEN_PACKS (SKIN_MAX_FAVORITES + 1)
+
+#define MAX_OPEN_PACKS MAX_PACKS
+
+#define KEEP_OPEN_PACKS 3
 
 struct Entry { short pack; short idx; };
 
@@ -93,6 +96,8 @@ static int  s_focus = FOCUS_SKINS;
 static SkinPack s_opened[MAX_OPEN_PACKS];
 static char     s_openedFile[MAX_OPEN_PACKS][64];
 static int      s_openedCount = 0;
+static unsigned int s_openedUse[MAX_OPEN_PACKS];
+static unsigned int s_useClock = 0;
 static Entry s_entries[SKIN_MAX_SKINS];
 static int   s_entryCount = 0;
 static Slot s_store[NSLOT];
@@ -125,15 +130,66 @@ static void freeAll() {
 
 static int openedPack(const char* file) {
     for (int i = 0; i < s_openedCount; i++)
-        if (strcmp(s_openedFile[i], file) == 0) return i;
+        if (strcmp(s_openedFile[i], file) == 0) { s_openedUse[i] = ++s_useClock; return i; }
     if (s_openedCount >= MAX_OPEN_PACKS) return -1;
     char path[160];
     snprintf(path, sizeof(path), "data/skinpacks/%s", file);
     int i = s_openedCount;
     if (!skinPackOpen(path, &s_opened[i])) return -1;
     snprintf(s_openedFile[i], sizeof(s_openedFile[0]), "%s", file);
+    s_openedUse[i] = ++s_useClock;
     s_openedCount++;
     return i;
+}
+
+static void trimOpened() {
+    if (s_openedCount <= KEEP_OPEN_PACKS) return;
+
+    for (int i = 0; i < s_openedCount; i++)
+        if (s_opened[i].file) { fclose(s_opened[i].file); s_opened[i].file = 0; }
+    while (s_openedCount > KEEP_OPEN_PACKS) {
+        int oldest = 0;
+        for (int i = 1; i < s_openedCount; i++) if (s_openedUse[i] < s_openedUse[oldest]) oldest = i;
+        skinPackClose(&s_opened[oldest]);
+        for (int i = oldest; i + 1 < s_openedCount; i++) {
+            s_opened[i] = s_opened[i + 1];
+            memcpy(s_openedFile[i], s_openedFile[i + 1], sizeof(s_openedFile[0]));
+            s_openedUse[i] = s_openedUse[i + 1];
+        }
+        s_openedCount--;
+        memset(&s_opened[s_openedCount], 0, sizeof(SkinPack));
+    }
+}
+
+#define NAMES_CACHE "data/skinpacks/names.txt"
+struct NameLine { char file[64]; unsigned int size; bool ok; char name[48]; };
+static NameLine s_names[MAX_PACKS];
+static int s_nameCount = 0;
+
+static void namesLoad() {
+    s_nameCount = 0;
+    FILE* f = fopen(NAMES_CACHE, "rb");
+    if (!f) return;
+    char line[200];
+    while (s_nameCount < MAX_PACKS && fgets(line, sizeof(line), f)) {
+        char* a = strchr(line, '|'), *b = a ? strchr(a + 1, '|') : 0, *c = b ? strchr(b + 1, '|') : 0;
+        if (!c) continue;
+        *a = *b = *c = 0;
+        char* end = c + 1 + strcspn(c + 1, "\r\n");
+        *end = 0;
+        NameLine& n = s_names[s_nameCount++];
+        snprintf(n.file, sizeof(n.file), "%.63s", line);
+        n.size = (unsigned int)strtoul(a + 1, 0, 10);
+        n.ok = atoi(b + 1) != 0;
+        snprintf(n.name, sizeof(n.name), "%s", c + 1);
+    }
+    fclose(f);
+}
+
+static const NameLine* namesFind(const char* file, unsigned int size) {
+    for (int i = 0; i < s_nameCount; i++)
+        if (s_names[i].size == size && strcmp(s_names[i].file, file) == 0) return &s_names[i];
+    return 0;
 }
 
 static void scanPacks() {
@@ -142,23 +198,40 @@ static void scanPacks() {
     s_packCount = PACK_FIRST_FILE;
     SceUID d = sceIoDopen(assetPath("data/skinpacks"));
     if (d < 0) return;
+    namesLoad();
+    static NameLine seen[MAX_PACKS];
+    int nSeen = 0;
+    bool changed = false;
     SceIoDirent e;
     memset(&e, 0, sizeof(e));
     while (sceIoDread(d, &e) > 0 && s_packCount < MAX_PACKS) {
         size_t n = strlen(e.d_name);
         if (!FIO_S_ISDIR(e.d_stat.st_mode) && n > 4 && n < sizeof(s_packFile[0]) &&
-            strcasecmp(e.d_name + n - 4, ".pck") == 0) {
-            char path[160], name[48];
-            snprintf(path, sizeof(path), "data/skinpacks/%s", e.d_name);
-            SkinPack p;
-            bool ok = skinPackOpen(path, &p);
-            if (ok && p.name[0]) {
-                snprintf(name, sizeof(name), "%s", p.name);
+            strcasecmp(e.d_name + n - 4, ".pck") == 0 && nSeen < MAX_PACKS) {
+            const unsigned int size = (unsigned int)e.d_stat.st_size;
+            char name[48];
+            bool ok;
+            if (const NameLine* c = namesFind(e.d_name, size)) {
+                ok = c->ok;
+                snprintf(name, sizeof(name), "%s", c->name);
             } else {
-                snprintf(name, sizeof(name), "%.*s", (int)n - 4, e.d_name);
-                for (char* c = name; *c; c++) if (*c == '_') *c = ' ';
+                char path[160];
+                snprintf(path, sizeof(path), "data/skinpacks/%s", e.d_name);
+                SkinPack p;
+                ok = skinPackOpen(path, &p);
+                if (ok && p.name[0]) {
+                    snprintf(name, sizeof(name), "%s", p.name);
+                } else {
+                    snprintf(name, sizeof(name), "%.*s", (int)n - 4, e.d_name);
+                    for (char* ch = name; *ch; ch++) if (*ch == '_') *ch = ' ';
+                }
+                skinPackClose(&p);
+                changed = true;
             }
-            skinPackClose(&p);
+            NameLine& sl = seen[nSeen++];
+            snprintf(sl.file, sizeof(sl.file), "%s", e.d_name);
+            sl.size = size; sl.ok = ok;
+            snprintf(sl.name, sizeof(sl.name), "%s", name);
             if (ok) {
                 int i = s_packCount++;
                 while (i > PACK_FIRST_FILE && strcasecmp(s_packName[i - 1], name) > 0) {
@@ -173,6 +246,13 @@ static void scanPacks() {
         memset(&e, 0, sizeof(e));
     }
     sceIoDclose(d);
+    if (changed || nSeen != s_nameCount) {
+        if (FILE* f = fopen(NAMES_CACHE, "wb")) {
+            for (int i = 0; i < nSeen; i++)
+                fprintf(f, "%s|%u|%d|%s\n", seen[i].file, seen[i].size, seen[i].ok ? 1 : 0, seen[i].name);
+            fclose(f);
+        }
+    }
 }
 
 static float restRot(int k) {
@@ -285,7 +365,7 @@ static void buildEntries() {
 
 static void openPack(int pack, int center) {
     for (int i = 0; i < NSLOT; i++) freeSlot(s_store[i]);
-    closeOpened();
+    trimOpened();
     s_pack = pack;
     buildEntries();
     s_center = wrap(center, skinCount());

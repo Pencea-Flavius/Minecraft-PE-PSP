@@ -128,7 +128,11 @@ static bool parseBox(const char* s, SkinBox* b) {
     return false;
 }
 
+static const SkinPack* s_fileOwner = 0;
+
 void skinPackClose(SkinPack* p) {
+    if (p->file) fclose(p->file);
+    if (s_fileOwner == p) s_fileOwner = 0;
     free(p->skins);
     free(p->boxes);
     free(p->capes);
@@ -276,6 +280,19 @@ bool skinPackOpen(const char* path, SkinPack* out) {
     if (!f) return false;
     copyStr(out->path, sizeof(out->path), path);
 
+    unsigned char* blob = 0;
+    long size = (fseek(f, 0, SEEK_END) == 0) ? ftell(f) : -1;
+    if (size > 0 && (blob = (unsigned char*)malloc((size_t)size)) != 0) {
+        fseek(f, 0, SEEK_SET);
+        if (fread(blob, 1, (size_t)size, f) == (size_t)size) {
+            if (FILE* m = fmemopen(blob, (size_t)size, "rb")) { fclose(f); f = m; }
+            else { free(blob); blob = 0; }
+        } else {
+            free(blob); blob = 0;
+        }
+    }
+    fseek(f, 0, SEEK_SET);
+
     unsigned int nested = 0;
     bool ok = skinPackRead(f, 0, out, &nested);
     if (!ok && nested) ok = skinPackRead(f, nested, out, 0);
@@ -285,20 +302,45 @@ bool skinPackOpen(const char* path, SkinPack* out) {
                path, out->skinCount, out->boxCount, out->capeCount);
     }
     fclose(f);
+    if (ok) {
+
+        if (SkinEntry* s = (SkinEntry*)realloc(out->skins, sizeof(SkinEntry) * out->skinCount)) out->skins = s;
+        if (out->capeCount) {
+            if (SkinPack::Cape* c = (SkinPack::Cape*)realloc(out->capes, sizeof(SkinPack::Cape) * out->capeCount)) out->capes = c;
+        }
+    }
+    free(blob);
     if (!ok) skinPackClose(out);
     return ok;
 }
 
+static bool loadPackPng(const SkinPack& p, unsigned int offset, unsigned int size, Texture* out) {
+    if (s_fileOwner != &p) {
+        if (s_fileOwner && s_fileOwner->file) { fclose(s_fileOwner->file); s_fileOwner->file = 0; }
+        s_fileOwner = &p;
+    }
+    if (!p.file) p.file = fopen(p.path, "rb");
+    if (p.file && size > 0 && size < 1024 * 1024) {
+        if (unsigned char* buf = (unsigned char*)malloc(size)) {
+            bool ok = fseek(p.file, (long)offset, SEEK_SET) == 0 && fread(buf, 1, size, p.file) == size &&
+                      textureLoad16Mem(p.path, buf, 0, size, out, GU_PSM_5551);
+            free(buf);
+            return ok;
+        }
+    }
+    return textureLoad16At(p.path, offset, out, GU_PSM_5551);
+}
+
 bool skinPackLoadTexture(const SkinPack& p, int idx, Texture* out) {
     if (idx < 0 || idx >= p.skinCount) return false;
-    return textureLoad16At(p.path, p.skins[idx].offset, out, GU_PSM_5551);
+    return loadPackPng(p, p.skins[idx].offset, p.skins[idx].size, out);
 }
 
 bool skinPackLoadCape(const SkinPack& p, int idx, Texture* out) {
     if (idx < 0 || idx >= p.skinCount || !p.skins[idx].capeFile[0]) return false;
     for (int i = 0; i < p.capeCount; i++)
         if (strcmp(p.capes[i].file, p.skins[idx].capeFile) == 0)
-            return textureLoad16At(p.path, p.capes[i].offset, out, GU_PSM_5551);
+            return loadPackPng(p, p.capes[i].offset, p.capes[i].size, out);
     return false;
 }
 
@@ -412,6 +454,7 @@ static void loadChosen(void) {
             s_haveTex = true;
 
             s_haveCape = skinPackLoadCape(s_pack, idx, &s_capeTex);
+            if (s_pack.file) { fclose(s_pack.file); s_pack.file = 0; }
             return;
         }
         printf("skin %s not usable, falling back to the default skin\n", s_option);

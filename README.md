@@ -93,6 +93,36 @@ next to the EBOOT.
 Keep `EBOOT.PBP` and `data/` together; textures and sounds load from `data/`
 next to the EBOOT.
 
+## World border
+
+Worlds have a fixed size, and past their edge the port draws what Legacy Console
+Edition does: an endless landscape that fades into the fog, instead of an empty
+void. It is **only what you see** — the edge is still a wall you cannot walk
+through, and nothing past it is saved. The isometric photo (**Triangle** in the
+pause menu) draws it too.
+
+Worlds made in the game pick their border from the world type:
+
+| World type | Past the edge |
+|---|---|
+| Old | endless sea: calm water over stone, like LCE |
+| Flat | endless superflat ground |
+| Sky | nothing at all |
+
+**Worlds brought in from real MCPE** (a save folder with no `level.txt`) get a
+`border.txt` next to their files the first time you enter them. Open it, put
+**one** of these words on the first line that does not start with `#`, save, and
+enter the world again:
+
+```
+ocean       endless sea (the default)
+superflat   endless grass on dirt
+void        nothing past the edge
+```
+
+Only what lies past the edge changes; the world's own sky, clouds and fog stay
+as they are.
+
 ## Skins
 
 The port reads **Legacy Console Edition skin packs** — the `.pck` files the 7th-gen

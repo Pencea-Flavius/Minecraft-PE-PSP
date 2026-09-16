@@ -7,6 +7,8 @@ void worldGenerateMCPE(World* w, long seed, int genMask);
 
 void worldGenerateWindow(World* w);
 
+void worldGuaranteeSkyLiquids(World* w, long seed);
+
 void worldGenInit(long seed, int genMask);
 void worldGenFree();
 

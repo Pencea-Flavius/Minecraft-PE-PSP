@@ -4,7 +4,7 @@
 
 struct World;
 
-enum { WORLD_TYPE_OLD = 0, WORLD_TYPE_FLAT = 1, WORLD_TYPE_COUNT = 2 };
+enum { WORLD_TYPE_OLD = 0, WORLD_TYPE_FLAT = 1, WORLD_TYPE_SKY = 2, WORLD_TYPE_COUNT = 3 };
 
 extern bool g_bedrockFog;
 
@@ -27,7 +27,15 @@ public:
 
     virtual float horizonHeight() const { return 63.0f; }
 
+    virtual bool floatingIslands() const { return false; }
+
+    virtual bool genFeatureAllowed(int ) const { return true; }
+
+    virtual float cloudHeight() const { return 128.33f; }
+
     virtual int forcedGameType() const { return -1; }
+
+    virtual void edgeColumn(unsigned char* col, int* skyFromY) const;
 
     virtual const char* label() const = 0;
 };
@@ -35,5 +43,7 @@ public:
 LevelSource& levelSourceFor(int worldType);
 
 LevelSource& activeLevelSource();
+
+void activeBorderColumn(unsigned char* col, int* skyFromY);
 
 #endif

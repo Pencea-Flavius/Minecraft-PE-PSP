@@ -101,6 +101,11 @@ void PauseScreen::handleInput(MenuState& s, unsigned int pressed, unsigned int )
             case 3: g_quitConfirm = true; g_quitConfirmSel = 1; break;
         }
     }
+    if (pressed & PSP_CTRL_TRIANGLE) {
+        soundPlay("random.click", 1.0f, 1.0f);
+        g_isoMapRequested = true;
+        g_paused = false;
+    }
 }
 
 void guiTButton(MenuState& s, float x, float y, float w, float h, bool pressed,
@@ -190,9 +195,10 @@ void PauseScreen::renderContent(MenuState& s) {
     }
 
     {
-        ButtonHint h[2];
+        ButtonHint h[3];
         int n = 0;
         h[n++] = menuFaceHint(true, "Select");
+        if (!g_quitConfirm) h[n++] = (ButtonHint){ BTN_ICON_TRIANGLE, PSP_CTRL_TRIANGLE, "Isometric Photo" };
         h[n++] = menuFaceHint(false, g_quitConfirm ? "Cancel" : "Back to game");
         buttonHintsDraw(s, h, n);
     }

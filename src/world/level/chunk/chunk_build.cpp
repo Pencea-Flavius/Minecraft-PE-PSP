@@ -134,6 +134,18 @@ static void buildLayer(const World* w, int ox, int oz, int y0, int y1, int layer
 }
 
 void chunkBuildSection(ChunkMesh* c, const World* w, int si) {
+
+    struct EdgeScope {
+        const unsigned char* prev;
+        EdgeScope() : prev(g_edgeColumn) { if (!prev) g_edgeColumn = g_seaColumn; }
+        ~EdgeScope() { g_edgeColumn = prev; }
+    } edgeScope;
+    if (g_onEdgeSectionBuilt) {
+        const int cx = c->ox >> 4, cz = c->oz >> 4;
+        if (worldChunkInBounds(cx, cz) &&
+            (cx == 0 || cz == 0 || cx == WORLD_CHUNKS_X - 1 || cz == WORLD_CHUNKS_Z - 1))
+            g_onEdgeSectionBuilt(cx, cz, si);
+    }
     ChunkSection* s = &c->sec[si];
 
     if (!meshHeapReserveOk()) { s->dirty = true; return; }

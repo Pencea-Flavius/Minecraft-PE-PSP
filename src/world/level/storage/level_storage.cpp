@@ -32,6 +32,7 @@
 #endif
 #include <cstdlib>
 #include <cstring>
+#include <strings.h>
 #include <string>
 
 static const int STORAGE_VERSION = 3;
@@ -554,8 +555,54 @@ bool readInfo(const char* absDir, char* nameOut, int nameCap, int* outGameType, 
     return ok;
 }
 
+static int s_activeBorder = WORLD_BORDER_BY_TYPE;
+
+static const char* const kBorderNames[] = { "ocean", "superflat", "void" };
+
+static int borderForWorld(const char* absDir) {
+    if (!absDir || !absDir[0]) return WORLD_BORDER_BY_TYPE;
+    if (fileExists(join(absDir, "level.txt"))) return WORLD_BORDER_BY_TYPE;
+
+    const std::string path = join(absDir, "border.txt");
+    if (FILE* f = fopen(path.c_str(), "rb")) {
+        char line[128];
+        int border = WORLD_BORDER_OCEAN;
+        while (fgets(line, sizeof(line), f)) {
+            char* w = line;
+            while (*w == ' ' || *w == '\t') w++;
+            if (*w == '#' || *w == '\r' || *w == '\n' || *w == '\0') continue;
+            for (int i = 0; i < 3; i++) {
+                const size_t n = strlen(kBorderNames[i]);
+                if (strncasecmp(w, kBorderNames[i], n) == 0) { border = i; break; }
+            }
+            break;
+        }
+        fclose(f);
+        return border;
+    }
+    if (FILE* f = fopen(path.c_str(), "wb")) {
+        fputs("# World border: what you see past the edge of this world.\n"
+              "# Lines starting with # are only notes -- the game skips them and reads\n"
+              "# the first line that is not a note. Put ONE of these words there, save,\n"
+              "# and enter the world again:\n"
+              "#\n"
+              "#   ocean      endless sea: calm water over stone, like Legacy Console Edition\n"
+              "#   superflat  endless superflat ground: grass on dirt\n"
+              "#   void       nothing at all: the edge of the world is open\n"
+              "#\n"
+              "# Only what lies past the edge changes. The sky, the clouds and the fog\n"
+              "# stay this world's own.\n"
+              "ocean\n", f);
+        fclose(f);
+    }
+    return WORLD_BORDER_OCEAN;
+}
+
+int getActiveBorder() { return s_activeBorder; }
+
 void setActiveWorld(const char* absDir, long seed, int gameType, const char* levelName,
                     int worldType, int genMask) {
+    s_activeBorder = borderForWorld(absDir);
     if (absDir) strncpy(s_activeDir, absDir, sizeof(s_activeDir) - 1);
     s_activeDir[sizeof(s_activeDir) - 1] = '\0';
     if (levelName) strncpy(s_activeName, levelName, sizeof(s_activeName) - 1);

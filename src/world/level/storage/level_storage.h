@@ -31,6 +31,9 @@ int getActiveWorldType();
 int getActiveGenMask();
 const char* getActiveName();
 
+enum { WORLD_BORDER_BY_TYPE = -1, WORLD_BORDER_OCEAN = 0, WORLD_BORDER_SUPERFLAT = 1, WORLD_BORDER_VOID = 2 };
+int getActiveBorder();
+
 }
 
 #endif

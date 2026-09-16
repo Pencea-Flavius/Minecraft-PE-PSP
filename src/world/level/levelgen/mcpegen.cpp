@@ -7,6 +7,7 @@
 #include "world/level/world.h"
 
 #include <stdlib.h>
+#include <math.h>
 #include <pspkernel.h>
 #include <pspthreadman.h>
 
@@ -27,6 +28,8 @@ McpeGen::McpeGen(long seed)
     perlinNoise2(&random, 4), perlinNoise3(&random, 4),
     scaleNoise(&random, 10), depthNoise(&random, 16), forestNoise(&random, 8),
     temperatureMap(&rndTemp, 4), downfallMap(&rndDownfall, 4), noiseMap(&rndNoise, 2),
+    rndSky((long)((unsigned int)seed * 7919u)), skyBottom0(&rndSky, 8), skyBottom1(&rndSky, 8),
+    mSky(false),
     buffer(0), pnr(0), ar(0), br(0), sr(0), dr(0),
     rawTemp(0), rawDownfall(0), rawNoise(0), worldSeed(seed)
 {
@@ -125,6 +128,7 @@ void McpeGen::prepareChunk(World* w, int chunkX, int chunkZ) {
     int zSize = xChunks + 1;
 
     getHeights(chunkX * xChunks, 0, chunkZ * xChunks, xSize, ySize, zSize);
+    if (mSky) { prepareSkyChunk(w, chunkX, chunkZ); return; }
 
     for (int xc = 0; xc < xChunks; xc++) {
         for (int zc = 0; zc < xChunks; zc++) {
@@ -180,6 +184,75 @@ void McpeGen::prepareChunk(World* w, int chunkX, int chunkZ) {
     }
 }
 
+static const int kSkySea[2]   = { 96, 48 };
+static const int kSkyShift[2] = { 32, -16 };
+static const float SKY_BOTTOM_DEPTH = 20.0f;
+static const int SKY_ORE_DEPTH = 24;
+
+static inline float skyDensity(const float* buffer, int lx, int yy, int lz) {
+    if (yy < 0) return 1.0f;
+    if (yy >= MCPE_DEPTH) return -1.0f;
+    const int ySize = MCPE_DEPTH / NCELL_H + 1, zSize = 16 / NCELL_W + 1;
+    const int xc = lx / NCELL_W, zc = lz / NCELL_W, yc = yy / NCELL_H;
+    const float fx = (float)(lx % NCELL_W) / NCELL_W;
+    const float fz = (float)(lz % NCELL_W) / NCELL_W;
+    const float fy = (float)(yy % NCELL_H) / NCELL_H;
+    #define SKY_AT(X, Z, Y) buffer[((xc + (X)) * zSize + (zc + (Z))) * ySize + (yc + (Y))]
+    const float c00 = SKY_AT(0, 0, 0) + (SKY_AT(0, 0, 1) - SKY_AT(0, 0, 0)) * fy;
+    const float c01 = SKY_AT(0, 1, 0) + (SKY_AT(0, 1, 1) - SKY_AT(0, 1, 0)) * fy;
+    const float c10 = SKY_AT(1, 0, 0) + (SKY_AT(1, 0, 1) - SKY_AT(1, 0, 0)) * fy;
+    const float c11 = SKY_AT(1, 1, 0) + (SKY_AT(1, 1, 1) - SKY_AT(1, 1, 0)) * fy;
+    #undef SKY_AT
+    const float c0 = c00 + (c10 - c00) * fx;
+    const float c1 = c01 + (c11 - c01) * fx;
+    return c0 + (c1 - c0) * fz;
+}
+
+void McpeGen::prepareSkyChunk(World* w, int chunkX, int chunkZ) {
+    PerlinNoise* bottomNoise[2] = { &skyBottom0, &skyBottom1 };
+    for (int lx = 0; lx < 16; lx++)
+    for (int lz = 0; lz < 16; lz++) {
+        const int gx = chunkX * 16 + lx, gz = chunkZ * 16 + lz;
+        unsigned char col[WORLD_H];
+        for (int y = 0; y < WORLD_H; y++) col[y] = BLOCK_AIR;
+
+        float ex = fabsf((float)gx / (float)(WORLD_W - 1) - 0.5f) * 2.0f;
+        float ez = fabsf((float)gz / (float)(WORLD_D - 1) - 0.5f) * 2.0f;
+        float edge = ex > ez ? ex : ez;
+        if (edge > 1.0f) edge = 1.0f;
+        edge = edge * edge * edge;
+
+        for (int L = 0; L < 2; L++) {
+
+            const float n = bottomNoise[L]->getValue(gx * 2.3f, gz * 2.3f) / 24.0f;
+            float bottom = sqrtf(fabsf(n)) * (n < 0 ? -1.0f : 1.0f) * SKY_BOTTOM_DEPTH + kSkySea[L];
+            bottom = bottom * (1.0f - edge) + edge * WORLD_H;
+            if (bottom > kSkySea[L]) continue;
+            int y0 = (int)bottom;
+            if (y0 < 0) y0 = 0;
+            for (int y = y0; y < WORLD_H; y++) {
+                if (col[y] != BLOCK_AIR) continue;
+                if (skyDensity(buffer, lx, y - kSkyShift[L], lz) > 0.0f) col[y] = BLOCK_STONE;
+            }
+        }
+        blockColumnPut(w, gx, gz, col);
+    }
+}
+
+static const int SKY_LAVA_ODDS = 12;
+static int g_skyLavaLakes = 0;
+static int g_skyWaterLakes = 0;
+
+static bool skyLiquidIn(World* w, int x, int z, bool lava) {
+    for (int xx = x - 8; xx < x + 8; xx++)
+    for (int zz = z - 8; zz < z + 8; zz++)
+    for (int y = 0; y < WORLD_H; y++) {
+        const unsigned char b = worldBlock(w, xx, y, zz);
+        if (lava ? isLavaId(b) : isWaterId(b)) return true;
+    }
+    return false;
+}
+
 void McpeGen::buildSurfacesChunk(World* w, int chunkX, int chunkZ) {
     const int waterHeight = 64;
     int xOffs = chunkX, zOffs = chunkZ;
@@ -212,7 +285,7 @@ void McpeGen::buildSurfacesChunk(World* w, int chunkX, int chunkZ) {
             for (int y = 127; y >= 0; y--) {
                 unsigned char* cell = &col[y];
 
-                if (y <= random.nextInt(5)) {
+                if (y <= random.nextInt(5) && !mSky) {
                     *cell = BLOCK_BEDROCK;
                 } else {
                     unsigned char old = *cell;
@@ -223,16 +296,19 @@ void McpeGen::buildSurfacesChunk(World* w, int chunkX, int chunkZ) {
                             if (runDepth <= 0) {
                                 top = BLOCK_AIR;
                                 material = BLOCK_STONE;
+                            } else if (mSky) {
+
+                                top = bTop; material = bMat;
                             } else if (y >= waterHeight - 4 && y <= waterHeight + 1) {
                                 top = bTop; material = bMat;
                                 if (gravel) { top = BLOCK_AIR;  material = BLOCK_GRAVEL; }
                                 if (sand)   { top = BLOCK_SAND; material = BLOCK_SAND; }
                             }
-                            if (y < waterHeight && top == BLOCK_AIR) {
+                            if (y < waterHeight && top == BLOCK_AIR && !mSky) {
                                 top = (temp < 0.15f) ? BLOCK_ICE : BLOCK_CALM_WATER;
                             }
                             run = runDepth;
-                            *cell = (y >= waterHeight - 1) ? top : material;
+                            *cell = (y >= waterHeight - 1 || mSky) ? top : material;
                         } else if (run > 0) {
                             run--;
                             *cell = material;
@@ -264,6 +340,18 @@ bool McpeGen::postProcessPhase(World* w, int chunkX, int chunkZ, int phase) {
     unsigned int h = (unsigned int)chunkX * (unsigned int)xScale + (unsigned int)chunkZ * (unsigned int)zScale;
     random.setSeed((long)(int)(h ^ (unsigned int)worldSeed));
 
+    if (mSky && random.nextInt(4) == 0) {
+        int x = xo+random.nextInt(16)+8, y = random.nextInt(128), z = zo+random.nextInt(16)+8;
+        lakeFeature(w, random, x, y, z, BLOCK_CALM_WATER);
+        if (skyLiquidIn(w, x, z, false)) g_skyWaterLakes++;
+    }
+
+    if (mSky && random.nextInt(SKY_LAVA_ODDS) == 0) {
+        int x = xo+random.nextInt(16)+8, y = random.nextInt(128), z = zo+random.nextInt(16)+8;
+        lakeFeature(w, random, x, y, z, BLOCK_CALM_LAVA);
+        if (skyLiquidIn(w, x, z, true)) g_skyLavaLakes++;
+    }
+
     for (int i = 0; i < 10; i++) {
         int x = xo + random.nextInt(16), y = random.nextInt(128), z = zo + random.nextInt(16);
         clayFeature(w, random, x, y, z);
@@ -272,14 +360,19 @@ bool McpeGen::postProcessPhase(World* w, int chunkX, int chunkZ, int phase) {
 
     case 1: {
 
-    for (int i = 0; i < 20; i++) { int x = xo + random.nextInt(16), y = random.nextInt(128), z = zo + random.nextInt(16); oreFeature(w, random, x, y, z, BLOCK_DIRT, 32); }
-    for (int i = 0; i < 10; i++) { int x = xo + random.nextInt(16), y = random.nextInt(128), z = zo + random.nextInt(16); oreFeature(w, random, x, y, z, BLOCK_GRAVEL, 32); }
-    for (int i = 0; i < 20; i++) { int x = xo + random.nextInt(16), y = random.nextInt(128), z = zo + random.nextInt(16); oreFeature(w, random, x, y, z, BLOCK_ORE_COAL, 16); }
-    for (int i = 0; i < 20; i++) { int x = xo + random.nextInt(16), y = random.nextInt(64), z = zo + random.nextInt(16); oreFeature(w, random, x, y, z, BLOCK_ORE_IRON, 8); }
-    for (int i = 0; i < 2; i++) { int x = xo + random.nextInt(16), y = random.nextInt(32), z = zo + random.nextInt(16); oreFeature(w, random, x, y, z, BLOCK_ORE_GOLD, 8); }
-    for (int i = 0; i < 8; i++) { int x = xo + random.nextInt(16), y = random.nextInt(16), z = zo + random.nextInt(16); oreFeature(w, random, x, y, z, BLOCK_ORE_REDSTONE, 7); }
-    for (int i = 0; i < 1; i++) { int x = xo + random.nextInt(16), y = random.nextInt(16), z = zo + random.nextInt(16); oreFeature(w, random, x, y, z, BLOCK_ORE_DIAMOND, 7); }
-    for (int i = 0; i < 1; i++) { int x = xo + random.nextInt(16), y = random.nextInt(16) + random.nextInt(16), z = zo + random.nextInt(16); oreFeature(w, random, x, y, z, BLOCK_ORE_LAPIS, 6); }
+    auto oreY = [&](int y) -> int {
+        if (!mSky) return y;
+        const int layer = random.nextInt(2);
+        return kSkySea[layer] - SKY_ORE_DEPTH + y * SKY_ORE_DEPTH / 64;
+    };
+    for (int i = 0; i < 20; i++) { int x = xo + random.nextInt(16), y = oreY(random.nextInt(128)), z = zo + random.nextInt(16); oreFeature(w, random, x, y, z, BLOCK_DIRT, 32); }
+    for (int i = 0; i < 10; i++) { int x = xo + random.nextInt(16), y = oreY(random.nextInt(128)), z = zo + random.nextInt(16); oreFeature(w, random, x, y, z, BLOCK_GRAVEL, 32); }
+    for (int i = 0; i < 20; i++) { int x = xo + random.nextInt(16), y = oreY(random.nextInt(128)), z = zo + random.nextInt(16); oreFeature(w, random, x, y, z, BLOCK_ORE_COAL, 16); }
+    for (int i = 0; i < 20; i++) { int x = xo + random.nextInt(16), y = oreY(random.nextInt(64)), z = zo + random.nextInt(16); oreFeature(w, random, x, y, z, BLOCK_ORE_IRON, 8); }
+    for (int i = 0; i < 2; i++) { int x = xo + random.nextInt(16), y = oreY(random.nextInt(32)), z = zo + random.nextInt(16); oreFeature(w, random, x, y, z, BLOCK_ORE_GOLD, 8); }
+    for (int i = 0; i < 8; i++) { int x = xo + random.nextInt(16), y = oreY(random.nextInt(16)), z = zo + random.nextInt(16); oreFeature(w, random, x, y, z, BLOCK_ORE_REDSTONE, 7); }
+    for (int i = 0; i < 1; i++) { int x = xo + random.nextInt(16), y = oreY(random.nextInt(16)), z = zo + random.nextInt(16); oreFeature(w, random, x, y, z, BLOCK_ORE_DIAMOND, 7); }
+    for (int i = 0; i < 1; i++) { int x = xo + random.nextInt(16), y = oreY(random.nextInt(16) + random.nextInt(16)), z = zo + random.nextInt(16); oreFeature(w, random, x, y, z, BLOCK_ORE_LAPIS, 6); }
 
     return false; }
 
@@ -346,6 +439,8 @@ bool McpeGen::postProcessPhase(World* w, int chunkX, int chunkZ, int phase) {
 
     case 4: {
 
+    if (mSky) return false;
+
     #define SPRING_WATER_TRIES 50
     #define SPRING_LAVA_TRIES  20
     for (int i = 0; i < SPRING_WATER_TRIES; i++) {
@@ -369,7 +464,29 @@ bool McpeGen::postProcessPhase(World* w, int chunkX, int chunkZ, int phase) {
 static McpeGen* g_gen = 0;
 static long     g_genSeed = 0;
 
+static void skyGuaranteeLake(World* w, Random& rnd, bool lava) {
+    for (int attempt = 0; attempt < 256; attempt++) {
+        const int r = 8 + attempt;
+        const int x = WORLD_W / 2 + rnd.nextInt(2 * r + 1) - r;
+        const int z = WORLD_D / 2 + rnd.nextInt(2 * r + 1) - r;
+        if (x < 8 || z < 8 || x >= WORLD_W - 8 || z >= WORLD_D - 8) continue;
+        int top = WORLD_H - 1;
+        while (top > 0 && worldBlock(w, x, top, z) == BLOCK_AIR) top--;
+        if (top <= 4 || !isSolidGen(worldBlock(w, x, top, z))) continue;
+        lakeFeature(w, rnd, x, top + 1, z, lava ? BLOCK_CALM_LAVA : BLOCK_CALM_WATER);
+        if (skyLiquidIn(w, x, z, lava)) return;
+    }
+}
+
+void worldGuaranteeSkyLiquids(World* w, long seed) {
+    Random rnd((long)((unsigned int)seed * 31337u));
+    if (g_skyWaterLakes == 0) skyGuaranteeLake(w, rnd, false);
+    if (g_skyLavaLakes == 0)  skyGuaranteeLake(w, rnd, true);
+}
+
 void worldGenInit(long seed, int genMask) {
+    g_skyLavaLakes = 0;
+    g_skyWaterLakes = 0;
     if (g_gen && g_genSeed == seed) { g_genMask = genMask; return; }
     worldGenFree();
     g_gen = new (std::nothrow) McpeGen(seed);
@@ -385,15 +502,18 @@ void chunkGenerateTerrain(World* w, int cx, int cz) {
     if (!g_gen) return;
 
     g_gen->random.setSeed((long)(int)((unsigned int)cx * 341872712u + (unsigned int)cz * 132899541u));
+    g_gen->mSky = activeLevelSource().floatingIslands();
     g_gen->computeBiome(cx, cz);
     g_gen->prepareChunk(w, cx, cz);
     g_gen->buildSurfacesChunk(w, cx, cz);
 
-    if (genFeatureEnabled(g_genMask, GEN_FEATURE_CAVES)) caveFeature(w, g_genSeed, cx, cz);
+    if (genFeatureEnabled(g_genMask, GEN_FEATURE_CAVES) &&
+        activeLevelSource().genFeatureAllowed(GEN_FEATURE_CAVES)) caveFeature(w, g_genSeed, cx, cz);
 }
 
 bool chunkPostProcessPhase(World* w, int cx, int cz, int phase) {
     if (!g_gen) return true;
+    g_gen->mSky = activeLevelSource().floatingIslands();
     return g_gen->postProcessPhase(w, cx, cz, phase);
 }
 

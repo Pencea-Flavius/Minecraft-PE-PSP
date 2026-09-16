@@ -19,6 +19,10 @@ struct McpeGen {
                 scaleNoise, depthNoise, forestNoise;
     PerlinNoise temperatureMap, downfallMap, noiseMap;
 
+    Random rndSky;
+    PerlinNoise skyBottom0, skyBottom1;
+    bool mSky;
+
     float* buffer;
     float *pnr, *ar, *br, *sr, *dr;
     float *rawTemp, *rawDownfall, *rawNoise;
@@ -32,6 +36,7 @@ struct McpeGen {
     void computeBiome(int chunkX, int chunkZ);
     float* getHeights(int x, int y, int z, int xSize, int ySize, int zSize);
     void prepareChunk(World* w, int chunkX, int chunkZ);
+    void prepareSkyChunk(World* w, int chunkX, int chunkZ);
     void buildSurfacesChunk(World* w, int chunkX, int chunkZ);
 
     bool postProcessPhase(World* w, int chunkX, int chunkZ, int phase);

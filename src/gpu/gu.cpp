@@ -227,6 +227,7 @@ static inline void* guFbAddr(int idx) {
 unsigned int g_vcSameRefresh = 0;
 unsigned int g_vcDrops       = 0;
 int g_vcLast = 0, g_vcMin = 9999, g_vcMax = 0;
+unsigned int g_postLate = 0;
 static int s_vcPrev = -1;
 unsigned int g_drawLiveHits = 0;
 unsigned int g_drawLiveOurs = 0;
@@ -420,6 +421,17 @@ static void guCheckLiveBuffer(void) {
     }
 }
 
+void guWaitDrawBufferHidden(void) {
+    for (int i = 0; i < 4; i++) {
+        void* shown = 0; int bw = 0, pf = 0;
+        if (sceDisplayGetFrameBuf(&shown, &bw, &pf, 0) < 0 || !shown) return;
+        const unsigned int live = (unsigned int)shown & 0x0fffffffu;
+        const unsigned int mine = (g_edramBase + (unsigned int)g_fb[g_drawIdx]) & 0x0fffffffu;
+        if (live != mine) return;
+        sceDisplayWaitVblankStart();
+    }
+}
+
 static void guSelectDrawBuffer(void) {
 }
 
@@ -487,10 +499,15 @@ void guPresent(void) {
         while ((int)sceDisplayGetVcount() - s_vcPrev < 1) sceDisplayWaitVblankStart();
     }
 
+    const int prio = sceKernelGetThreadCurrentPriority();
+    sceKernelChangeThreadPriority(0, 0x10);
     profBegin(PROF_VBLANK);
     sceDisplayWaitVblankStart();
     profEnd(PROF_VBLANK);
     void* drawn = sceGuSwapBuffers();
+    const bool late = !sceDisplayIsVblank();
+    sceKernelChangeThreadPriority(0, prio);
+    if (late) g_postLate++;
     g_drawIdx = (drawn == g_fb[1]) ? 1 : 0;
 
     {
@@ -617,6 +634,11 @@ void guEndFrame(void) {
 #include <stdio.h>
 #include <stdlib.h>
 #include <malloc.h>
+
+void* guDrawBufferVram(void) {
+    return (void*)((unsigned int)sceGeEdramGetAddr() + (unsigned int)g_fb[g_drawIdx]);
+}
+
 bool guSavePhotoPng(const char* path, int shrink) {
     if (shrink < 1) shrink = 1;
     const int outW = GU_SCR_WIDTH / shrink, outH = GU_SCR_HEIGHT / shrink;

@@ -313,6 +313,8 @@ static inline bool isNoMipLayerId(unsigned char id) {
 }
 
 bool sectionCannotEmit(const World* w, int ox, int oz, int si) {
+
+    if (!worldReady(w, ox, oz)) return false;
     unsigned char id = 0;
     return blockSectionUniform(w, ox, si * SECTION_SY, oz, &id) && id == BLOCK_AIR;
 }

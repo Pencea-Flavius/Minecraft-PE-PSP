@@ -66,6 +66,7 @@ float g_timerAlpha  = 0.0f;
 static const float DEG2RAD = 3.14159265f / 180.0f;
 
 bool g_saveRequested = false;
+bool g_isoMapRequested = false;
 
 bool g_quitAfterSave = false;
 
@@ -102,6 +103,7 @@ void releaseWorldAndPlayer() {
 
 void quitToMenuNoSave(MenuState& s) {
     g_saveRequested = false;
+    g_isoMapRequested = false;
     g_quitAfterSave = false;
     g_invOpen = false;
     g_craftOpen = false;

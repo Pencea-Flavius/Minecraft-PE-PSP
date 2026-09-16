@@ -12,6 +12,9 @@ class ChestTileEntity;
 
 void renderChestTile(ChestTileEntity* chest, float a);
 
+class TileEntity;
+void renderTileEntityOne(TileEntity* te, float a);
+
 const struct Texture* chestModelTexture();
 
 struct ChunkVertex;

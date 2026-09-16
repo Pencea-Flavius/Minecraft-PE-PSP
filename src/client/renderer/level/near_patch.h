@@ -16,7 +16,8 @@ bool nearPatchHas(int range);
 void nearPatchDraw(int range);
 
 struct ChunkSection;
-bool nearPatchOwnsWater(const ChunkSection* s);
+
+bool nearPatchOwnsWater(const ChunkSection* s, int ox, int oz);
 
 void nearPatchSplitParams(float* minEdge, float* safePerEdge);
 

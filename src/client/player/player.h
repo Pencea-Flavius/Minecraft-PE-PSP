@@ -32,6 +32,7 @@ extern bool g_quitConfirm;
 extern int  g_quitConfirmSel;
 
 extern bool g_saveRequested;
+extern bool g_isoMapRequested;
 
 extern bool g_quitAfterSave;
 

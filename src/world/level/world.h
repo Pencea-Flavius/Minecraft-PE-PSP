@@ -221,10 +221,33 @@ static inline ChunkMesh* worldMesh(World* w, int cx, int cz) {
 static inline const ChunkMesh* worldMesh(const World* w, int cx, int cz) {
     return &w->chunks[worldSlotIndex(w, cx, cz)];
 }
+
+extern const unsigned char* g_edgeColumn;
+extern int g_edgeSkyFromY;
+
+extern const unsigned char* g_seaColumn;
+
+extern void (*g_onEdgeSectionBuilt)(int cx, int cz, int si);
+
+static inline bool edgeColumnTopRotates(const unsigned char* col) {
+    for (int y = WORLD_H - 1; y >= 0; y--)
+        if (col[y] != BLOCK_AIR) return (rotFaceMask(col[y]) >> 1) & 1;
+    return false;
+}
+
+static inline bool edgeSectionVisible(const unsigned char* col, int si) {
+    for (int y = si * SECTION_SY; y < (si + 1) * SECTION_SY; y++) {
+        if (col[y] == BLOCK_AIR) continue;
+        const unsigned char up = (y + 1 < WORLD_H) ? col[y + 1] : (unsigned char)BLOCK_AIR;
+        if (up == BLOCK_AIR || isWaterId(up)) return true;
+    }
+    return false;
+}
+
 static inline unsigned char worldBlock(const World* w, int x, int y, int z) {
     if (y < 0 || y >= WORLD_H) return BLOCK_AIR;
     if (!worldReady(w, x, z))
-        return BLOCK_INVISIBLE_BEDROCK;
+        return g_edgeColumn ? g_edgeColumn[y] : BLOCK_INVISIBLE_BEDROCK;
     const BlockSection* s = &w->bsec[bsSection(w, x, y, z)];
     if (!s->page) return s->uniform;
     int off = bsOffset(x, y, z);
@@ -374,7 +397,8 @@ static inline bool lightPlaneAllDark(const World* w, int layer, int x, int y, in
 
 static inline int lightSkyGet(const World* w, int x, int y, int z) {
     if (y >= WORLD_H) return 15;
-    if (y < 0 || !worldReady(w, x, z)) return 0;
+    if (y < 0) return 0;
+    if (!worldReady(w, x, z)) return g_edgeColumn ? (y >= g_edgeSkyFromY ? 15 : 2) : 0;
     return lightLayerGet(w, 0, x, y, z);
 }
 static inline int lightBlockGet(const World* w, int x, int y, int z) {
@@ -411,7 +435,12 @@ static inline int lightRawAtNoProp(const World* w, int x, int y, int z) {
     if (y >= WORLD_H + 8) return 15;
 
     if (y >= WORLD_H) { int s = 15 - g_skyDarken; return s < 0 ? 0 : s; }
-    if (y < 0 || !worldReady(w, x, z)) return 0;
+    if (y < 0) return 0;
+    if (!worldReady(w, x, z)) {
+        if (!g_edgeColumn) return 0;
+        int s = (y >= g_edgeSkyFromY ? 15 : 2) - g_skyDarken;
+        return s < 0 ? 0 : s;
+    }
 
     int s = lightLayerGet(w, 0, x, y, z) - g_skyDarken, b = lightLayerGet(w, 1, x, y, z);
     if (s < 0) s = 0;

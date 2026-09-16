@@ -53,6 +53,7 @@ DrawVertex* chunkPack(const ChunkVertex* s, int n, int ox, int oy, int oz,
 }
 
 float g_relBaseX = 0.0f, g_relBaseY = 0.0f, g_relBaseZ = 0.0f;
+int   g_chunkDrawQuarter = 0;
 
 static inline void chunkSetModelAt(int ox, int oy, int oz, float scaleMul) {
     const float sm = POS_MODEL_SCALE * scaleMul;
@@ -64,6 +65,15 @@ static inline void chunkSetModelAt(int ox, int oy, int oz, float scaleMul) {
     m.w.y = (float)oy - g_relBaseY;
     m.w.z = (float)oz - g_relBaseZ;
     m.w.w = 1.0f;
+
+    if (g_chunkDrawQuarter) {
+        const float W = (float)CHUNK_SX;
+        switch (g_chunkDrawQuarter & 3) {
+            case 1: m.x.x = 0.0f; m.x.z = -sm; m.z.x = sm;  m.z.z = 0.0f; m.w.z += W; break;
+            case 2: m.x.x = -sm;  m.z.z = -sm; m.w.x += W;  m.w.z += W; break;
+            case 3: m.x.x = 0.0f; m.x.z = sm;  m.z.x = -sm; m.z.z = 0.0f; m.w.x += W; break;
+        }
+    }
     sceGumMatrixMode(GU_MODEL);
     sceGumLoadMatrix(&m);
 }

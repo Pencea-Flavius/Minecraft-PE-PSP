@@ -209,6 +209,12 @@ static void renderSign(SignTileEntity* sign, float a) {
     sceGumPopMatrix();
 }
 
+void renderTileEntityOne(TileEntity* te, float a) {
+    if (!te || te->removed) return;
+    if (te->rendererId == TR_SIGN_RENDERER)       renderSign((SignTileEntity*)te, a);
+    else if (te->rendererId == TR_CHEST_RENDERER) renderChestTile((ChestTileEntity*)te, a);
+}
+
 void renderAllTileEntities(Level* level, float a) {
     if (!level) return;
 

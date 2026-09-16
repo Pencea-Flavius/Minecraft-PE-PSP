@@ -81,6 +81,9 @@ void guDialogPresent(void);
 void guWaitGeIdle(void);
 
 bool guSavePhotoPng(const char* path, int shrink);
+void* guDrawBufferVram(void);
+
+void guWaitDrawBufferHidden(void);
 
 void guPerspective(float fovDeg, float nearZ, float farZ);
 

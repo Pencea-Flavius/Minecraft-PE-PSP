@@ -2,6 +2,7 @@
 #pragma once
 
 #include "gpu/texture.h"
+#include <cstdio>
 
 enum SkinAnimBit {
     SKIN_ANIM_ARMS_DOWN = 0,
@@ -53,6 +54,8 @@ struct SkinPack {
 
     int capeCount;
     struct Cape { char file[32]; unsigned int offset, size; }* capes;
+
+    mutable FILE* file;
 };
 
 bool skinPackOpen(const char* path, SkinPack* out);

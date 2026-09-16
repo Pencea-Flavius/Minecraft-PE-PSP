@@ -153,14 +153,14 @@ void PaintingRenderer::render(Entity* entity, float x, float y, float z, float r
     static const float FRONT[3] = { 0.0f, 0.0f, -1.0f };
     col = mobDirLitColor((const float*)&lm, FRONT, col);
 
-    sceGuDisable(GU_CULL_FACE);
+    sceGuEnable(GU_CULL_FACE);
+    sceGuFrontFace(GU_CCW);
     textureBind(&s_art);
     sceGuColor(col);
     sceGumDrawArray(GU_TRIANGLES,
                     GU_TEXTURE_32BITF | GU_VERTEX_32BITF | GU_TRANSFORM_3D,
                     n, 0, mesh);
     sceGuColor(0xFFFFFFFFu);
-    sceGuEnable(GU_CULL_FACE);
 
     sceGumPopMatrix();
 }

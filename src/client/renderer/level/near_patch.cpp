@@ -6,6 +6,8 @@
 #include "world/level/chunk/chunk.h"
 #include "platform/dcache.h"
 #include "gpu/gu.h"
+
+const ChunkSection* seaSectionAt(int cx, int cz, int si, int* quarter);
 #include <pspgu.h>
 #include <pspgum.h>
 #include <pspkernel.h>
@@ -69,12 +71,23 @@ static void freePieces(Pieces& p) {
     p.valid = false;
 }
 
-struct SecKey { const ChunkSection* s; unsigned short gen; };
+struct SecKey { const ChunkSection* s; unsigned short gen; int o[3]; unsigned char quarter; };
+
+static inline void turnXZ(float& x, float& z, const int o[3], int q) {
+    if (!q) return;
+    const float lx = x - (float)o[0], lz = z - (float)o[2], W = (float)CHUNK_SX;
+    switch (q & 3) {
+        case 1: x = o[0] + lz;     z = o[2] + W - lx; break;
+        case 2: x = o[0] + W - lx; z = o[2] + W - lz; break;
+        case 3: x = o[0] + W - lz; z = o[2] + lx;     break;
+    }
+}
 
 struct PickSet {
     SecKey keys[MAX_KEYS];
     int    nKeys;
     int    origin[MAX_KEYS][3];
+    unsigned char quarter[MAX_KEYS];
     bool   ownWater[MAX_KEYS];
 
     int    pBeg[NEAR_PATCH_RANGES * MAX_KEYS], pEnd[NEAR_PATCH_RANGES * MAX_KEYS];
@@ -104,6 +117,7 @@ static int  s_frontAtFrame = 0;
 static bool s_swappedThisFrame  = false;
 
 static const ChunkSection* s_ownWater[MAX_KEYS];
+static int s_ownWaterO[MAX_KEYS][2];
 static int s_nOwnWater = 0;
 
 static bool s_drawSlot[NEAR_PATCH_RANGES * MAX_KEYS];
@@ -177,18 +191,20 @@ static void forTriangles(const PickSet& ps, int k, int range, bool all, Fn fn) {
     const float reach = reachNow();
     const float eye[3] = { ps.ex, ps.ey, ps.ez };
 
+    const int* o = ps.origin[k];
+    const int q = ps.quarter[k];
     if (!all) {
-        const float ox = (float)s->ox, oz = (float)s->oz, slack = 0.5f;
+        const float ox = (float)o[0], oz = (float)o[2], slack = 0.5f;
         if (eye[0] + reach < ox - slack || eye[0] - reach > ox + CHUNK_SZ + slack ||
             eye[2] + reach < oz - slack || eye[2] - reach > oz + CHUNK_SZ + slack ||
             eye[1] + reach < s->by0 - slack || eye[1] - reach > s->by1 + slack) return;
     }
     const float os = overscaleFor(range), inv = (float)POS_ENC / os;
-    const int* o = ps.origin[k];
 
-    const int lx0 = (int)((eye[0] - reach - o[0]) * inv) - 1, lx1 = (int)((eye[0] + reach - o[0]) * inv) + 1;
+    int lx0 = (int)((eye[0] - reach - o[0]) * inv) - 1, lx1 = (int)((eye[0] + reach - o[0]) * inv) + 1;
     const int ly0 = (int)((eye[1] - reach - o[1]) * inv) - 1, ly1 = (int)((eye[1] + reach - o[1]) * inv) + 1;
-    const int lz0 = (int)((eye[2] - reach - o[2]) * inv) - 1, lz1 = (int)((eye[2] + reach - o[2]) * inv) + 1;
+    int lz0 = (int)((eye[2] - reach - o[2]) * inv) - 1, lz1 = (int)((eye[2] + reach - o[2]) * inv) + 1;
+    if (q) { lx0 = lz0 = -100000; lx1 = lz1 = 100000; }
 
     const int pad = (int)(SOURCE_EDGE * inv) + 1;
     const int n = end - (end - first) % 3;
@@ -205,12 +221,14 @@ static void forTriangles(const PickSet& ps, int k, int range, bool all, Fn fn) {
         PV a, b, c;
         if (all) {
             decode(A, o, os, a); decode(B, o, os, b); decode(C, o, os, c);
+            turnXZ(a.x, a.z, o, q); turnXZ(b.x, b.z, o, q); turnXZ(c.x, c.z, o, q);
         } else {
 
             const float kk = os / (float)POS_ENC;
             a.x = A.x * kk + o[0]; a.y = A.y * kk + o[1]; a.z = A.z * kk + o[2];
             b.x = B.x * kk + o[0]; b.y = B.y * kk + o[1]; b.z = B.z * kk + o[2];
             c.x = C.x * kk + o[0]; c.y = C.y * kk + o[1]; c.z = C.z * kk + o[2];
+            turnXZ(a.x, a.z, o, q); turnXZ(b.x, b.z, o, q); turnXZ(c.x, c.z, o, q);
         }
         if (!fn(i, a, b, c, inReach ? splitDepth(eye, a, b, c) : 0)) return;
     }
@@ -226,11 +244,24 @@ static int collectKeys(const World* w, float ex, float ey, float ez, float reach
     for (int cx = cx0; cx <= cx1; cx++)
         for (int cz = cz0; cz <= cz1; cz++)
             for (int si = sy0; si <= sy1 && n < MAX_KEYS; si++) {
+                SecKey& key = keys[n++];
+                key.s = 0; key.gen = 0; key.quarter = 0;
+                key.o[0] = cx * CHUNK_SX; key.o[1] = si * SECTION_SY; key.o[2] = cz * CHUNK_SZ;
+                if (!worldChunkInBounds(cx, cz)) {
+
+                    int q = 0;
+                    if (const ChunkSection* s = seaSectionAt(cx, cz, si, &q)) {
+                        key.s = s; key.gen = s->gen; key.quarter = (unsigned char)q;
+                    } else {
+                        key.gen = 0xFFFF;
+                    }
+                    continue;
+                }
                 const LevelChunk* slot = worldSlot(w, cx, cz);
 
-                if (!slot->isAt(cx, cz) || worldSlotBusy(slot)) { keys[n].s = 0; keys[n].gen = 0; n++; continue; }
+                if (!slot->isAt(cx, cz) || worldSlotBusy(slot)) continue;
                 const ChunkSection* s = &worldMesh(w, cx, cz)->sec[si];
-                keys[n].s = s; keys[n].gen = s->gen; n++;
+                key.s = s; key.gen = s->gen;
             }
     return n;
 }
@@ -255,9 +286,10 @@ static bool allocAll(void) {
     return true;
 }
 
-static float secDist2(const ChunkSection* s, float ex, float ey, float ez) {
-    const float lo[3] = { (float)s->ox, s->by0, (float)s->oz };
-    const float hi[3] = { (float)(s->ox + CHUNK_SZ), s->by1, (float)(s->oz + CHUNK_SZ) };
+static float secDist2(const SecKey& key, float ex, float ey, float ez) {
+    const ChunkSection* s = key.s;
+    const float lo[3] = { (float)key.o[0], s->by0, (float)key.o[2] };
+    const float hi[3] = { (float)(key.o[0] + CHUNK_SZ), s->by1, (float)(key.o[2] + CHUNK_SZ) };
     const float e[3] = { ex, ey, ez };
     float d2 = 0.0f;
     for (int i = 0; i < 3; i++) {
@@ -279,10 +311,10 @@ static void stageStart(const World* w, float ex, float ey, float ez) {
 
     for (int i = 1; i < ps.nKeys; i++) {
         const SecKey kv = ps.keys[i];
-        const float di = kv.s ? secDist2(kv.s, ex, ey, ez) : 1e30f;
+        const float di = kv.s ? secDist2(kv, ex, ey, ez) : 1e30f;
         int j = i - 1;
         for (; j >= 0; j--) {
-            const float dj = ps.keys[j].s ? secDist2(ps.keys[j].s, ex, ey, ez) : 1e30f;
+            const float dj = ps.keys[j].s ? secDist2(ps.keys[j], ex, ey, ez) : 1e30f;
             if (dj <= di) break;
             ps.keys[j + 1] = ps.keys[j];
         }
@@ -290,11 +322,8 @@ static void stageStart(const World* w, float ex, float ey, float ez) {
     }
     for (int k = 0; k < ps.nKeys; k++) {
         ps.ownWater[k] = false;
-        if (ps.keys[k].s) {
-            ps.origin[k][0] = ps.keys[k].s->ox;
-            ps.origin[k][1] = ps.keys[k].s->oy;
-            ps.origin[k][2] = ps.keys[k].s->oz;
-        }
+        for (int j = 0; j < 3; j++) ps.origin[k][j] = ps.keys[k].o[j];
+        ps.quarter[k] = ps.keys[k].quarter;
     }
     for (int i = 0; i < NEAR_PATCH_RANGES * MAX_KEYS; i++) {
         ps.pBeg[i] = ps.pEnd[i] = 0;
@@ -302,7 +331,7 @@ static void stageStart(const World* w, float ex, float ey, float ez) {
     }
     ps.pieceN = 0; ps.pieceFull = false; ps.started = true;
     ps.hadMissing = false;
-    for (int k = 0; k < ps.nKeys; k++) if (!ps.keys[k].s) { ps.hadMissing = true; break; }
+    for (int k = 0; k < ps.nKeys; k++) if (!ps.keys[k].s && ps.keys[k].gen != 0xFFFF) { ps.hadMissing = true; break; }
     s_stagePieceBuf = 1 - s_frontAtFrame;
     s_stageNextKey = 0;
     s_stageWorstUs = 0;
@@ -347,8 +376,9 @@ static void stageStepKey(int k) {
             ps.pEnd[slot] = o.n;
 
             const ChunkSection* sc = ps.keys[k].s;
-            const float wlo[3] = { (float)sc->ox, sc->wby0, (float)sc->oz };
-            const float whi[3] = { (float)(sc->ox + CHUNK_SZ), sc->wby1, (float)(sc->oz + CHUNK_SZ) };
+            const int* so = ps.origin[k];
+            const float wlo[3] = { (float)so[0], sc->wby0, (float)so[2] };
+            const float whi[3] = { (float)(so[0] + CHUNK_SZ), sc->wby1, (float)(so[2] + CHUNK_SZ) };
             storeBox(ps, slot, wlo, whi);
             continue;
         }
@@ -376,6 +406,7 @@ static void stageStepKey(int k) {
             const PV* q[3] = { &a, &b, &cc };
             for (int v = 0; v < 3; v++) {
                 decode(vb[i + v], ps.origin[k], SEAM_OVERSCALE_OPAQUE, p[v]);
+                turnXZ(p[v].x, p[v].z, ps.origin[k], ps.quarter[k]);
 
                 const float dx = q[v]->x - ps.ex, dy = q[v]->y - ps.ey, dz = q[v]->z - ps.ez;
                 float d = sqrtf(dx * dx + dy * dy + dz * dz);
@@ -385,7 +416,21 @@ static void stageStepKey(int k) {
 #if NEAR_PATCH_DEBUG_TINT
             for (int v = 0; v < 3; v++) { p[v].g = p[v].g * 55 / 100; p[v].b = p[v].b * 80 / 100; }
 #endif
-            inflateCorners(p, grow, worldPerLocal);
+            {
+                PV before[3] = { p[0], p[1], p[2] };
+                inflateCorners(p, grow, worldPerLocal);
+
+                if (const int q = ps.quarter[k] & 3) {
+                    for (int v = 0; v < 3; v++) {
+                        const float ax = p[v].lx - before[v].lx, az = p[v].lz - before[v].lz;
+                        float bx = ax, bz = az;
+                        if (q == 1)      { bx = -az; bz =  ax; }
+                        else if (q == 2) { bx = -ax; bz = -az; }
+                        else             { bx =  az; bz = -ax; }
+                        p[v].lx = before[v].lx + bx; p[v].lz = before[v].lz + bz;
+                    }
+                }
+            }
             emitGrid(o, p[0], p[1], p[2], depth);
             if (o.full) { ps.pieceFull = true; return false; }
 
@@ -418,7 +463,11 @@ static void stageCommit(void) {
 
     s_nOwnWater = 0;
     for (int k = 0; k < ps.nKeys; k++)
-        if (ps.ownWater[k] && s_nOwnWater < MAX_KEYS) s_ownWater[s_nOwnWater++] = ps.keys[k].s;
+        if (ps.ownWater[k] && s_nOwnWater < MAX_KEYS) {
+            s_ownWaterO[s_nOwnWater][0] = ps.origin[k][0];
+            s_ownWaterO[s_nOwnWater][1] = ps.origin[k][2];
+            s_ownWater[s_nOwnWater++] = ps.keys[k].s;
+        }
     s_live = 1 - s_live;
     s_built = true;
     s_stageActive = false;
@@ -540,10 +589,10 @@ void nearPatchRefresh(const World* w) {
     s_state = coversFrame() ? 0 : 1;
 }
 
-bool nearPatchOwnsWater(const ChunkSection* sec) {
+bool nearPatchOwnsWater(const ChunkSection* sec, int ox, int oz) {
     if (!s_pieces.valid || !s_built) return false;
     for (int i = 0; i < s_nOwnWater; i++)
-        if (s_ownWater[i] == sec) return true;
+        if (s_ownWater[i] == sec && s_ownWaterO[i][0] == ox && s_ownWaterO[i][1] == oz) return true;
     return false;
 }
 
@@ -569,7 +618,9 @@ void nearPatchDraw(int range) {
         const int first = p.beg[slot], end = p.end[slot];
         if (end <= first) continue;
 
+        g_chunkDrawQuarter = ps.quarter[k];
         chunkSetModelOrigin(ps.origin[k][0], ps.origin[k][1], ps.origin[k][2], overscaleFor(range));
+        g_chunkDrawQuarter = 0;
         sceGumDrawArray(GU_TRIANGLES, PIECE_FMT, end - first, 0, p.buf[p.front] + first);
     }
     if (bias) sceGuDepthOffset(0);

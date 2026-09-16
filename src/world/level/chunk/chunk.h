@@ -363,6 +363,8 @@ int emitCropRows(ChunkVertex* out, int n, int gx, int y, int gz, unsigned char i
 #define POS_MODEL_SCALE (32768.0f / POS_ENC)
 
 extern float g_relBaseX, g_relBaseY, g_relBaseZ;
+
+extern int g_chunkDrawQuarter;
 static inline short posQ(float v) { return (short)(v * POS_ENC + (v < 0 ? -0.5f : 0.5f)); }
 
 static inline short uvQ(float t) {

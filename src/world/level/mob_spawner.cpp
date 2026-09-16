@@ -68,6 +68,28 @@ static bool spawnOk(Level* L, int x, int y, int z) {
     return true;
 }
 
+static const int SKY_ANCHOR_TRIES = 16;
+
+static bool skyWorld() { return activeLevelSource().floatingIslands(); }
+
+static int creatureY(Level* L, int x, int z) {
+    const int top = L->getTopSolidBlock(x, z);
+    if (!skyWorld()) return top;
+    int ys[8], n = 0;
+    for (int y = top; y > 0 && n < 8; y--)
+        if (spawnOk(L, x, y, z)) { ys[n++] = y; y -= 2; }
+    return n ? ys[s_rng.nextInt(n)] : top;
+}
+
+static int creatureYNear(Level* L, int x, int z, int refY) {
+    if (!skyWorld()) return L->getTopSolidBlock(x, z);
+    for (int d = 0; d <= 6; d++) {
+        if (spawnOk(L, x, refY - d, z)) return refY - d;
+        if (d && spawnOk(L, x, refY + d, z)) return refY + d;
+    }
+    return -1;
+}
+
 static void spawnCreatures(Level* level) {
     LocalPlayer* p = level->player;
     if (!p) return;
@@ -82,7 +104,12 @@ static void spawnCreatures(Level* level) {
         int cz = s_rng.nextInt(WORLD_D / 16);
         int bx = cx * 16 + s_rng.nextInt(16);
         int bz = cz * 16 + s_rng.nextInt(16);
-        int by = level->getTopSolidBlock(bx, bz);
+        int by = creatureY(level, bx, bz);
+        for (int t = 0; skyWorld() && t < SKY_ANCHOR_TRIES && !spawnOk(level, bx, by, bz); t++) {
+            bx = cx * 16 + s_rng.nextInt(16);
+            bz = cz * 16 + s_rng.nextInt(16);
+            by = creatureY(level, bx, bz);
+        }
         if (!spawnOk(level, bx, by, bz)) continue;
 
         float dx = bx + 0.5f - p->x, dy = by - pfy, dz = bz + 0.5f - p->z;
@@ -94,7 +121,7 @@ static void spawnCreatures(Level* level) {
         for (int i = 0; i < cluster; i++) {
             int sx = bx + s_rng.nextInt(6) - s_rng.nextInt(6);
             int sz = bz + s_rng.nextInt(6) - s_rng.nextInt(6);
-            int sy = level->getTopSolidBlock(sx, sz);
+            int sy = creatureYNear(level, sx, sz, by);
             if (!spawnOk(level, sx, sy, sz)) continue;
             Mob* m = MobFactory::createMob(e.mobId, level);
             if (!m) continue;
@@ -223,10 +250,15 @@ void populateInitial(Level* level) {
                                                CREATURE_TOTAL_WEIGHT, s_rng);
             int count = e.minCount + s_rng.nextInt(1 + e.maxCount - e.minCount);
             int x = xo + s_rng.nextInt(16), z = zo + s_rng.nextInt(16);
+            int packY = creatureY(level, x, z);
+            for (int t = 0; skyWorld() && t < SKY_ANCHOR_TRIES && !spawnOk(level, x, packY, z); t++) {
+                x = xo + s_rng.nextInt(16); z = zo + s_rng.nextInt(16);
+                packY = creatureY(level, x, z);
+            }
             int startX = x, startZ = z;
             for (int c = 0; c < count; c++) {
                 for (int a = 0; a < 4; a++) {
-                    int y = level->getTopSolidBlock(x, z);
+                    int y = creatureYNear(level, x, z, packY);
                     if (spawnOk(level, x, y, z)) {
                         Mob* m = MobFactory::createMob(e.mobId, level);
                         if (!m) return;

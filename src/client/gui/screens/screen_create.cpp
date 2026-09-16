@@ -49,7 +49,7 @@ const char* rowLabel(int row) {
     return rowIsToggle(row) ? kGenFeatures[rowFeature(row)].label : kFieldRows[row].label;
 }
 
-enum { FOCUS_TYPE_OLD = ROW_COUNT, FOCUS_TYPE_FLAT,
+enum { FOCUS_TYPE_OLD = ROW_COUNT, FOCUS_TYPE_SKY, FOCUS_TYPE_FLAT,
        FOCUS_SURVIVAL, FOCUS_CREATIVE, FOCUS_CREATE,
        FOCUS_BACK, FOCUS_ADVANCED, FOCUS_COUNT };
 
@@ -76,9 +76,22 @@ bool rowInLeftColumn(int row) { return !rowIsToggle(row) && row != ROW_SEED; }
 bool genFeaturesUsable(const MenuState& s) {
     return levelSourceFor(s.newWorldType).supportsGenFeatures();
 }
+
+bool genFeatureUsable(const MenuState& s, int feature) {
+    return genFeaturesUsable(s) && levelSourceFor(s.newWorldType).genFeatureAllowed(feature);
+}
 bool rowFocusable(const MenuState& s, int row) {
     if (!rowVisible(row)) return false;
-    return !rowIsToggle(row) || genFeaturesUsable(s);
+    return !rowIsToggle(row) || genFeatureUsable(s, rowFeature(row));
+}
+
+const int kTypeFocus[] = { FOCUS_TYPE_OLD, FOCUS_TYPE_SKY, FOCUS_TYPE_FLAT };
+const int kTypeWorld[] = { WORLD_TYPE_OLD, WORLD_TYPE_SKY, WORLD_TYPE_FLAT };
+const int TYPE_PILLS   = 3;
+bool isTypeFocus(int sel) { return sel >= FOCUS_TYPE_OLD && sel < FOCUS_TYPE_OLD + TYPE_PILLS; }
+int  typeFocusFor(int worldType) {
+    for (int i = 0; i < TYPE_PILLS; i++) if (kTypeWorld[i] == worldType) return kTypeFocus[i];
+    return FOCUS_TYPE_OLD;
 }
 
 int toggleStep(const MenuState& s, int from, int dir) {
@@ -109,6 +122,7 @@ struct Layout {
     float panelX, panelY, panelW, panelH;
     float formX, formY, formW, formH, boxW, contentH;
     float typeY, modeY, pillW, pillH, pill0X, pill1X;
+    float typePillW, typeGap;
     float descX, descY, descW;
     float createX, createY, createW, createH;
 };
@@ -140,6 +154,8 @@ Layout layout(MenuState& s) {
     L.pillW  = VW * 0.205f;
     L.pill0X = L.formX;
     L.pill1X = L.formX + L.pillW + 6.0f * PX;
+    L.typeGap   = 4.0f * PX;
+    L.typePillW = (2.0f * L.pillW + 6.0f * PX - 2.0f * L.typeGap) / 3.0f;
 
     L.descX = VW * 0.52f;
     L.descW = VW * 0.44f;
@@ -186,15 +202,15 @@ void CreateScreen::handleInput(MenuState& s, unsigned int pressed, unsigned int 
     if (pressed & PSP_CTRL_TRIANGLE) {
         s_advanced = !s_advanced;
         if (!s_advanced && (sel == ROW_SEED || rowIsToggle(sel) ||
-                            sel == FOCUS_TYPE_OLD || sel == FOCUS_TYPE_FLAT))
+                            isTypeFocus(sel)))
             sel = ROW_NAME;
     }
 
     const bool locked = gameModeLocked(s);
     const int  modePill = effectiveGameMode(s) ? FOCUS_CREATIVE : FOCUS_SURVIVAL;
-    const int  typePill = (s.newWorldType == WORLD_TYPE_FLAT) ? FOCUS_TYPE_FLAT : FOCUS_TYPE_OLD;
+    const int  typePill = typeFocusFor(s.newWorldType);
     const bool onHeader = (sel == FOCUS_BACK || sel == FOCUS_ADVANCED);
-    const bool onType   = (sel == FOCUS_TYPE_OLD || sel == FOCUS_TYPE_FLAT);
+    const bool onType   = isTypeFocus(sel);
     const bool onMode   = (sel == FOCUS_SURVIVAL || sel == FOCUS_CREATIVE);
 
     const int belowType  = locked ? FOCUS_CREATE : modePill;
@@ -224,7 +240,9 @@ void CreateScreen::handleInput(MenuState& s, unsigned int pressed, unsigned int 
     if (pressed & PSP_CTRL_RIGHT) {
         if (sel == FOCUS_BACK)             sel = FOCUS_ADVANCED;
         else if (sel == ROW_NAME && s_advanced) sel = ROW_SEED;
-        else if (sel == FOCUS_TYPE_OLD)    { sel = FOCUS_TYPE_FLAT; s.newWorldType = WORLD_TYPE_FLAT; }
+        else if (onType && sel < FOCUS_TYPE_OLD + TYPE_PILLS - 1) {
+            sel++; s.newWorldType = kTypeWorld[sel - FOCUS_TYPE_OLD];
+        }
         else if (sel == FOCUS_SURVIVAL && !locked) { sel = FOCUS_CREATIVE; s.newWorldGamemode = 1; }
         else if (sel == FOCUS_CREATIVE || (sel == FOCUS_SURVIVAL && locked)) sel = FOCUS_CREATE;
     }
@@ -232,7 +250,9 @@ void CreateScreen::handleInput(MenuState& s, unsigned int pressed, unsigned int 
         if (sel == FOCUS_ADVANCED)       sel = FOCUS_BACK;
         else if (sel == ROW_SEED)        sel = ROW_NAME;
         else if (onToggle)               sel = ROW_NAME;
-        else if (sel == FOCUS_TYPE_FLAT) { sel = FOCUS_TYPE_OLD; s.newWorldType = WORLD_TYPE_OLD; }
+        else if (onType && sel > FOCUS_TYPE_OLD) {
+            sel--; s.newWorldType = kTypeWorld[sel - FOCUS_TYPE_OLD];
+        }
         else if (sel == FOCUS_CREATIVE && !locked) { sel = FOCUS_SURVIVAL; s.newWorldGamemode = 0; }
         else if (sel == FOCUS_CREATE)    sel = aboveCreate;
     }
@@ -245,13 +265,12 @@ void CreateScreen::handleInput(MenuState& s, unsigned int pressed, unsigned int 
 
     if (pressed & PSP_CTRL_CROSS) {
         if (sel < ROW_COUNT && rowIsToggle(sel)) {
-            if (genFeaturesUsable(s))
+            if (genFeatureUsable(s, rowFeature(sel)))
                 s.newWorldGenMask = genFeatureToggled(s.newWorldGenMask, rowFeature(sel));
         } else if (sel < ROW_COUNT) {
             const CreateRowDef& row = kFieldRows[sel];
             startOsk(row.oskTarget, row.oskPrompt, rowText(s, sel));
-        } else if (sel == FOCUS_TYPE_OLD)  { s.newWorldType = WORLD_TYPE_OLD;
-        } else if (sel == FOCUS_TYPE_FLAT) { s.newWorldType = WORLD_TYPE_FLAT;
+        } else if (isTypeFocus(sel))       { s.newWorldType = kTypeWorld[sel - FOCUS_TYPE_OLD];
         } else if (sel == FOCUS_SURVIVAL)  { if (!locked) s.newWorldGamemode = 0;
         } else if (sel == FOCUS_CREATIVE)  { if (!locked) s.newWorldGamemode = 1;
         } else if (sel == FOCUS_BACK)      { s.screen = SCREEN_WORLDS;
@@ -337,7 +356,6 @@ void CreateScreen::renderContent(MenuState& s) {
                       s.newWorldSeed, kFieldRows[ROW_SEED].placeholder, sel == ROW_SEED, TEXT_S);
 
         {
-            const bool genUsable = genFeaturesUsable(s);
             float togRowY = L.formY + ROW_LABEL_H + ROW_BOX_H + 6.0f * PX;
 
             const float togRight = L.panelX + L.panelW - 5.0f * PX;
@@ -349,33 +367,32 @@ void CreateScreen::renderContent(MenuState& s) {
             float togX = L.descX + widestLabel + 6.0f * PX;
             if (togX + TOG_W > togRight) togX = togRight - TOG_W;
             for (int i = FIELD_COUNT; i < ROW_COUNT; i++, togRowY += TOG_ROW) {
-                const bool on = genUsable && genFeatureEnabled(s.newWorldGenMask, rowFeature(i));
+                const bool usable = genFeatureUsable(s, rowFeature(i));
+                const bool on = usable && genFeatureEnabled(s.newWorldGenMask, rowFeature(i));
 
                 const float labelY = (float)(int)(togRowY * UI_SCALE
                                      + (ROW_BOX_H * UI_SCALE - 8.0f * TEXT_S) / 2.0f);
                 fontDrawTextClipped(&font, L.descX * UI_SCALE, labelY,
                                     rowLabel(i),
-                                    !genUsable ? GUI_DISABLED
+                                    !usable ? GUI_DISABLED
                                                : (sel == i ? 0xFFFFFFFFu : 0xFFE0E0E0u), TEXT_S,
                                     (togX - 2.0f - L.descX) * UI_SCALE / TEXT_S);
                 guiOptionSwitch(s, togX,
                                 togRowY + (ROW_BOX_H - TOG_H) / 2.0f, TOG_W, TOG_H,
-                                on, sel == i, !genUsable ? GUI_DISABLED : 0xFFFFFFFFu,
+                                on, sel == i, !usable ? GUI_DISABLED : 0xFFFFFFFFu,
                                 TOG_S);
             }
         }
 
         drawFieldLabel(font, L.formX, L.typeY, "World Type");
         {
-            const bool flat = (s.newWorldType == WORLD_TYPE_FLAT);
-            guiTButton(s, L.pill0X, L.typeY, L.pillW, L.pillH, !flat, BEVEL);
-            guiTButtonLabel(s, L.pill0X, L.typeY, L.pillW, L.pillH,
-                            levelSourceFor(WORLD_TYPE_OLD).label(),
-                            sel == FOCUS_TYPE_OLD, true, TEXT_S);
-            guiTButton(s, L.pill1X, L.typeY, L.pillW, L.pillH, flat, BEVEL);
-            guiTButtonLabel(s, L.pill1X, L.typeY, L.pillW, L.pillH,
-                            levelSourceFor(WORLD_TYPE_FLAT).label(),
-                            sel == FOCUS_TYPE_FLAT, true, TEXT_S);
+            for (int i = 0; i < TYPE_PILLS; i++) {
+                const float x = L.pill0X + i * (L.typePillW + L.typeGap);
+                guiTButton(s, x, L.typeY, L.typePillW, L.pillH, s.newWorldType == kTypeWorld[i], BEVEL);
+                guiTButtonLabel(s, x, L.typeY, L.typePillW, L.pillH,
+                                levelSourceFor(kTypeWorld[i]).label(),
+                                sel == kTypeFocus[i], true, TEXT_S);
+            }
         }
     }
 

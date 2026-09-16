@@ -183,6 +183,7 @@ OBJS = \
 	src/world/level/light_store.o \
 	src/world/level/block_store.o \
 	src/client/renderer/level/worldrender.o \
+	src/client/renderer/level/isomap.o \
 	src/client/renderer/level/near_patch.o \
 	src/world/level/liquid.o \
 	src/world/level/leafdecay.o \

@@ -152,6 +152,14 @@ static float drawFaultCounters(MenuState& s, float ty) {
         ty += 12.0f;
     }
 
+    extern unsigned int g_postLate;
+    static FaultAge aLate;
+    if (faultFresh(aLate, g_postLate)) {
+        std::snprintf(buf, sizeof(buf), "POST LATE %u", g_postLate);
+        fontDrawTextShadow(&s.font, 10, ty, buf, 0xFF50FFFFu, 1.0f);
+        ty += 12.0f;
+    }
+
     extern unsigned int g_vcSameRefresh, g_vcDrops;
     extern int g_vcLast, g_vcMin, g_vcMax;
     static FaultAge aPresent;
@@ -586,6 +594,8 @@ int main(int argc, char* argv[]) {
 
         worldIconsSetLoaded(s.screen == SCREEN_WORLDS || s.screen == SCREEN_DELETE);
 
+        { extern bool g_photoPending;
+          if (g_photoPending) guWaitDrawBufferHidden(); }
         if (!guStartFrame(s.screen == SCREEN_GAME ? g_clearColorNow : 0xFF000000u)) continue;
         fpsFrames++;
 
