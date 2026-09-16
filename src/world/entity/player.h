@@ -31,6 +31,8 @@ public:
 
     float bob, oBob, tilt, oTilt;
 
+    float xCloak, yCloak, zCloak, xCloakO, yCloakO, zCloakO;
+
     float xBob, yBob, xBobO, yBobO;
 
     ItemInstance item;

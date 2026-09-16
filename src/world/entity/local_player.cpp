@@ -252,6 +252,18 @@ void LocalPlayer::aiStep(unsigned int btn, unsigned char lx, unsigned char ly,
     bob  += (tBob  - bob)  * 0.4f;
     tilt += (tTilt - tilt) * 0.8f;
 
+    xCloakO = xCloak; yCloakO = yCloak; zCloakO = zCloak;
+    {
+        float xca = x - xCloak, yca = y - yCloak, zca = z - zCloak;
+        const float m = 10.0f;
+        if (xca > m || xca < -m) xCloakO = xCloak = x;
+        if (zca > m || zca < -m) zCloakO = zCloak = z;
+        if (yca > m || yca < -m) yCloakO = yCloak = y;
+        xCloak += xca * 0.25f;
+        zCloak += zca * 0.25f;
+        yCloak += yca * 0.25f;
+    }
+
     xBobO = xBob; yBobO = yBob;
     xBob += (xRot - xBob) * 0.5f;
     yBob += (yRot - yBob) * 0.5f;

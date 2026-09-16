@@ -27,6 +27,8 @@ bool textureLoad16(const char* path, Texture* out, int psm);
 
 bool textureLoad16Optional(const char* path, Texture* out, int psm);
 
+bool textureLoad16At(const char* path, unsigned int offset, Texture* out, int psm);
+
 bool textureLoadVram(const char* path, Texture* out, int psm);
 
 void textureFree(Texture* tex);

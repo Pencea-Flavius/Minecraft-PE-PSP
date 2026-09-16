@@ -93,6 +93,71 @@ next to the EBOOT.
 Keep `EBOOT.PBP` and `data/` together; textures and sounds load from `data/`
 next to the EBOOT.
 
+## Skins
+
+The port reads **Legacy Console Edition skin packs** — the `.pck` files the 7th-gen
+consoles (PS3/X360/Vita) shipped their DLC skins in. The whole Change Skin screen is
+LCE's: pack tabs, the carousel, the name plate and a favourites pack of ten.
+It is reached from **Skins** on the main menu, or **Options > Game > Change Skin**.
+
+> [!IMPORTANT]
+> **No skin packs are shipped with this port** — they are Mojang/4J content and
+> they are not mine to distribute. You supply your own files.
+
+**Where they go:** a `data/skinpacks/` folder next to the EBOOT, one `.pck` per pack.
+
+```
+PSP/GAME/MCPSP/
+├── EBOOT.PBP
+└── data/
+    └── skinpacks/
+        ├── Skins1.pck
+        └── ...
+```
+
+The pack's own name comes out of the `localisation.loc` inside it, so the tabs read
+the way they did on console. Nothing else has to be renamed or converted.
+
+**What works**
+
+* `.pck` version 3, the console DLC format (`DLCManager::processDLCDataFile`),
+* **64x32** skins — the classic layout every LCE pack uses,
+* **64x64** skins — the Mojang 1.8 layout with the overlay/hat layers,
+* **capes**, including the swing the LCE player renderer gives them,
+* **BOX parts** — the extra cubes that make the mob-shaped skins (villager snouts,
+  Iron Golem arms). Note that only the `_Sony` variants of the packs carry them;
+  the plain ones ship none,
+* the **ANIM bits**: arms down / out front, no leg animation, single arms or legs,
+  Statue of Liberty, no bobbing, don't render armour, the per-part
+  DisableRender flags, and OFFSET HELMET Y,
+* the eight **LCE default skins**, built in, with no pack needed.
+
+**What does not**
+
+* **Alex / the slim 3-pixel arm.** LCE has no slim model at all — every skin there
+  is the wide Steve body — so a skin drawn for Alex loads and wears, but its arms
+  are built 4 px wide, and each one samples a column of the sheet that was never
+  meant for it.
+* **Bedrock and Java skin packs.** Those are `.mcpack` / `.zip` with a JSON manifest,
+  a different thing entirely. A loose `.png` is not read either — it has to be inside a `.pck`.
+* **Sheets that are not 64x32 or 64x64.** A skin of any other size is skipped when
+  the pack is opened, rather than drawn wrong.
+* **Fan-fork extensions** — the slim/small/wide model bits, Dinnerbone, the
+  per-part RenderArmor flags and overlay BOX parts that mods like neoLegacy and
+  LegacyEvolved added to the format. This port follows console behaviour only.
+* **Animated (`HasIdle`) skins** — the bit is read and ignored; the shipped packs do not use it.
+
+**Making your own pack:** [**PCK Studio**](https://pckstudio.xyz/) opens, edits and
+builds `.pck` files — put your PNGs in, save it as a pack, drop it in
+`data/skinpacks/`.
+
+**One skin, no pack:** drop a 64x32 or 64x64 PNG at `data/images/skins/skin.png`
+and it is worn whenever no pack skin is chosen. The eight LCE defaults live in
+that folder too, as `char.png` .. `char7.png`.
+
+The skin you wear and your favourites are remembered in `options.txt`
+(`Skin=` and `SkinFavorites=`), so they survive a reboot.
+
 ## DualShock 3/Sixaxis
 
 Options > Controls > Control Scheme > **Layout 4** makes use of all the available buttons.

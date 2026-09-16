@@ -5,7 +5,8 @@
 #include "client/gui/screens/menu.h"
 #include "client/gui/screens/screen.h"
 #include "gpu/sprite.h"
-#include "gpu/widgets.h"
+#include "client/gui/screens/skin_page.h"
+#include "client/renderer/entity/player_model.h"
 
 #include <cmath>
 #include <ctime>
@@ -34,18 +35,28 @@ static void pickSplash(unsigned seed) {
     fclose(f);
 }
 
-static const float btnSizeV = 75.0f;
-static const float BTN_PX   = btnSizeV * UI_SCALE;
-static const float BTN_Y    = 95.0f;
-static const float BTN_X0   = 7.0f;
-static const float BTN_X1   = BTN_X0 + BTN_PX + 8.0f;
-static const float BTN_X2   = BTN_X1 + BTN_PX + 8.0f;
-static PocketButton buttons[3] = {
-    { BTN_X0, BTN_Y, BTN_PX, 0.0f, 176.0f, 75.0f, "Join Game",  true },
-    { BTN_X1, BTN_Y, BTN_PX, 0.0f, 101.0f, 75.0f, "Start Game", true },
-    { BTN_X2, BTN_Y, BTN_PX, 0.0f,  26.0f, 75.0f, "Options",    true },
-};
-static const int numButtons = 3;
+static const float BTN_W = 96.0f;
+static const float BTN_H = 24.0f;
+static const float BTN_X = (VW - BTN_W) / 2.0f;
+static const float PLAY_Y = 58.0f;
+static const float SET_Y  = PLAY_Y + BTN_H + 5.0f;
+
+static const float SKIN_CX   = (BTN_X + BTN_W + VW) / 2.0f;
+static const float SKIN_TOP  = 44.0f;
+static const float SKIN_W    = 52.0f;
+
+static const float SKIN_H    = 58.0f;
+static const float SKIN_NAME_Y = SKIN_TOP - 10.0f;
+static const float SKINBTN_W = 50.0f;
+static const float SKINBTN_H = 16.0f;
+static const float SKINBTN_X = SKIN_CX - SKINBTN_W / 2.0f;
+static const float SKINBTN_Y = SKIN_TOP + SKIN_H + 2.0f;
+
+enum { BTN_PLAY = 0, BTN_SETTINGS = 1, BTN_SKINS = 2, numButtons = 3 };
+
+static float s_skinRot = 0.0f;
+
+static const int SKIN_STICK_DZ = 48;
 
 static const unsigned int kTitleSeed[3] = {
     0x0251B8B0u, 0x1360B0C0u, 0x00000275u
@@ -71,34 +82,51 @@ void TitleScreen::handleInput(MenuState& s, unsigned int pressed, unsigned int h
     int& optItemHighlight = s.optItemHighlight;
     int& optCategory = s.optCategory;
 
-    if (pressed & PSP_CTRL_RIGHT)
-        selected = (selected < 0) ? 1 : (selected + 1) % numButtons;
-    if (pressed & PSP_CTRL_LEFT)
-        selected = (selected < 0) ? 1 : (selected + numButtons - 1) % numButtons;
+    if (skinPageIsOpen()) { skinPageInput(s, pressed); return; }
 
-    if ((pressed & PSP_CTRL_CROSS) && selected >= 0) {
-        if (selected == 1) {
+    bool stickTurning = false;
+    if (selected == BTN_SKINS) {
+        SceCtrlData pad;
+        if (sceCtrlPeekBufferPositive(&pad, 1) > 0) {
+            int dx = (int)pad.Lx - 128;
+            if (dx > SKIN_STICK_DZ || dx < -SKIN_STICK_DZ) {
+                s_skinRot += (float)dx * (4.0f / 127.0f);
+                if (s_skinRot >= 360.0f) s_skinRot -= 360.0f;
+                if (s_skinRot < 0.0f)    s_skinRot += 360.0f;
+                stickTurning = true;
+            }
+        }
+    }
+
+    if (selected < 0) selected = BTN_PLAY;
+    if (pressed & PSP_CTRL_UP)   selected = (selected == BTN_SETTINGS) ? BTN_PLAY : selected;
+    if (pressed & PSP_CTRL_DOWN) selected = (selected == BTN_PLAY) ? BTN_SETTINGS : selected;
+    if (!stickTurning) {
+        if (pressed & PSP_CTRL_RIGHT) selected = BTN_SKINS;
+        if (pressed & PSP_CTRL_LEFT)  selected = (selected == BTN_SKINS) ? BTN_PLAY : selected;
+    }
+
+    if (pressed & PSP_CTRL_CROSS) {
+        if (selected == BTN_PLAY) {
             screen = SCREEN_WORLDS;
             statusMsg[0] = '\0';
-        } else if (selected == 0) {
-            joinListReset(s);
-            screen = SCREEN_JOIN;
-            statusMsg[0] = '\0';
-        } else {
+        } else if (selected == BTN_SETTINGS) {
             optFocus = 1;
             optTabHighlight = optCategory;
             optItemHighlight = 0;
             screen = SCREEN_OPTIONS;
             statusMsg[0] = '\0';
+        } else {
+            skinPageOpen();
         }
     }
 }
 
 void TitleScreen::renderContent(MenuState& s) {
+    if (skinPageIsOpen()) { skinPageRender(s); return; }
     Font& font = s.font; bool haveFont = s.haveFont;
-    Texture& guiAtlas = s.guiAtlas; bool haveGui = s.haveGui;
+    bool haveGui = s.haveGui;
     Texture& logo = s.logo; bool haveLogo = s.haveLogo;
-    Texture& touchGui = s.touchGui; bool haveTouch = s.haveTouch;
     int& selected = s.selected;
 
     float logoYV = 6.0f;
@@ -136,18 +164,37 @@ void TitleScreen::renderContent(MenuState& s) {
         sceGuEnable(GU_DEPTH_TEST);
     }
 
-    if (haveGui && haveTouch && haveFont) {
+    if (haveGui && haveFont) {
         sceGuDisable(GU_DEPTH_TEST);
-        for (int i = 0; i < numButtons; i++)
-            pocketButtonDraw(&font, &guiAtlas, &touchGui, &buttons[i], i == selected, UI_SCALE);
+        guiTButton(s, BTN_X, PLAY_Y, BTN_W, BTN_H, selected == BTN_PLAY);
+        guiTButtonLabel(s, BTN_X, PLAY_Y, BTN_W, BTN_H, "Play",
+                        selected == BTN_PLAY, true);
+        guiTButton(s, BTN_X, SET_Y, BTN_W, BTN_H, selected == BTN_SETTINGS);
+        guiTButtonLabel(s, BTN_X, SET_Y, BTN_W, BTN_H, "Settings",
+                        selected == BTN_SETTINGS, true);
+        guiTButton(s, SKINBTN_X, SKINBTN_Y, SKINBTN_W, SKINBTN_H, selected == BTN_SKINS);
+        guiTButtonLabel(s, SKINBTN_X, SKINBTN_Y, SKINBTN_W, SKINBTN_H, "Skins",
+                        selected == BTN_SKINS, true);
         sceGuEnable(GU_DEPTH_TEST);
     }
 
     if (haveFont) {
         sceGuDisable(GU_DEPTH_TEST);
+        drawNameTag(s, SKIN_CX * UI_SCALE, SKIN_NAME_Y * UI_SCALE, pausePlayerName());
+        sceGuEnable(GU_DEPTH_TEST);
+    }
+
+    playerModelRenderWornPreview(SKIN_CX * UI_SCALE - SKIN_W * UI_SCALE / 2.0f,
+                                 SKIN_TOP * UI_SCALE, SKIN_W * UI_SCALE,
+                                 SKIN_H * UI_SCALE, s_skinRot);
+
+    if (haveFont) {
+        sceGuDisable(GU_DEPTH_TEST);
+
         const char* copyright = "\xffMojang AB";
         float cw = fontTextWidth(&font, copyright) * UI_SCALE;
-        fontDrawTextShadow(&font, 480.0f - cw - 4.0f, 272.0f - 9.0f * UI_SCALE, copyright, WHITE, UI_SCALE);
+        fontDrawTextShadow(&font, 480.0f - cw - 4.0f, 272.0f - 9.0f * UI_SCALE,
+                           copyright, WHITE, UI_SCALE);
         if (s_seedHold > 30) {
             char line[TITLE_SEED_LEN + 1];
             for (int i = 0; i < TITLE_SEED_LEN; i++) {

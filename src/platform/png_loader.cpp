@@ -26,8 +26,13 @@ static void pngErrorFn(png_structp png, png_const_charp msg) {
 static void pngWarnFn(png_structp, png_const_charp) {}
 
 PngReader* pngOpen(const char* path, int* outW, int* outH) {
+    return pngOpenAt(path, 0, outW, outH);
+}
+
+PngReader* pngOpenAt(const char* path, unsigned int offset, int* outW, int* outH) {
     FILE* fp = fopen(path, "rb");
     if (!fp) return 0;
+    if (offset && fseek(fp, (long)offset, SEEK_SET) != 0) { fclose(fp); return 0; }
 
     g_pngLastError[0] = 0;
     png_structp png = png_create_read_struct(PNG_LIBPNG_VER_STRING, 0,

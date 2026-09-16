@@ -34,7 +34,7 @@ static const float DIST_QUANTUM = 0.25f;
 
 static const int DEPTH_BIAS = -80;
 
-static const float INFLATE_PX = 0.75f;
+static const float INFLATE_PX = 0.40f;
 
 static const int MAX_KEYS = 27;
 

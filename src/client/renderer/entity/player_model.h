@@ -9,4 +9,28 @@ void playerModelRenderPreview(float sx, float sy, float scale);
 void playerModelRenderPaperDoll(float a, bool displayGui);
 extern int g_animatedCharacter;
 
+struct Texture;
+struct SkinBox;
+struct MobVertex;
+
+struct SkinDraw {
+    Texture* tex;
+    const MobVertex (*boxMesh)[36];
+    const unsigned char* boxPart;
+    int boxCount;
+    unsigned int anim;
+    Texture* cape;
+    float helmetY;
+};
+
+int playerModelBuildSkinBoxes(const SkinBox* boxes, int n, MobVertex (*out)[36],
+                              unsigned char* part, int max, float texH = 32.0f);
+
+void playerModelRenderSkinPreview(const SkinDraw& d, float x, float y, float w, float h,
+                                  float yRotDeg, float walkPos, float walkSpeed);
+
+void playerModelRenderWornPreview(float x, float y, float w, float h, float yRotDeg);
+
+void playerModelDrawSkinBoxes(int part, unsigned int brCol, const float* toWorld);
+
 #endif

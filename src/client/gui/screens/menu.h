@@ -144,6 +144,10 @@ struct ButtonHint { ButtonIcon icon; unsigned int btn; const char* label; };
 
 ButtonIcon menuShoulderIcon(bool right);
 
+void drawNameTag(MenuState& s, float centreX, float y, const char* name,
+                 float scale = UI_SCALE);
+
+const char* pausePlayerName();
 ButtonHint menuFaceHint(bool confirm, const char* label);
 void buttonHintsDraw(MenuState& s, const ButtonHint* hints, int n, float y = UI_HINTS_Y,
                      float scale = UI_HINT_S);

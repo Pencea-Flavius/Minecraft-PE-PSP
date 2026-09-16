@@ -49,7 +49,6 @@ OBJS = \
 	src/gpu/texture.o \
 	src/gpu/sprite.o \
 	src/gpu/font.o \
-	src/gpu/widgets.o \
 	src/platform/path.o \
 	src/platform/savedata.o \
 	src/platform/png_loader.o \
@@ -167,6 +166,8 @@ OBJS = \
 	src/client/renderer/entity/creeper_renderer.o \
 	src/client/renderer/entity/spider_renderer.o \
 	src/client/renderer/entity/player_model.o \
+	src/client/skin/skin_pack.o \
+	src/client/gui/screens/skin_page.o \
 	src/client/renderer/tileentity/sign_renderer.o src/client/renderer/tileentity/chest_renderer.o \
 	src/world/inventory/filling_container.o \
 	src/world/inventory/inventory.o \

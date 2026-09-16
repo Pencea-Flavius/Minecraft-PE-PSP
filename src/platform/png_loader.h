@@ -8,6 +8,8 @@ extern char g_pngLastError[64];
 
 PngReader* pngOpen(const char* path, int* outW, int* outH);
 
+PngReader* pngOpenAt(const char* path, unsigned int offset, int* outW, int* outH);
+
 bool pngReadRow(PngReader* r, unsigned char* rgbaRow);
 void pngClose(PngReader* r);
 

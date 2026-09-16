@@ -30,6 +30,7 @@
 #else
 #define LOGI(...) ((void)0)
 #endif
+#include <cstdlib>
 #include <cstring>
 #include <string>
 
@@ -95,6 +96,55 @@ static bool fileExists(const std::string& path) {
     FILE* f = fopen(path.c_str(), "rb");
     if (f) { fclose(f); return true; }
     return false;
+}
+
+static CompoundTag* readDatFile(const char* absDir, const char* name, int hdr) {
+    std::string base = join(absDir, name);
+    for (int attempt = 0; attempt < 2; attempt++) {
+        FILE* f = fopen(attempt ? (base + "_old").c_str() : base.c_str(), "rb");
+        if (!f) continue;
+        CompoundTag* tag = NULL;
+        fseek(f, 0, SEEK_END);
+        long fsize = ftell(f);
+        fseek(f, 0, SEEK_SET);
+        unsigned char head[12];
+        int size = 0;
+        if (fsize > hdr && (int)fread(head, 1, hdr, f) == hdr) {
+            memcpy(&size, head + hdr - 4, 4);
+            int version = 0;
+            memcpy(&version, head + hdr - 8, 4);
+            bool headerOk = (hdr == 12) ? memcmp(head, "ENT", 3) == 0 : version >= 2;
+            if (headerOk && size > 0 && size <= fsize - hdr) {
+                unsigned char* buf = (unsigned char*)malloc(size);
+                if (buf && (int)fread(buf, 1, size, f) == size) {
+                    MemReader mr(buf, size);
+                    tag = NbtIo::read(&mr);
+                    if (tag && mr.failed()) { tag->deleteChildren(); delete tag; tag = NULL; }
+                }
+                free(buf);
+            }
+        }
+        fclose(f);
+        if (tag) return tag;
+    }
+    return NULL;
+}
+
+static bool writeDatFile(const char* absDir, const char* name,
+                         const unsigned char* head, int hdr, const MemWriter& mw) {
+    std::string dat = join(absDir, name);
+    std::string tmp = dat + "_new";
+    std::string old = dat + "_old";
+    FILE* f = fopen(tmp.c_str(), "wb");
+    if (!f) return false;
+    int size = (int)mw.buf.size();
+    bool ok = (int)fwrite(head, 1, hdr, f) == hdr;
+    if (ok && size > 0) ok = (int)fwrite(&mw.buf[0], 1, size, f) == size;
+    if (fclose(f) != 0) ok = false;
+    if (!ok) { remove(tmp.c_str()); return false; }
+    remove(old.c_str());
+    if (fileExists(dat)) rename(dat.c_str(), old.c_str());
+    return rename(tmp.c_str(), dat.c_str()) == 0;
 }
 
 static CompoundTag* buildPlayerTag(World* w) {
@@ -193,23 +243,11 @@ static bool saveLevelDat(World* w, const char* absDir, long seed, int gameType, 
     NbtIo::write(&root, &mw);
     root.deleteChildren();
 
-    std::string dat = join(absDir, "level.dat");
-    std::string tmp = join(absDir, "level.dat_new");
-    std::string old = join(absDir, "level.dat_old");
-
-    FILE* f = fopen(tmp.c_str(), "wb");
-    if (!f) return false;
-    int version = STORAGE_VERSION;
-    int size = (int)mw.buf.size();
-    fwrite(&version, sizeof(int), 1, f);
-    fwrite(&size, sizeof(int), 1, f);
-    if (size > 0) fwrite(&mw.buf[0], 1, size, f);
-    fclose(f);
-
-    remove(old.c_str());
-    if (fileExists(dat)) rename(dat.c_str(), old.c_str());
-    rename(tmp.c_str(), dat.c_str());
-    return true;
+    unsigned char head[8];
+    int version = STORAGE_VERSION, size = (int)mw.buf.size();
+    memcpy(head, &version, 4);
+    memcpy(head + 4, &size, 4);
+    return writeDatFile(absDir, "level.dat", head, 8, mw);
 }
 
 struct SavedSlot { short id; short damage; short count; bool used; };
@@ -228,123 +266,97 @@ static void clearLoadedHotbar() {
 }
 
 static void loadLevelDat(World* w, const char* absDir, long* outSeed, int* outGameType) {
-    std::string dat = join(absDir, "level.dat");
-    FILE* f = fopen(dat.c_str(), "rb");
-    if (!f) { f = fopen(join(absDir, "level.dat_old").c_str(), "rb"); }
-    if (!f) return;
+    CompoundTag* tag = readDatFile(absDir, "level.dat", 8);
+    if (tag) {
+        if (outSeed)     *outSeed = (long)tag->getLong("RandomSeed");
+        if (outGameType) *outGameType = tag->getInt("GameType");
+        w->dayTime = (long)tag->getLong("Time");
 
-    int version = 0, size = 0;
-    if (fread(&version, sizeof(int), 1, f) == 1 &&
-        fread(&size, sizeof(int), 1, f) == 1 && size > 0 && version >= 2) {
-        unsigned char* buf = new unsigned char[size];
-        if ((int)fread(buf, 1, size, f) == size) {
-            MemReader mr(buf, size);
-            CompoundTag* tag = NbtIo::read(&mr);
-            if (tag) {
-                if (outSeed)     *outSeed = (long)tag->getLong("RandomSeed");
-                if (outGameType) *outGameType = tag->getInt("GameType");
-                w->dayTime = (long)tag->getLong("Time");
+        if (tag->contains("SpawnY")) {
+            g_level.setSpawnPos(tag->getInt("SpawnX"),
+                                tag->getInt("SpawnY"),
+                                tag->getInt("SpawnZ"));
+        }
+        CompoundTag* p = tag->getCompound("Player");
+        if (p) {
+            ListTag* pos = p->getList("Pos");
+            ListTag* rot = p->getList("Rotation");
+            if (pos->size() >= 3) {
+                float px = pos->getFloat(0), py = pos->getFloat(1), pz = pos->getFloat(2);
 
-                if (tag->contains("SpawnY")) {
-                    g_level.setSpawnPos(tag->getInt("SpawnX"),
-                                        tag->getInt("SpawnY"),
-                                        tag->getInt("SpawnZ"));
+                if (px == px && py == py && pz == pz && py >= 0.0f) {
+                    g_level.player->x = px; g_level.player->y = py; g_level.player->z = pz;
+                    g_loadedPlayerPos = true;
                 }
-                CompoundTag* p = tag->getCompound("Player");
-                if (p) {
-                    ListTag* pos = p->getList("Pos");
-                    ListTag* rot = p->getList("Rotation");
-                    if (pos->size() >= 3) {
-                        float px = pos->getFloat(0), py = pos->getFloat(1), pz = pos->getFloat(2);
+            }
+            if (rot->size() >= 2) { g_level.player->yRot = rot->getFloat(0); g_level.player->xRot = rot->getFloat(1); }
+            if (p->contains("Health")) g_level.player->health = p->getShort("Health");
 
-                        if (px == px && py == py && pz == pz && py >= 0.0f) {
-                            g_level.player->x = px; g_level.player->y = py; g_level.player->z = pz;
-                            g_loadedPlayerPos = true;
+            if (p->getBoolean("Sleeping")) {
+                g_level.player->sleeping = true;
+                g_level.player->sleepCounter = p->getShort("SleepTimer");
+                g_level.player->bedX = p->getInt("BedPositionX");
+                g_level.player->bedY = p->getInt("BedPositionY");
+                g_level.player->bedZ = p->getInt("BedPositionZ");
+            }
+
+            if (p->contains("SpawnY"))
+                g_level.player->setRespawnPosition(p->getInt("SpawnX"),
+                                                   p->getInt("SpawnY"),
+                                                   p->getInt("SpawnZ"));
+
+            g_loadedSurvival = (outGameType && *outGameType != 1);
+            ListTag* inv = p->getList("Inventory");
+
+            const int LINKS = 9;
+            for (int i = 0; i < inv->size(); i++) {
+                Tag* st = inv->get(i);
+                if (!st || st->getId() != Tag::TAG_Compound) continue;
+                CompoundTag* slot = (CompoundTag*)st;
+                int si = (unsigned char)slot->getByte("Slot");
+                if (g_loadedSurvival) {
+                    short id  = slot->getShort("id");
+                    int   cnt = (unsigned char)slot->getByte("Count");
+                    if (si < LINKS) {
+                        if (id == 255 && cnt == 255 && si < Inventory::HOTBAR) {
+                            int link = (short)slot->getShort("Damage");
+                            g_loadedLinks[si] = (link < 0) ? -1 : link - LINKS;
                         }
+                        continue;
                     }
-                    if (rot->size() >= 2) { g_level.player->yRot = rot->getFloat(0); g_level.player->xRot = rot->getFloat(1); }
-                    if (p->contains("Health")) g_level.player->health = p->getShort("Health");
+                    si -= LINKS;
+                    if (si < 0 || si >= Inventory::SURVIVAL_SLOTS) continue;
+                    g_loadedStorage[si].id     = id;
+                    g_loadedStorage[si].damage = slot->getShort("Damage");
+                    g_loadedStorage[si].count  = cnt;
+                    g_loadedStorage[si].used   = true;
+                } else {
+                    if (si < 0 || si >= Inventory::HOTBAR) continue;
+                    g_loadedHotbar[si].id     = slot->getShort("id");
+                    g_loadedHotbar[si].damage = slot->getShort("Damage");
 
-                    if (p->getBoolean("Sleeping")) {
-                        g_level.player->sleeping = true;
-                        g_level.player->sleepCounter = p->getShort("SleepTimer");
-                        g_level.player->bedX = p->getInt("BedPositionX");
-                        g_level.player->bedY = p->getInt("BedPositionY");
-                        g_level.player->bedZ = p->getInt("BedPositionZ");
-                    }
-
-                    if (p->contains("SpawnY"))
-                        g_level.player->setRespawnPosition(p->getInt("SpawnX"),
-                                                           p->getInt("SpawnY"),
-                                                           p->getInt("SpawnZ"));
-
-                    g_loadedSurvival = (outGameType && *outGameType != 1);
-                    ListTag* inv = p->getList("Inventory");
-
-                    const int LINKS = 9;
-                    bool oldFormat = g_loadedSurvival && p->contains("Hotbar");
-                    for (int i = 0; i < inv->size(); i++) {
-                        CompoundTag* slot = (CompoundTag*)inv->get(i);
-                        if (!slot) continue;
-                        int si = (unsigned char)slot->getByte("Slot");
-                        if (g_loadedSurvival) {
-                            short id  = slot->getShort("id");
-                            int   cnt = (unsigned char)slot->getByte("Count");
-                            if (!oldFormat) {
-                                if (si < LINKS) {
-                                    if (id == 255 && cnt == 255 && si < Inventory::HOTBAR) {
-                                        int link = (short)slot->getShort("Damage");
-                                        g_loadedLinks[si] = (link < 0) ? -1 : link - LINKS;
-                                    }
-                                    continue;
-                                }
-                                si -= LINKS;
-                            }
-                            if (si < 0 || si >= Inventory::SURVIVAL_SLOTS) continue;
-                            g_loadedStorage[si].id     = id;
-                            g_loadedStorage[si].damage = slot->getShort("Damage");
-                            g_loadedStorage[si].count  = cnt;
-                            g_loadedStorage[si].used   = true;
-                        } else {
-                            if (si < 0 || si >= Inventory::HOTBAR) continue;
-                            g_loadedHotbar[si].id     = slot->getShort("id");
-                            g_loadedHotbar[si].damage = slot->getShort("Damage");
-
-                            g_loadedHotbar[si].count  = (unsigned char)slot->getByte("Count");
-                            g_loadedHotbar[si].used   = true;
-                        }
-                    }
-
-                    if (p->contains("Armor")) {
-                        ListTag* ar = p->getList("Armor");
-                        int na = ar->size(); if (na > Player::NUM_ARMOR) na = Player::NUM_ARMOR;
-                        for (int i = 0; i < na; i++) {
-                            CompoundTag* slot = (CompoundTag*)ar->get(i);
-                            if (!slot) continue;
-                            g_level.player->armor[i] = ItemInstance(
-                                slot->getShort("id"),
-                                (short)(unsigned char)slot->getByte("Count"),
-                                slot->getShort("Damage"));
-                        }
-                    }
-                    if (g_loadedSurvival) {
-                        ListTag* hb = p->getList("Hotbar");
-                        for (int i = 0; i < hb->size(); i++) {
-                            CompoundTag* l = (CompoundTag*)hb->get(i);
-                            if (!l) continue;
-                            int hi = (unsigned char)l->getByte("Slot");
-                            if (hi < 0 || hi >= Inventory::HOTBAR) continue;
-                            g_loadedLinks[hi] = l->getShort("Link");
-                        }
-                    }
+                    g_loadedHotbar[si].count  = (unsigned char)slot->getByte("Count");
+                    g_loadedHotbar[si].used   = true;
                 }
-                tag->deleteChildren();
-                delete tag;
+            }
+
+            if (p->contains("Armor")) {
+                ListTag* ar = p->getList("Armor");
+                int na = ar->size(); if (na > Player::NUM_ARMOR) na = Player::NUM_ARMOR;
+                for (int i = 0; i < na; i++) {
+                    Tag* st = ar->get(i);
+                    if (!st || st->getId() != Tag::TAG_Compound) continue;
+                    CompoundTag* slot = (CompoundTag*)st;
+                    g_level.player->armor[i] = ItemInstance(
+                        slot->getShort("id"),
+                        (short)(unsigned char)slot->getByte("Count"),
+                        slot->getShort("Damage"));
+                }
             }
         }
-        delete[] buf;
+        tag->deleteChildren();
+        delete tag;
     }
-    fclose(f);
 }
 
 static const char* tileEntityName(int type) {
@@ -387,15 +399,12 @@ static void saveEntities(World* w, const char* absDir) {
     NbtIo::write(&root, &mw);
     root.deleteChildren();
 
-    FILE* f = fopen(join(absDir, "entities.dat").c_str(), "wb");
-    if (f) {
-        int version = 1, numBytes = (int)mw.buf.size();
-        fwrite("ENT\0", 1, 4, f);
-        fwrite(&version, sizeof(int), 1, f);
-        fwrite(&numBytes, sizeof(int), 1, f);
-        if (numBytes > 0) fwrite(&mw.buf[0], 1, numBytes, f);
-        fclose(f);
-    }
+    unsigned char head[12];
+    int version = 1, numBytes = (int)mw.buf.size();
+    memcpy(head, "ENT\0", 4);
+    memcpy(head + 4, &version, 4);
+    memcpy(head + 8, &numBytes, 4);
+    writeDatFile(absDir, "entities.dat", head, 12, mw);
 }
 
 static TileEntity* createTileEntityByName(const std::string& id) {
@@ -407,53 +416,39 @@ static TileEntity* createTileEntityByName(const std::string& id) {
 }
 
 static void loadEntities(World* w, const char* absDir) {
-    FILE* f = fopen(join(absDir, "entities.dat").c_str(), "rb");
-    if (!f) return;
-    char header[4]; int version = 0, numBytes = 0;
-    if (fread(header, 1, 4, f) == 4 &&
-        fread(&version, sizeof(int), 1, f) == 1 &&
-        fread(&numBytes, sizeof(int), 1, f) == 1 &&
-        numBytes > 0 && memcmp(header, "ENT", 3) == 0) {
-        unsigned char* buf = new unsigned char[numBytes];
-        if ((int)fread(buf, 1, numBytes, f) == numBytes) {
-            MemReader mr(buf, numBytes);
-            CompoundTag* root = NbtIo::read(&mr);
-            if (root) {
-                if (root->contains("Entities", Tag::TAG_List)) {
-                    ListTag* list = root->getList("Entities");
-                    for (int i = 0; i < list->size(); i++) {
-                        Tag* et = list->get(i);
-                        if (!et || et->getId() != Tag::TAG_Compound) continue;
-                        if (Entity* e = EntityFactory::loadEntity((CompoundTag*)et, &g_level))
-                            g_level.addEntity(e);
-                    }
-                }
-                if (root->contains("TileEntities", Tag::TAG_List)) {
-                    ListTag* list = root->getList("TileEntities");
-                    for (int i = 0; i < list->size(); i++) {
-                        Tag* et = list->get(i);
-                        if (!et || et->getId() != Tag::TAG_Compound) continue;
-                        CompoundTag* c = (CompoundTag*)et;
-                        TileEntity* te = createTileEntityByName(c->getString("id"));
-                        if (!te) {
-
-                            MemWriter mw;
-                            NbtIo::write(c, &mw);
-                            if (!mw.buf.empty()) w->preservedTileEntities.push_back(mw.buf);
-                            continue;
-                        }
-                        te->level = &g_level;
-                        te->load(c);
-                        g_level.setTileEntity(te->x, te->y, te->z, te);
-                    }
-                }
-                root->deleteChildren();
-                delete root;
+    CompoundTag* root = readDatFile(absDir, "entities.dat", 12);
+    if (root) {
+        if (root->contains("Entities", Tag::TAG_List)) {
+            ListTag* list = root->getList("Entities");
+            for (int i = 0; i < list->size(); i++) {
+                Tag* et = list->get(i);
+                if (!et || et->getId() != Tag::TAG_Compound) continue;
+                if (Entity* e = EntityFactory::loadEntity((CompoundTag*)et, &g_level))
+                    g_level.addEntity(e);
             }
         }
-        delete[] buf;
+        if (root->contains("TileEntities", Tag::TAG_List)) {
+            ListTag* list = root->getList("TileEntities");
+            for (int i = 0; i < list->size(); i++) {
+                Tag* et = list->get(i);
+                if (!et || et->getId() != Tag::TAG_Compound) continue;
+                CompoundTag* c = (CompoundTag*)et;
+                TileEntity* te = createTileEntityByName(c->getString("id"));
+                if (!te) {
+
+                    MemWriter mw;
+                    NbtIo::write(c, &mw);
+                    if (!mw.buf.empty()) w->preservedTileEntities.push_back(mw.buf);
+                    continue;
+                }
+                te->level = &g_level;
+                te->load(c);
+                g_level.setTileEntity(te->x, te->y, te->z, te);
+            }
+        }
+        root->deleteChildren();
+        delete root;
     }
-    fclose(f);
 }
 
 extern int g_lowMemHeap;
@@ -542,35 +537,20 @@ bool load(World* w, const char* absDir, long* outSeed, int* outGameType) {
 }
 
 bool readInfo(const char* absDir, char* nameOut, int nameCap, int* outGameType, long* outSeed) {
-    std::string dat = join(absDir, "level.dat");
-    FILE* f = fopen(dat.c_str(), "rb");
-    if (!f) { f = fopen(join(absDir, "level.dat_old").c_str(), "rb"); }
-    if (!f) return false;
-
     bool ok = false;
-    int version = 0, size = 0;
-    if (fread(&version, sizeof(int), 1, f) == 1 &&
-        fread(&size, sizeof(int), 1, f) == 1 && size > 0 && version >= 2) {
-        unsigned char* buf = new unsigned char[size];
-        if ((int)fread(buf, 1, size, f) == size) {
-            MemReader mr(buf, size);
-            CompoundTag* tag = NbtIo::read(&mr);
-            if (tag) {
-                if (nameOut && nameCap > 0) {
-                    std::string nm = tag->getString("LevelName");
-                    strncpy(nameOut, nm.c_str(), nameCap - 1);
-                    nameOut[nameCap - 1] = '\0';
-                }
-                if (outGameType) *outGameType = tag->getInt("GameType");
-                if (outSeed)     *outSeed = (long)tag->getLong("RandomSeed");
-                ok = true;
-                tag->deleteChildren();
-                delete tag;
-            }
+    CompoundTag* tag = readDatFile(absDir, "level.dat", 8);
+    if (tag) {
+        if (nameOut && nameCap > 0) {
+            std::string nm = tag->getString("LevelName");
+            strncpy(nameOut, nm.c_str(), nameCap - 1);
+            nameOut[nameCap - 1] = '\0';
         }
-        delete[] buf;
+        if (outGameType) *outGameType = tag->getInt("GameType");
+        if (outSeed)     *outSeed = (long)tag->getLong("RandomSeed");
+        ok = true;
+        tag->deleteChildren();
+        delete tag;
     }
-    fclose(f);
     return ok;
 }
 

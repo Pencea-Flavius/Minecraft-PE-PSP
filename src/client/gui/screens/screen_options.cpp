@@ -12,10 +12,12 @@
 #include "gpu/sprite.h"
 #include "client/gui/hud.h"
 #include "platform/path.h"
+#include "client/skin/skin_pack.h"
 #include "gpu/gui_atlas.h"
 #include "world/level/world.h"
 #include "client/renderer/particle.h"
 #include "client/gui/screens/control_scheme.h"
+#include "client/gui/screens/skin_page.h"
 
 struct OptionRowDef {
 
@@ -51,9 +53,11 @@ static const OptionRowDef g_optionRows[OPT_CATEGORIES][OPT_MAX_ROWS] = {
 
         { 0,           "Hide GUI",         {"Off", "On", 0, 0}, 2, 0 },
 
+        { 0,           "Animated Character", {"Off", "On", 0, 0}, 2, 0 },
+
         { 0,           "Interface Opacity", {0, 0, 0, 0}, 11, 8, true, 0, 10 },
 
-        { 0,           "Animated Character", {"Off", "On", 0, 0}, 2, 0 },
+        { 0,           "Change Skin", {0, 0, 0, 0}, 1, 0, false, 0, 0, true },
     },
     {
 
@@ -106,7 +110,7 @@ static const OptionRowDef g_optionRows[OPT_CATEGORIES][OPT_MAX_ROWS] = {
     },
 };
 
-static const int g_optionRowCount[OPT_CATEGORIES] = { 10, 6, 12, 8 };
+static const int g_optionRowCount[OPT_CATEGORIES] = { 11, 6, 12, 8 };
 static const char* g_optionCategoryNames[OPT_CATEGORIES] = { "Game", "Controls", "Graphics", "Audio" };
 static int g_optionValueIdx[OPT_CATEGORIES][OPT_MAX_ROWS];
 
@@ -180,8 +184,9 @@ static int renderDistChoices() { return g_lowMemPsp ? 2 : 4; }
 #define ROW_SHOWCOORDS  5
 #define ROW_BLOCKOUTLINE 6
 #define ROW_HIDEGUI      7
-#define ROW_HUDOPACITY   8
-#define ROW_ANIMCHAR     9
+#define ROW_ANIMCHAR     8
+#define ROW_HUDOPACITY   9
+#define ROW_SKIN        10
 
 #define CAT_AUDIO       3
 #define ROW_SOUNDVOL    0
@@ -319,6 +324,12 @@ void optionsSave() {
 
     for (int i = 0; i < PAGE_SETTINGS; i++)
         fprintf(f, "%s=%d\n", kPageSettings[i].label, *kPageSettings[i].value);
+    fprintf(f, "Skin=%s\n", skinOptionGet());
+    {
+        char favs[SKIN_MAX_FAVORITES * 96];
+        skinFavoritesOptionGet(favs, sizeof(favs));
+        fprintf(f, "SkinFavorites=%s\n", favs);
+    }
     fclose(f);
 }
 
@@ -327,11 +338,13 @@ void optionsLoad() {
     FILE* f = fopen(optionsFile(), "r");
 
     if (f) {
-        char line[128];
+        char line[1100];
         while (fgets(line, sizeof(line), f)) {
             char* eq = strrchr(line, '=');
             if (!eq) continue;
             *eq = '\0';
+            if (strcmp(line, "Skin") == 0) { skinOptionSet(eq + 1); continue; }
+            if (strcmp(line, "SkinFavorites") == 0) { skinFavoritesOptionSet(eq + 1); continue; }
             int val = atoi(eq + 1);
             if (strcmp(line, "Sound Volume") == 0) strcpy(line, "Master");
 
@@ -419,6 +432,7 @@ struct OptionsScreen : Screen {
 void OptionsScreen::handleInput(MenuState& s, unsigned int pressed, unsigned int ) {
 
     if (controlsPageIsOpen()) { controlsPageInput(s, pressed); return; }
+    if (skinPageIsOpen())     { skinPageInput(s, pressed); return; }
 
     int& optFocus = s.optFocus;
     int& optCategory = s.optCategory;
@@ -462,7 +476,10 @@ void OptionsScreen::handleInput(MenuState& s, unsigned int pressed, unsigned int
             g_optionValueIdx[optCategory][optItemHighlight] = idx + 1;
             optionsApply();
         }
-        if ((pressed & PSP_CTRL_CROSS) && row.button) controlsPageOpen();
+        if ((pressed & PSP_CTRL_CROSS) && row.button) {
+            if (optCategory == CAT_GAME && optItemHighlight == ROW_SKIN) skinPageOpen();
+            else controlsPageOpen();
+        }
 
         if ((pressed & PSP_CTRL_CROSS) && optionRowIsBoolean(row)) {
             g_optionValueIdx[optCategory][optItemHighlight] ^= 1;
@@ -473,6 +490,7 @@ void OptionsScreen::handleInput(MenuState& s, unsigned int pressed, unsigned int
 
 void OptionsScreen::renderContent(MenuState& s) {
     if (controlsPageIsOpen()) { controlsPageRender(s); return; }
+    if (skinPageIsOpen())     { skinPageRender(s); return; }
 
     Font& font = s.font; bool haveFont = s.haveFont;
 

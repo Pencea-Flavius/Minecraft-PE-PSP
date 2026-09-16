@@ -22,15 +22,19 @@ static const float DEG2RAD = 3.14159265f / 180.0f;
 
 void mobBuildBox(MobVertex* out, float x0, float y0, float z0,
                  float x1, float y1, float z1, int tx, int ty, int w, int h, int d,
-                 bool mirror, float grow, float texW, float texH) {
+                 bool mirror, float grow, float texW, float texH, bool lce) {
     x0 -= grow; y0 -= grow; z0 -= grow;
     x1 += grow; y1 += grow; z1 += grow;
 
     const float W = texW, H = texH;
+
+    const float insetU = lce ? 0.1f / W : 0.0f, insetV = lce ? 0.1f / H : 0.0f;
     int n = 0;
     auto addPoly = [&](float ax, float ay, float az, float bx, float by, float bz,
                        float cx, float cy, float cz, float dx, float dy, float dz,
                        float u0, float v0, float u1, float v1) {
+        const float su = (u1 > u0) ? insetU : -insetU, sv = (v1 > v0) ? insetV : -insetV;
+        u0 += su; u1 -= su; v0 += sv; v1 -= sv;
         if (mirror) { float t = u0; u0 = u1; u1 = t; }
         out[n++] = {u0, v0, ax, ay, az};
         out[n++] = {u1, v0, bx, by, bz};
@@ -46,7 +50,11 @@ void mobBuildBox(MobVertex* out, float x0, float y0, float z0,
     addPoly(x1,y0,z1, x0,y0,z1, x0,y0,z0, x1,y0,z0, (tx+d+w)/W,(ty)/H,     (tx+d)/W,(ty+d)/H);
     addPoly(x0,y0,z0, x0,y0,z1, x0,y1,z1, x0,y1,z0, lu0,(ty+d)/H,          lu1,(ty+d+h)/H);
     addPoly(x1,y0,z1, x1,y0,z0, x1,y1,z0, x1,y1,z1, ru0,(ty+d)/H,          ru1,(ty+d+h)/H);
-    addPoly(x1,y1,z0, x0,y1,z0, x0,y1,z1, x1,y1,z1, (tx+d+w)/W,(ty+d)/H,   (tx+d+2*w)/W,(ty)/H);
+
+    if (lce)
+        addPoly(x1,y1,z0, x0,y1,z0, x0,y1,z1, x1,y1,z1, (tx+d+2*w)/W,(ty)/H,   (tx+d+w)/W,(ty+d)/H);
+    else
+        addPoly(x1,y1,z0, x0,y1,z0, x0,y1,z1, x1,y1,z1, (tx+d+2*w)/W,(ty+d)/H, (tx+d+w)/W,(ty)/H);
     addPoly(x1,y0,z0, x0,y0,z0, x0,y1,z0, x1,y1,z0, (tx+d+w)/W,(ty+d)/H,   (tx+d)/W,(ty+d+h)/H);
     addPoly(x0,y0,z1, x1,y0,z1, x1,y1,z1, x0,y1,z1, (tx+2*d+2*w)/W,(ty+d)/H, (tx+2*d+w)/W,(ty+d+h)/H);
 }

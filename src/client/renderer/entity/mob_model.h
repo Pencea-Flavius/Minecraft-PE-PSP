@@ -97,7 +97,8 @@ bool mobNearMatrix(float vm[16], float* minEdge, float* safePerEdge);
 
 void mobBuildBox(MobVertex* out, float x0, float y0, float z0,
                  float x1, float y1, float z1, int tx, int ty, int w, int h, int d,
-                 bool mirror, float grow, float texW = 64.0f, float texH = 32.0f);
+                 bool mirror, float grow, float texW = 64.0f, float texH = 32.0f,
+                 bool lce = false);
 
 inline void mobBoxToColoured(SkinVertex* dst, const MobVertex* src, int n, unsigned int col) {
     for (int i = 0; i < n; i++) {

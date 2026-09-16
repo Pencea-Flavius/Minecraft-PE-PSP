@@ -15,6 +15,7 @@
 Player::Player(Level* level)
     : Mob(level), inventory(new Inventory(true)),
       bob(0), oBob(0), tilt(0), oTilt(0),
+      xCloak(0), yCloak(0), zCloak(0), xCloakO(0), yCloakO(0), zCloakO(0),
       xBob(0), yBob(0), xBobO(0), yBobO(0),
       useItemDuration(0),
       score(0), sleeping(false), sleepCounter(0), bedX(0), bedY(0), bedZ(0),

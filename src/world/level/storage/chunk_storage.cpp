@@ -26,10 +26,6 @@ static const int OFF_SKY  = OFF_DATA + CH_NIBBLE;
 static const int OFF_BLK  = OFF_SKY  + CH_NIBBLE;
 static const int OFF_UPD  = OFF_BLK  + CH_NIBBLE;
 
-static const unsigned char CH_UNPOPULATED = 0x5A;
-
-static const int OFF_CRC = OFF_UPD + 1;
-
 static const char CH_MAGIC[4] = { 'M', 'P', 'S', 'P' };
 static const int CH_TR_FLAGS = CH_PAYLOAD + 4;
 static const int CH_TR_CRC   = CH_PAYLOAD + 8;
@@ -46,30 +42,8 @@ static unsigned int crc32(const unsigned char* p, int n) {
     return ~c;
 }
 
-static unsigned int payloadCrc(unsigned char* buf) {
-    unsigned char save[4];
-    memcpy(save, buf + OFF_CRC, 4);
-    memset(buf + OFF_CRC, 0, 4);
-    unsigned int c = crc32(buf, CH_PAYLOAD);
-    memcpy(buf + OFF_CRC, save, 4);
-    return c;
-}
-static unsigned int crcGet(const unsigned char* buf) {
-    unsigned int c = 0;
-    for (int i = 0; i < 4; i++) c |= (unsigned int)buf[OFF_CRC + i] << (i * 8);
-    return c;
-}
-
 static bool trailerOk(const unsigned char* buf, int len) {
     return len >= CH_RECORD && memcmp(buf + CH_PAYLOAD, CH_MAGIC, 4) == 0;
-}
-
-static bool legacyMarks(const unsigned char* buf, int len) {
-    if (len < CH_PAYLOAD) return false;
-    if (buf[OFF_UPD] != 0 && buf[OFF_UPD] != CH_UNPOPULATED) return false;
-    for (int i = OFF_CRC + 4; i < OFF_UPD + CH_COLS; i++)
-        if (buf[i]) return false;
-    return true;
 }
 
 static inline int chunkIdx(int lx, int lz, int y) { return (lx << 11) | (lz << 7) | y; }
@@ -84,7 +58,6 @@ static inline int nibGet(const unsigned char* base, int idx) {
 }
 
 unsigned int g_chunkCrcFails = 0;
-unsigned int g_chunkLegacyLoaded = 0;
 
 #define REGION_CACHE 4
 
@@ -152,7 +125,6 @@ void chunkStorageInit(const char* absDir) {
     chunkStorageShutdown();
     snprintf(s_dir, sizeof(s_dir), "%s", absDir);
     s_haveDir = true;
-    g_chunkLegacyLoaded = 0;
 }
 
 void chunkStorageShutdown() {
@@ -204,16 +176,11 @@ bool chunkStorageLoad(World* w, int cx, int cz, bool* outGotLight, bool* outPopu
     if (len < OFF_DATA + CH_NIBBLE) { delete[] buf; return false; }
 
     bool haveTrailer = trailerOk(buf, len);
-    bool haveLegacy  = !haveTrailer && legacyMarks(buf, len);
     unsigned int stored = 0;
-    if (haveTrailer) {
+    if (haveTrailer)
         for (int i = 0; i < 4; i++) stored |= (unsigned int)buf[CH_TR_CRC + i] << (i * 8);
-    } else if (haveLegacy && len >= OFF_CRC + 4) {
-        stored = crcGet(buf);
-    }
     if (stored) {
-        unsigned int actual = haveTrailer ? crc32(buf, CH_PAYLOAD) : payloadCrc(buf);
-        if (stored != actual) {
+        if (stored != crc32(buf, CH_PAYLOAD)) {
             LOGI("chunkStorage: chunk %d,%d fails its checksum -- regenerating\n", cx, cz);
             g_chunkCrcFails++;
             delete[] buf;
@@ -222,14 +189,9 @@ bool chunkStorageLoad(World* w, int cx, int cz, bool* outGotLight, bool* outPopu
     }
 
     if (len < OFF_UPD && outGotLight) *outGotLight = false;
-    if (outPopulated) {
-        if (haveTrailer) {
-            if (buf[CH_TR_FLAGS] & CH_TR_UNPOPULATED) *outPopulated = false;
-        } else if (haveLegacy && len > OFF_UPD && buf[OFF_UPD] == CH_UNPOPULATED) {
-            *outPopulated = false;
-        }
 
-    }
+    if (outPopulated && haveTrailer && (buf[CH_TR_FLAGS] & CH_TR_UNPOPULATED))
+        *outPopulated = false;
 
     for (int lx = 0; lx < 16; lx++) {
         for (int lz = 0; lz < 16; lz++) {
@@ -247,11 +209,6 @@ bool chunkStorageLoad(World* w, int cx, int cz, bool* outGotLight, bool* outPopu
         }
     }
     delete[] buf;
-
-    if (haveLegacy) {
-        worldSlot(w, cx, cz)->unsaved = true;
-        g_chunkLegacyLoaded++;
-    }
     return true;
 }
 

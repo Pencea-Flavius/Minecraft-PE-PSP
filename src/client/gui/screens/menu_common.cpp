@@ -1,4 +1,5 @@
 
+#include "client/gui/screens/skin_page.h"
 #include <pspgu.h>
 #include <pspkernel.h>
 #include <pspctrl.h>
@@ -27,7 +28,8 @@ unsigned int menuSelectionSig(const MenuState& s) {
     };
     for (unsigned i = 0; i < sizeof(fields) / sizeof(fields[0]); i++)
         h = (h ^ (unsigned int)fields[i]) * 16777619u;
-    return (h ^ optionsValueSig()) * 16777619u;
+    h = (h ^ optionsValueSig()) * 16777619u;
+    return (h ^ skinPageSig()) * 16777619u;
 }
 
 void drawRect(float x, float y, float w, float h, unsigned int color) {
@@ -383,6 +385,15 @@ bool menuOskUpdate(MenuState& s) {
 Texture g_btnIcons;
 bool    g_btnIconsHave = false;
 
+void drawNameTag(MenuState& s, float centreX, float y, const char* name, float scale) {
+    if (!s.haveFont || !name || !name[0]) return;
+
+    const float half = (float)(fontTextWidth(&s.font, name) / 2) * scale;
+    drawRect(centreX - half - scale, y - scale, (half + scale) * 2.0f, 9.0f * scale,
+             0x40000000u);
+    fontDrawText(&s.font, centreX - half, y, name, 0xFFFFFFFFu, scale);
+}
+
 void buttonHintsDraw(MenuState& s, const ButtonHint* hints, int n, float y, float scale) {
     if (!g_btnIconsHave || !s.haveFont) return;
 
@@ -446,6 +457,18 @@ void menuHintsDraw(MenuState& s) {
         hints[n++] = (ButtonHint){ BTN_ICON_RIGHT,  PSP_CTRL_RIGHT,  "Change" };
         hints[n++] = menuFaceHint(true, "Select");
         hints[n++] = menuFaceHint(false, "Back");
+        buttonHintsDraw(s, hints, n);
+        return;
+    }
+    if (skinPageIsOpen()) {
+        hints[n++] = (ButtonHint){ menuShoulderIcon(false), PSP_CTRL_LTRIGGER, "" };
+        hints[n++] = (ButtonHint){ menuShoulderIcon(true),  PSP_CTRL_RTRIGGER, "Pack" };
+        hints[n++] = (ButtonHint){ BTN_ICON_LEFT,  PSP_CTRL_LEFT,  "" };
+        hints[n++] = (ButtonHint){ BTN_ICON_RIGHT, PSP_CTRL_RIGHT, "Navigate" };
+        hints[n++] = menuFaceHint(true, "Select");
+        hints[n++] = menuFaceHint(false, "Back");
+        if (const char* fav = skinPageTriangleLabel())
+            hints[n++] = (ButtonHint){ BTN_ICON_TRIANGLE, PSP_CTRL_TRIANGLE, fav };
         buttonHintsDraw(s, hints, n);
         return;
     }

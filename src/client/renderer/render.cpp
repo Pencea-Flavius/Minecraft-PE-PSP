@@ -1,3 +1,4 @@
+#include "client/skin/skin_pack.h"
 #include "client/renderer/render.h"
 #include "platform/dcache.h"
 #include "world/level/level.h"
@@ -1434,9 +1435,6 @@ void gameRender(MenuState& s) {
                 if (g_loadedFromDisk) LevelStorage::applyLoadedHotbar();
                 itemHandSnapEquip();
 
-                extern unsigned int g_chunkLegacyLoaded;
-                if (g_loadedFromDisk && g_chunkLegacyLoaded) g_saveRequested = true;
-
                 if (freshWorld) MobSpawner::populateInitial(&g_level);
             }
             return;
@@ -1484,7 +1482,7 @@ void gameRender(MenuState& s) {
     float bs = 0.0f, bc = 0.0f;
 
     float bobDx = 0.0f, bobDy = 0.0f, bobDz = 0.0f;
-    if (g_viewBobbing) {
+    if (g_viewBobbing && !skinNoViewBob()) {
         float wda = g_level.player->walkDist - g_level.player->walkDistO;
         float b = -(g_level.player->walkDistO + wda * a);
         float bobv  = g_level.player->oBob  + (g_level.player->bob  - g_level.player->oBob)  * a;

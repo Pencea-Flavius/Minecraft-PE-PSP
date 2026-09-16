@@ -24,6 +24,8 @@
 #include "gpu/item_icons.h"
 #include "gpu/spawn_egg_colors.h"
 #include "client/renderer/item_anim_icon.h"
+#include "client/skin/skin_pack.h"
+#include "client/renderer/entity/player_model.h"
 
 extern World g_world;
 extern bool g_worldBuilt;
@@ -126,17 +128,7 @@ static bool isFlat2DItem(short id) {
     return !tileCanRenderAsBlock(Tile::tiles[id]->shape);
 }
 
-static Texture g_charTex;
-static bool    g_haveChar = false;
-
-void loadCharIfNeeded(void) {
-    if (g_haveChar) return;
-    if (!textureLoad("data/images/mob/skin.png", &g_charTex)) {
-        g_haveChar = textureLoad("data/images/mob/char.png", &g_charTex);
-    } else {
-        g_haveChar = true;
-    }
-}
+void loadCharIfNeeded(void) { skinTexture(); }
 
 int itemBuildBlockMesh(short id, unsigned char data, ChunkVertex* out) {
     if (id == BLOCK_AIR) return 0;
@@ -404,41 +396,19 @@ bool itemIsFlat2D(short id) { return isFlat2DItem(id); }
 static MobVertex s_armMeshBase[36];
 static bool      s_armBuilt = false;
 
+static MobVertex s_armMesh64[36], s_sleeveMesh64[36];
 static void buildArm(void) {
     if (s_armBuilt) return;
-    const float W = 64.0f, H = 32.0f;
-
-    int n = 0;
-    auto addPoly = [&](float x0, float y0, float z0,
-                       float x1, float y1, float z1,
-                       float x2, float y2, float z2,
-                       float x3, float y3, float z3,
-                       float u0, float v0, float u1, float v1) {
-        s_armMeshBase[n++] = {u0, v0, x0, y0, z0};
-        s_armMeshBase[n++] = {u1, v0, x1, y1, z1};
-        s_armMeshBase[n++] = {u1, v1, x2, y2, z2};
-        s_armMeshBase[n++] = {u1, v1, x2, y2, z2};
-        s_armMeshBase[n++] = {u0, v1, x3, y3, z3};
-        s_armMeshBase[n++] = {u0, v0, x0, y0, z0};
-    };
-
-    float vx0 = -3.0f/16.0f, vx1 = 1.0f/16.0f;
-    float vy0 = -2.0f/16.0f, vy1 = 10.0f/16.0f;
-    float vz0 = -2.0f/16.0f, vz1 =  2.0f/16.0f;
-
-    addPoly(vx1, vy0, vz1,  vx0, vy0, vz1,  vx0, vy0, vz0,  vx1, vy0, vz0,  48/W, 16/H, 44/W, 20/H);
-
-    addPoly(vx0, vy0, vz0,  vx0, vy0, vz1,  vx0, vy1, vz1,  vx0, vy1, vz0,  44/W, 20/H, 40/W, 32/H);
-
-    addPoly(vx1, vy0, vz1,  vx1, vy0, vz0,  vx1, vy1, vz0,  vx1, vy1, vz1,  52/W, 20/H, 48/W, 32/H);
-
-    addPoly(vx1, vy1, vz0,  vx0, vy1, vz0,  vx0, vy1, vz1,  vx1, vy1, vz1,  48/W, 20/H, 52/W, 16/H);
-
-    addPoly(vx1, vy0, vz0,  vx0, vy0, vz0,  vx0, vy1, vz0,  vx1, vy1, vz0,  48/W, 20/H, 44/W, 32/H);
-
-    addPoly(vx0, vy0, vz1,  vx1, vy0, vz1,  vx1, vy1, vz1,  vx0, vy1, vz1,  56/W, 20/H, 52/W, 32/H);
-
+    const float P = 1.0f / 16.0f, g = 0.25f * P;
+    mobBuildBox(s_armMeshBase, -3*P, -2*P, -2*P, 1*P, 10*P, 2*P, 40, 16, 4, 12, 4,
+                false, 0.0f, 64.0f, 32.0f, true);
+    mobBuildBox(s_armMesh64, -3*P, -2*P, -2*P, 1*P, 10*P, 2*P, 40, 16, 4, 12, 4,
+                false, 0.0f, 64.0f, 64.0f, true);
+    mobBuildBox(s_sleeveMesh64, -3*P - g, -2*P - g, -2*P - g, 1*P + g, 10*P + g, 2*P + g,
+                40, 32, 4, 12, 4, false, 0.0f, 64.0f, 64.0f, true);
     dcacheFlush(s_armMeshBase, sizeof(s_armMeshBase));
+    dcacheFlush(s_armMesh64, sizeof(s_armMesh64));
+    dcacheFlush(s_sleeveMesh64, sizeof(s_sleeveMesh64));
     s_armBuilt = true;
 }
 
@@ -520,7 +490,7 @@ void itemHandDraw(float a, float bs, float bc) {
         sceGumTranslate(&back);
     }
 
-    if (g_viewBobbing) {
+    if (g_viewBobbing && !skinNoViewBob()) {
         float wda = g_level.player->walkDist - g_level.player->walkDistO;
         float b = -(g_level.player->walkDist + wda * a);
         float bobv  = g_level.player->oBob  + (g_level.player->bob  - g_level.player->oBob)  * a;
@@ -648,8 +618,8 @@ void itemHandDraw(float a, float bs, float bc) {
         ScePspFVector3 armPivot = { -5.0f/16.0f, 2.0f/16.0f, 0.0f };
         sceGumTranslate(&armPivot);
 
-        if (g_haveChar) {
-            textureBind(&g_charTex);
+        if (Texture* skin = skinTexture()) {
+            textureBind(skin);
 
             const float cp = cosf(camPitch * DEG2RAD), sp = sinf(camPitch * DEG2RAD);
             const float cy = cosf(camYaw   * DEG2RAD), sy = sinf(camYaw   * DEG2RAD);
@@ -662,7 +632,23 @@ void itemHandDraw(float a, float bs, float bc) {
                -fx, -fy, -fz,  0.0f,
                 0.0f, 0.0f, 0.0f, 1.0f,
             };
-            mobDrawPartLit(s_armMeshBase, brCol, toWorld);
+
+            if (!(skinAnim() & (1u << SKIN_ANIM_DISABLE_ARM0))) {
+                sceGuTexWrap(GU_REPEAT, GU_REPEAT);
+                if (skin->realW == 64 && skin->realH == 64) {
+                    mobDrawPartLit(s_armMesh64, brCol, toWorld);
+                    mobDrawPartLit(s_sleeveMesh64, brCol, toWorld);
+                } else {
+                    mobDrawPartLit(s_armMeshBase, brCol, toWorld);
+                }
+
+                sceGumPushMatrix();
+                ScePspFVector3 px = { 1.0f/16.0f, 1.0f/16.0f, 1.0f/16.0f };
+                sceGumScale(&px);
+                playerModelDrawSkinBoxes(2 , brCol, toWorld);
+                sceGumPopMatrix();
+                sceGuTexWrap(GU_CLAMP, GU_CLAMP);
+            }
             sceGuColor(0xFFFFFFFFu);
         }
 

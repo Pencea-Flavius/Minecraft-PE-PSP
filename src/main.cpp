@@ -429,7 +429,7 @@ int main(int argc, char* argv[]) {
     s.uiRow = 1;
     s.topSelected = 0;
     s.listScrollX = 0.0f;
-    s.selected = 1;
+    s.selected = 0;
     s.optFocus = 1;
     s.optCategory = 0;
     s.optTabHighlight = 0;
