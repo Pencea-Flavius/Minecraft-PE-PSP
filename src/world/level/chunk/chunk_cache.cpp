@@ -150,6 +150,8 @@ void worldGetChunk(World* w, int cx, int cz) {
 
     if (!worldChunkInBounds(cx, cz)) return;
     if (worldChunkReady(w, cx, cz)) return;
+
+    if (chunkStorageUnreachable()) return;
     claim(w, cx, cz);
     {
         GenScope gen(w);
@@ -272,6 +274,7 @@ int worldStream(World* w, float px, float pz, int budgetMs) {
             }
         if (bestD == 0x7FFFFFFF) return brought;
 
+        if (chunkStorageUnreachable()) return brought;
         claim(w, bestX, bestZ);
 
         bool gotLight = false, populated = true;

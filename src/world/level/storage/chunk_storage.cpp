@@ -1,4 +1,5 @@
 #include "world/level/storage/chunk_storage.h"
+#include "platform/power.h"
 #include "world/level/storage/region_file.h"
 #include "world/level/world.h"
 #include "world/level/chunk/chunk.h"
@@ -8,6 +9,7 @@
 #include <cstring>
 #include <vector>
 #include <pspkernel.h>
+#include <dirent.h>
 #include <pspthreadman.h>
 
 #define STORAGE_LOG 0
@@ -81,6 +83,28 @@ static void regionPath(char* out, size_t n, int rx, int rz) {
     else                    snprintf(out, n, "%s/r.%d.%d.dat", s_dir, rx, rz);
 }
 
+static bool s_unreachable = false;
+static unsigned int s_probedAt = 0;
+
+bool chunkStorageUnreachable() { return s_unreachable; }
+
+static void probeStick() {
+    unsigned int now = sceKernelGetSystemTimeLow();
+    if (s_probedAt && (unsigned int)(now - s_probedAt) < 500000u) return;
+    s_probedAt = now ? now : 1;
+
+    char root[320];
+    snprintf(root, sizeof(root), "%s", s_dir);
+    size_t n = strlen(root);
+    while (n > 1 && (root[n - 1] == '/' || root[n - 1] == '\\')) root[--n] = 0;
+    while (n > 1 && root[n - 1] != '/' && root[n - 1] != '\\') root[--n] = 0;
+    if (n == 0) return;
+
+    DIR* d = opendir(root);
+    if (d) { closedir(d); s_unreachable = false; }
+    else    s_unreachable = true;
+}
+
 static RegionFile* regionFor(int cx, int cz, bool create) {
     if (!s_haveDir) return 0;
     int rx = regionOf(cx), rz = regionOf(cz);
@@ -92,7 +116,8 @@ static RegionFile* regionFor(int cx, int cz, bool create) {
     regionPath(path, sizeof(path), rx, rz);
     if (!create) {
         FILE* f = fopen(path, "rb");
-        if (!f) return 0;
+
+        if (!f) { probeStick(); return 0; }
         fclose(f);
     }
 
@@ -104,6 +129,7 @@ static RegionFile* regionFor(int cx, int cz, bool create) {
     if (!rf) return 0;
     if (!rf->open()) { delete rf; return 0; }
     slot->rf = rf; slot->rx = rx; slot->rz = rz; slot->valid = true;
+    s_unreachable = false;
     return rf;
 }
 
@@ -119,6 +145,7 @@ static void storageUnlock() {
 namespace { struct StorageGuard {
     StorageGuard()  { storageLock(); }
     ~StorageGuard() { storageUnlock(); }
+    PowerHold hold;
 }; }
 
 void chunkStorageInit(const char* absDir) {

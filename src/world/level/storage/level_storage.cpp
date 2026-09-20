@@ -1,4 +1,5 @@
 #include "world/level/storage/level_storage.h"
+#include "platform/power.h"
 #include "world/level/level.h"
 #include "world/entity/local_player.h"
 #include "world/level/storage/region_file.h"
@@ -133,6 +134,7 @@ static CompoundTag* readDatFile(const char* absDir, const char* name, int hdr) {
 
 static bool writeDatFile(const char* absDir, const char* name,
                          const unsigned char* head, int hdr, const MemWriter& mw) {
+    PowerHold hold;
     std::string dat = join(absDir, name);
     std::string tmp = dat + "_new";
     std::string old = dat + "_old";

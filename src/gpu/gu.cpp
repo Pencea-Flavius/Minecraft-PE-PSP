@@ -1,4 +1,5 @@
 #include "gpu/gu.h"
+#include "platform/power.h"
 #include "gpu/gu_list_size.h"
 #include <stdlib.h>
 #include "platform/canary.h"
@@ -662,6 +663,7 @@ bool guSavePhotoPng(const char* path, int shrink) {
 
     const unsigned short* shotRd = (const unsigned short*)((unsigned int)shot | 0x40000000u);
 
+    PowerHold hold;
     FILE* f = fopen(path, "wb");
     if (!f) { free(shot); return false; }
     png_structp png = png_create_write_struct(PNG_LIBPNG_VER_STRING, 0, 0, 0);

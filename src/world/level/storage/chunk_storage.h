@@ -11,6 +11,8 @@ void chunkStorageDropOpenFiles();
 
 bool chunkStorageHasSave(const char* absDir);
 
+bool chunkStorageUnreachable();
+
 bool chunkStorageLoad(World* w, int cx, int cz, bool* outGotLight, bool* outPopulated = 0);
 extern unsigned int g_chunkCrcFails;
 

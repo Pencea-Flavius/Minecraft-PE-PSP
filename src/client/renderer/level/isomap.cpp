@@ -3,6 +3,7 @@
 #include "gpu/gu.h"
 #include "gpu/texture.h"
 #include "platform/dcache.h"
+#include "platform/power.h"
 #include "world/level/levelgen/level_source.h"
 #include "world/level/level.h"
 #include "world/entity/local_player.h"
@@ -399,6 +400,7 @@ bool isoMapRender(World* w, const Texture* terrain, const char* path, void (*pro
 
     if (ok) {
         if (progress) progress(90);
+        PowerHold hold;
         FILE* f = fopen(path, "wb");
         png_structp png = f ? png_create_write_struct(PNG_LIBPNG_VER_STRING, 0, 0, 0) : 0;
         png_infop info = png ? png_create_info_struct(png) : 0;

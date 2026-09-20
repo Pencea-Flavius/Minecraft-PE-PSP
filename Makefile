@@ -50,6 +50,7 @@ OBJS = \
 	src/gpu/sprite.o \
 	src/gpu/font.o \
 	src/platform/path.o \
+	src/platform/power.o \
 	src/platform/savedata.o \
 	src/platform/png_loader.o \
 	src/platform/malloc_lock.o \

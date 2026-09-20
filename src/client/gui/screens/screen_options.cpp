@@ -18,6 +18,7 @@
 #include "client/renderer/particle.h"
 #include "client/gui/screens/control_scheme.h"
 #include "client/gui/screens/skin_page.h"
+#include "platform/power.h"
 
 struct OptionRowDef {
 
@@ -316,6 +317,7 @@ void optionsSetControlScheme(int scheme) {
 static const char* optionsFile() { return savePath("options.txt"); }
 
 void optionsSave() {
+    PowerHold hold;
     FILE* f = fopen(optionsFile(), "w");
     if (!f) return;
     for (int c = 0; c < OPT_CATEGORIES; c++)

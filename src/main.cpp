@@ -16,6 +16,7 @@
 #include "gpu/sprite.h"
 #include "gpu/font.h"
 #include "platform/path.h"
+#include "platform/power.h"
 #include "util/prof.h"
 #include "platform/audio/sound.h"
 #include "world/level/storage/worldlist.h"
@@ -334,6 +335,8 @@ int main(int argc, char* argv[]) {
 
     pspFpuSetEnable(0);
     setupCallbacks();
+
+    powerHoldInit();
     pathInit(argc > 0 ? argv[0] : 0);
     savePathInit();
 
