@@ -772,6 +772,7 @@ int main(int argc, char* argv[]) {
 
                     guFinishFrame();
                     guSavePhotoPng(g_photoIconPath, 4);
+                    { extern void gameTimerReset(); gameTimerReset(); }
                     g_photoPending = false;
                     g_photoIsIcon  = false;
                     continue;
@@ -810,6 +811,9 @@ int main(int argc, char* argv[]) {
                     }
                     g_photoPending = false;
                     g_photoCamera = 0;
+
+                    extern void gameTimerReset();
+                    gameTimerReset();
 
                     continue;
                 }

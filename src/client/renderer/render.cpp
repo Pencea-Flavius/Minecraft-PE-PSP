@@ -116,6 +116,11 @@ struct CloudVertex {
     unsigned int color;
     float x, y, z;
 };
+
+struct CloudFastVertex {
+    float u, v;
+    float x, y, z;
+};
 struct ColorVertex {
     unsigned int color;
     float x, y, z;
@@ -581,50 +586,30 @@ static const float CLOUD_RING_R[] = { 0.0f, 0.1f, 0.25f, 0.5f, 1.0f, 2.0f, 4.0f,
 #define CLOUD_RINGS      ((int)(sizeof(CLOUD_RING_R) / sizeof(CLOUD_RING_R[0])))
 #define CLOUD_DISC_VERTS (CLOUD_SECTORS * 3 + (CLOUD_RINGS - 2) * CLOUD_SECTORS * 6)
 
-static void renderCloudsFast(float alpha, float px, float py, float pz) {
-    if (!g_haveClouds) return;
+static CloudFastVertex* g_cloudFastMesh = 0;
+static int g_cloudFastVerts = 0;
 
-    textureBind(&g_clouds);
-    sceGuEnable(GU_BLEND);
-    sceGuBlendFunc(GU_ADD, GU_SRC_ALPHA, GU_ONE_MINUS_SRC_ALPHA, 0, 0);
-    sceGuDisable(GU_ALPHA_TEST);
-    sceGuEnable(GU_DEPTH_TEST);
-    sceGuDepthMask(GU_TRUE);
-    sceGuDisable(GU_CULL_FACE);
-    sceGuTexWrap(GU_REPEAT, GU_REPEAT);
+static bool buildCloudFastMesh(void) {
+    if (g_cloudFastMesh) return true;
+    g_cloudFastMesh = (CloudFastVertex*)memalign(16,
+                          CLOUD_DISC_VERTS * sizeof(CloudFastVertex));
+    if (!g_cloudFastMesh) return false;
 
-    const float scale = 1.0f / 2048.0f;
-
-    float time = (float)g_cloudTicks + alpha;
-    float xo = px + time * 0.03f;
-    float zo = pz;
-    ScePspFVector3 t = { px, CLOUD_FAST_HEIGHT, pz };
-    sceGumTranslate(&t);
-
-    unsigned int color = g_cloudColorNow;
-
-    CloudVertex* v = (CloudVertex*)guFrameAlloc(CLOUD_DISC_VERTS * sizeof(CloudVertex));
-
-    if (!v) return;
-
-    static float s_cs[CLOUD_SECTORS + 1], s_sn[CLOUD_SECTORS + 1];
-    static bool s_ringsReady = false;
-    if (!s_ringsReady) {
-        for (int k = 0; k <= CLOUD_SECTORS; k++) {
-            float ang = (float)k * (6.2831853f / (float)CLOUD_SECTORS);
-            s_cs[k] = cosf(ang); s_sn[k] = sinf(ang);
-        }
-        s_ringsReady = true;
+    float cs[CLOUD_SECTORS + 1], sn[CLOUD_SECTORS + 1];
+    for (int k = 0; k <= CLOUD_SECTORS; k++) {
+        float ang = (float)k * (6.2831853f / (float)CLOUD_SECTORS);
+        cs[k] = cosf(ang); sn[k] = sinf(ang);
     }
 
+    CloudFastVertex* v = g_cloudFastMesh;
     int n = 0;
-    #define CLOUD_PUT(RX, RZ) do {                                            \
-        float wx_ = (RX), wz_ = (RZ);                                         \
-        v[n].u = (wx_ + xo) * scale; v[n].v = (wz_ + zo) * scale;             \
-        v[n].color = color; v[n].x = wx_; v[n].y = 0.0f; v[n].z = wz_; n++;   \
+    #define CLOUD_PUT(RX, RZ) do {                                  \
+        float wx_ = (RX), wz_ = (RZ);                               \
+        v[n].u = wx_; v[n].v = wz_;                                 \
+        v[n].x = wx_; v[n].y = 0.0f; v[n].z = wz_; n++;             \
     } while (0)
     for (int k = 0; k < CLOUD_SECTORS; k++) {
-        float c0 = s_cs[k], n0 = s_sn[k], c1 = s_cs[k + 1], n1 = s_sn[k + 1];
+        float c0 = cs[k], n0 = sn[k], c1 = cs[k + 1], n1 = sn[k + 1];
         float r1 = CLOUD_RING_R[1];
         CLOUD_PUT(0.0f, 0.0f);
         CLOUD_PUT(r1 * c0, r1 * n0);
@@ -641,9 +626,47 @@ static void renderCloudsFast(float alpha, float px, float py, float pz) {
     }
     #undef CLOUD_PUT
 
+    g_cloudFastVerts = n;
+    dcacheFlush(g_cloudFastMesh, (size_t)n * sizeof(CloudFastVertex));
+    return true;
+}
+
+static void renderCloudsFast(float alpha, float px, float py, float pz) {
+    (void)py;
+    if (!g_haveClouds) return;
+
+    if (!buildCloudFastMesh()) return;
+
+    textureBind(&g_clouds);
+    sceGuEnable(GU_BLEND);
+    sceGuBlendFunc(GU_ADD, GU_SRC_ALPHA, GU_ONE_MINUS_SRC_ALPHA, 0, 0);
+    sceGuDisable(GU_ALPHA_TEST);
+    sceGuEnable(GU_DEPTH_TEST);
+    sceGuDepthMask(GU_TRUE);
+    sceGuDisable(GU_CULL_FACE);
+    sceGuTexWrap(GU_REPEAT, GU_REPEAT);
+
+    ScePspFVector3 t = { px, CLOUD_FAST_HEIGHT, pz };
+    sceGumTranslate(&t);
+
+    const float TEX_SPAN = 2048.0f;
+    const float inv      = 1.0f / TEX_SPAN;
+    float scroll = fmodf(((float)g_cloudTicks + alpha) * 0.03f, TEX_SPAN);
+    float uo = fmodf(px + scroll, TEX_SPAN) * inv;
+    float vo = fmodf(pz,          TEX_SPAN) * inv;
+
+    sceGuTexScale(inv, inv);
+    sceGuTexOffset(uo, vo);
+
+    sceGuColor(g_cloudColorNow);
+
     sceGumDrawArray(GU_TRIANGLES,
-                   GU_TEXTURE_32BITF | GU_COLOR_8888 | GU_VERTEX_32BITF | GU_TRANSFORM_3D,
-                   n, 0, v);
+                    GU_TEXTURE_32BITF | GU_VERTEX_32BITF | GU_TRANSFORM_3D,
+                    g_cloudFastVerts, 0, g_cloudFastMesh);
+
+    sceGuTexScale(1.0f, 1.0f);
+    sceGuTexOffset(0.0f, 0.0f);
+    sceGuColor(0xFFFFFFFFu);
 
 }
 
@@ -884,6 +907,9 @@ void cloudFreeMesh(void) {
     free(g_cloudVertices);
     g_cloudVertices = 0;
     g_numCloudVertices = 0;
+    free(g_cloudFastMesh);
+    g_cloudFastMesh = 0;
+    g_cloudFastVerts = 0;
     g_lastCloudPx = g_lastCloudPz = g_lastCloudSnappedOffset = -999999.0f;
 }
 

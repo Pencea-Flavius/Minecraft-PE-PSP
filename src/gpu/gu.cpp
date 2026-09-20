@@ -508,12 +508,16 @@ void guPresent(void) {
     void* drawn = sceGuSwapBuffers();
     const bool late = !sceDisplayIsVblank();
     sceKernelChangeThreadPriority(0, prio);
-    if (late) g_postLate++;
+
+    extern volatile int g_powerSuspended;
+    if (late && !g_powerSuspended) g_postLate++;
     g_drawIdx = (drawn == g_fb[1]) ? 1 : 0;
 
     {
         const int vc = (int)sceDisplayGetVcount();
-        if (s_vcPrev >= 0) {
+
+        extern volatile int g_powerSuspended;
+        if (s_vcPrev >= 0 && !g_powerSuspended) {
             const int d = vc - s_vcPrev;
             g_vcLast = d;
             if (d < g_vcMin) g_vcMin = d;

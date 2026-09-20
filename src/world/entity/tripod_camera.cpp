@@ -7,6 +7,10 @@
 #include "world/item/item_instance.h"
 #include "client/renderer/particle.h"
 #include "nbt/compound_tag.h"
+#include "util/mth.h"
+#include <cmath>
+
+#define SMOKE_BACK 0.6f
 
 bool  g_photoPending = false;
 float g_photoX, g_photoY, g_photoZ, g_photoYaw, g_photoPitch;
@@ -110,11 +114,16 @@ void TripodCamera::tick() {
             g_photoZ = z;
             g_photoYaw = yRot; g_photoPitch = xRot;
 
-            particlesLargeSmoke(x, y + 0.9f, z);
-            particlesLargeSmoke(x, y + 1.05f, z);
-            particlesLargeSmoke(x, y + 1.2f, z);
+            float sx = x + sinf(yRot * Mth::PI / 180.0f) * SMOKE_BACK;
+            float sz = z - cosf(yRot * Mth::PI / 180.0f) * SMOKE_BACK;
+
+            particlesLargeSmoke(sx, y + 0.9f, sz);
+            particlesLargeSmoke(sx, y + 1.05f, sz);
+            particlesLargeSmoke(sx, y + 1.2f, sz);
         } else if (life > 8) {
-            particlesSmoke(x, y + 0.95f, z);
+            float sx = x + sinf(yRot * Mth::PI / 180.0f) * SMOKE_BACK;
+            float sz = z - cosf(yRot * Mth::PI / 180.0f) * SMOKE_BACK;
+            particlesSmoke(sx, y + 0.95f, sz);
         }
     }
 }

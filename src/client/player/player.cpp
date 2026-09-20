@@ -129,6 +129,12 @@ void quitToMenuNoSave(MenuState& s) {
     s.screen = SCREEN_WORLDS;
 }
 
+void gameTimerReset() {
+    g_timerLast = nowSeconds();
+    g_timerPassed = 0.0f;
+    g_timerAlpha = 0.0f;
+}
+
 static void runTicks(MenuState& s, unsigned int btn, unsigned char lx, unsigned char ly,
                      unsigned char rx = 128, unsigned char ry = 128) {
 
