@@ -105,6 +105,10 @@ static MobVertex (*s_mesh)[36] = 0;
 static unsigned char s_part[NSLOT][SKIN_MAX_BOXES];
 static float s_ws = 0.0f, s_wp = 0.0f;
 
+static int   s_pose = SKIN_POSE_WALK;
+static float s_swingT = 0.0f;
+static const float SWING_FRAMES = 18.0f;
+
 bool skinPageIsOpen() { return s_open; }
 
 static int skinCount() { return s_entryCount; }
@@ -392,6 +396,11 @@ unsigned int skinPageSig() {
     return (unsigned int)(s_pack * 131071 + s_center * 257 + s_focus + 1);
 }
 
+const char* skinPagePoseLabel() {
+    static const char* kNext[SKIN_POSE_COUNT] = { "Sneak", "Attack", "Walk" };
+    return kNext[s_pose];
+}
+
 const char* skinPageTriangleLabel() {
     if (!s_open || s_focus != FOCUS_SKINS) return 0;
     char key[96];
@@ -403,6 +412,8 @@ const char* skinPageTriangleLabel() {
 void skinPageOpen() {
     s_open = true;
     s_focus = FOCUS_SKINS;
+    s_pose = SKIN_POSE_WALK;
+    s_swingT = 0.0f;
     for (int i = 0; i < NSLOT; i++) { memset(&s_store[i], 0, sizeof(Slot)); s_store[i].idx = -1; }
     if (!s_mesh) s_mesh = (MobVertex (*)[36])malloc(sizeof(*s_mesh) * NSLOT * SKIN_MAX_BOXES);
     scanPacks();
@@ -465,6 +476,11 @@ void skinPageInput(MenuState& , unsigned int pressed) {
 
         optionsSave();
 
+    }
+
+    if (pressed & PSP_CTRL_SQUARE) {
+        s_pose = (s_pose + 1) % SKIN_POSE_COUNT;
+        s_swingT = 0.0f;
     }
     if ((pressed & PSP_CTRL_TRIANGLE) && key[0]) {
         int at = skinFavoriteFind(key);
@@ -537,6 +553,8 @@ void skinPageRender(MenuState& s) {
     s_ws += (0.1f - s_ws) * 0.4f;
     s_wp += s_ws;
 
+    if (s_pose == SKIN_POSE_ATTACK && ++s_swingT >= SWING_FRAMES) s_swingT = 0.0f;
+
     const bool onPacks = (s_focus == FOCUS_PACKS);
     drawRect(0.0f, SK_TINT_Y, 480.0f, SK_TINT_H, SK_TINT);
 
@@ -594,7 +612,10 @@ void skinPageRender(MenuState& s) {
             d.anim = s_opened[en.pack].skins[en.idx].anim;
         }
         const SlotRect& r = kSlot[k];
-        playerModelRenderSkinPreview(d, r.x, r.y + SK_TOP_SHIFT, r.w, r.h, sl->rot, s_wp, s_ws);
+        const bool middle = (k == 3);
+        playerModelRenderSkinPreview(d, r.x, r.y + SK_TOP_SHIFT, r.w, r.h, sl->rot, s_wp, s_ws,
+                                     middle ? s_pose : SKIN_POSE_WALK,
+                                     middle ? s_swingT / SWING_FRAMES : 0.0f);
     }
     sceGuDisable(GU_DEPTH_TEST);
 

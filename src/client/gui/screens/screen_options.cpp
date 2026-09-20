@@ -45,6 +45,8 @@ static const OptionRowDef g_optionRows[OPT_CATEGORIES][OPT_MAX_ROWS] = {
         { 0,      "Third Person", {"Off", "Behind", "In Front", 0}, 3, 0 },
 
         { 0,      "Auto Save",    {"Off", "5 min", "15 min", "20 min", "30 min"}, 5, 2 },
+
+        { 0,      "Change Skin",  {0, 0, 0, 0}, 1, 0, false, 0, 0, true },
         { "Interface", "Bar On Top", {"Off", "On", 0, 0}, 2, 0 },
         { 0,           "Show FPS",   {"Off", "On", 0, 0}, 2, 0 },
 
@@ -56,8 +58,6 @@ static const OptionRowDef g_optionRows[OPT_CATEGORIES][OPT_MAX_ROWS] = {
         { 0,           "Animated Character", {"Off", "On", 0, 0}, 2, 0 },
 
         { 0,           "Interface Opacity", {0, 0, 0, 0}, 11, 8, true, 0, 10 },
-
-        { 0,           "Change Skin", {0, 0, 0, 0}, 1, 0, false, 0, 0, true },
     },
     {
 
@@ -179,14 +179,14 @@ static int renderDistChoices() { return g_lowMemPsp ? 2 : 4; }
 #define ROW_DIFFICULTY  0
 #define ROW_THIRDPERSON 1
 #define ROW_AUTOSAVE    2
-#define ROW_BARONTOP    3
-#define ROW_SHOWFPS     4
-#define ROW_SHOWCOORDS  5
-#define ROW_BLOCKOUTLINE 6
-#define ROW_HIDEGUI      7
-#define ROW_ANIMCHAR     8
-#define ROW_HUDOPACITY   9
-#define ROW_SKIN        10
+#define ROW_SKIN         3
+#define ROW_BARONTOP     4
+#define ROW_SHOWFPS      5
+#define ROW_SHOWCOORDS   6
+#define ROW_BLOCKOUTLINE 7
+#define ROW_HIDEGUI      8
+#define ROW_ANIMCHAR     9
+#define ROW_HUDOPACITY  10
 
 #define CAT_AUDIO       3
 #define ROW_SOUNDVOL    0

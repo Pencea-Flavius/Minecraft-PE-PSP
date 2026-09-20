@@ -775,19 +775,45 @@ void playerModelRenderPreview(float sx, float sy, float scale) {
 }
 
 void playerModelRenderSkinPreview(const SkinDraw& d, float x, float y, float w, float h,
-                                  float yRotDeg, float walkPos, float walkSpeed) {
+                                  float yRotDeg, float walkPos, float walkSpeed,
+                                  int pose, float swing) {
     if (!d.tex) return;
     buildParts();
+
+    const bool sneaking  = (pose == SKIN_POSE_SNEAK);
+    const bool attacking = (pose == SKIN_POSE_ATTACK);
 
     float ws = walkSpeed > 1.0f ? 1.0f : walkSpeed;
     float tcos0 = cosf(walkPos * 0.6662f) * ws, tcos1 = cosf(walkPos * 0.6662f + PIF) * ws;
     for (int i = 0; i < P_COUNT; i++) parts[i].xRot = parts[i].yRot = parts[i].zRot = 0.0f;
     parts[P_ARM0].xRot = tcos1;        parts[P_ARM1].xRot = tcos0;
     parts[P_LEG0].xRot = tcos0 * 1.4f; parts[P_LEG1].xRot = tcos1 * 1.4f;
-    applySkinAnim(d.anim, tcos0, tcos1, false, false, false);
+
+    applySkinAnim(d.anim, tcos0, tcos1, attacking, attacking, false);
 
     parts[P_ARM0].zRot += 0.1f; parts[P_ARM1].zRot -= 0.1f;
-    setPivots(false);
+    setPivots(sneaking);
+
+    if (attacking && swing > 0.001f) {
+        float f = 1.0f - swing; f *= f; f *= f; f = 1.0f - f;
+        float s1 = sinf(f * PIF);
+        parts[P_BODY].yRot  = sinf(sqrtf(swing) * PIF * 2.0f) * 0.2f;
+        parts[P_ARM0].pz =  sinf(parts[P_BODY].yRot) * 5.0f;
+        parts[P_ARM0].px = -cosf(parts[P_BODY].yRot) * 5.0f;
+        parts[P_ARM1].pz = -sinf(parts[P_BODY].yRot) * 5.0f;
+        parts[P_ARM1].px =  cosf(parts[P_BODY].yRot) * 5.0f;
+        parts[P_ARM0].yRot += parts[P_BODY].yRot;
+        parts[P_ARM1].yRot += parts[P_BODY].yRot;
+        parts[P_ARM1].xRot += parts[P_BODY].yRot;
+        parts[P_ARM0].xRot -= s1 * 1.2f + sinf(swing * PIF) * 0.7f * 0.75f;
+        parts[P_ARM0].yRot += parts[P_BODY].yRot * 2.0f;
+        parts[P_ARM0].zRot += sinf(swing * PIF) * -0.4f;
+    }
+
+    if (sneaking) {
+        parts[P_BODY].xRot += 0.5f;
+        parts[P_ARM0].xRot += 0.4f; parts[P_ARM1].xRot += 0.4f;
+    }
 
     float scale = h / 32.0f;
     float s     = scale * 15.0f / 16.0f;

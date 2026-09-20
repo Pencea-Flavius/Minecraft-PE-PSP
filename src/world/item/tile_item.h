@@ -32,6 +32,9 @@ public:
     SlabItem(short id, short dblId) : TileItem(id), doubleId(dblId) {}
     virtual bool useOn(ItemInstance* item, Player* player, World* world, int x, int y, int z, int face,
                        float clickX, float clickY, float clickZ);
+private:
+
+    bool mergeAt(ItemInstance* item, Player* player, World* w, int x, int y, int z, int slabType);
 };
 
 class DoorItem : public Item {

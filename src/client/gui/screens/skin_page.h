@@ -13,4 +13,6 @@ unsigned int skinPageSig();
 
 const char* skinPageTriangleLabel();
 
+const char* skinPagePoseLabel();
+
 #endif

@@ -26,8 +26,11 @@ struct SkinDraw {
 int playerModelBuildSkinBoxes(const SkinBox* boxes, int n, MobVertex (*out)[36],
                               unsigned char* part, int max, float texH = 32.0f);
 
+enum { SKIN_POSE_WALK = 0, SKIN_POSE_SNEAK, SKIN_POSE_ATTACK, SKIN_POSE_COUNT };
+
 void playerModelRenderSkinPreview(const SkinDraw& d, float x, float y, float w, float h,
-                                  float yRotDeg, float walkPos, float walkSpeed);
+                                  float yRotDeg, float walkPos, float walkSpeed,
+                                  int pose = SKIN_POSE_WALK, float swing = 0.0f);
 
 void playerModelRenderWornPreview(float x, float y, float w, float h, float yRotDeg);
 

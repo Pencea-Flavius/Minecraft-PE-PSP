@@ -469,6 +469,8 @@ void menuHintsDraw(MenuState& s) {
         hints[n++] = menuFaceHint(false, "Back");
         if (const char* fav = skinPageTriangleLabel())
             hints[n++] = (ButtonHint){ BTN_ICON_TRIANGLE, PSP_CTRL_TRIANGLE, fav };
+
+        hints[n++] = (ButtonHint){ BTN_ICON_SQUARE, PSP_CTRL_SQUARE, skinPagePoseLabel() };
         buttonHintsDraw(s, hints, n);
         return;
     }

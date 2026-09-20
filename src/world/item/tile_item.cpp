@@ -54,6 +54,26 @@ bool TileItem::useOn(ItemInstance* item, Player* player, World* world, int x, in
     return true;
 }
 
+bool SlabItem::mergeAt(ItemInstance* item, Player* player, World* w, int x, int y, int z,
+                       int slabType) {
+
+    Tile* dbl = Tile::tiles[doubleId];
+    if (!tileUnobstructedAt(w, (unsigned char)doubleId, x, y, z))
+        return true;
+    if (worldSetBlockAndData(w, x, y, z, (unsigned char)doubleId, (unsigned char)slabType)) {
+        const SoundType& snd = g_tileSounds[dbl->soundType];
+        if (snd.stepSound)
+            g_level.playSound(x + 0.5f, y + 0.5f, z + 0.5f, snd.stepSound,
+                              (snd.volume + 1.0f) / 2.0f, snd.pitch * 0.8f);
+        worldNotifyNeighborsChanged(w, x, y, z);
+        worldUpdateLights(w);
+        worldRebuildAroundNow(w, x, y, z);
+        if (player) player->inventory->consumeSelected();
+    }
+    (void)item;
+    return true;
+}
+
 bool SlabItem::useOn(ItemInstance* item, Player* player, World* w, int x, int y, int z, int face,
                      float clickX, float clickY, float clickZ) {
     if (!item || item->isNull()) return false;
@@ -62,24 +82,20 @@ bool SlabItem::useOn(ItemInstance* item, Player* player, World* w, int x, int y,
     unsigned char currentData = worldData(w, x, y, z);
     int  slabType = currentData & DSLAB_MAT_MASK;
     bool isUpper  = (currentData & SLAB_TOP_SLOT_BIT) != 0;
+    const int myType = item->data & DSLAB_MAT_MASK;
 
     if (((face == F_TOP && !isUpper) || (face == F_DOWN && isUpper)) &&
-        currentTile == tileId && slabType == (item->data & DSLAB_MAT_MASK)) {
+        currentTile == tileId && slabType == myType)
+        return mergeAt(item, player, w, x, y, z, slabType);
 
-        Tile* dbl = Tile::tiles[doubleId];
-        if (!tileUnobstructedAt(w, (unsigned char)doubleId, x, y, z))
-            return true;
-        if (worldSetBlockAndData(w, x, y, z, (unsigned char)doubleId, (unsigned char)slabType)) {
-            const SoundType& snd = g_tileSounds[dbl->soundType];
-            if (snd.stepSound)
-                g_level.playSound(x + 0.5f, y + 0.5f, z + 0.5f, snd.stepSound,
-                                  (snd.volume + 1.0f) / 2.0f, snd.pitch * 0.8f);
-            worldNotifyNeighborsChanged(w, x, y, z);
-            worldUpdateLights(w);
-            worldRebuildAroundNow(w, x, y, z);
-            if (player) player->inventory->consumeSelected();
-        }
-        return true;
+    {
+        const int tx = x + kFaceNeighbor[face][0];
+        const int ty = y + kFaceNeighbor[face][1];
+        const int tz = z + kFaceNeighbor[face][2];
+        if (worldBlock(w, tx, ty, tz) == (unsigned char)tileId &&
+            (worldData(w, tx, ty, tz) & DSLAB_MAT_MASK) == myType)
+            return mergeAt(item, player, w, tx, ty, tz,
+                           worldData(w, tx, ty, tz) & DSLAB_MAT_MASK);
     }
     return TileItem::useOn(item, player, w, x, y, z, face, clickX, clickY, clickZ);
 }
