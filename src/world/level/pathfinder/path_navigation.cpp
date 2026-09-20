@@ -2,6 +2,7 @@
 #include "world/level/pathfinder/path_navigation.h"
 #include "world/level/pathfinder/path.h"
 #include "world/level/pathfinder/node.h"
+#include "world/level/pathfinder/path_finder.h"
 #include "world/entity/mob.h"
 #include "world/entity/ai/move_control.h"
 #include "world/level/level.h"
@@ -186,7 +187,9 @@ bool PathNavigation::canWalkAbove(int x, int y, int z, int xs, int ys, int zs,
                     ((float)xx + 0.5f - from.x) * dirX < 0.0f) continue;
                 int id = level->getTile(xx, yy, zz);
 
-                if (id > 0 && isSolidPhys((unsigned char)id)) return false;
+                if (id > 0 && isSolidPhys((unsigned char)id) &&
+                    !pathIsHole(level, xx, yy, zz, (unsigned char)id))
+                    return false;
             }
     return true;
 }

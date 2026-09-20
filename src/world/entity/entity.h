@@ -60,6 +60,8 @@ public:
     virtual bool isFree(float xa, float ya, float za);
     virtual bool isInWall();
     virtual bool isInWater();
+
+    bool isInWaterQuiet();
     virtual bool isInLava();
 
     virtual void makeStuckInWeb();

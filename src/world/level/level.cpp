@@ -98,8 +98,11 @@ bool Level::hasChunksAt(int x0, int y0, int z0, int x1, int y1, int z1) const {
 
     if (y1 < 0 || y0 >= WORLD_H) return false;
     for (int cz = z0 >> 4; cz <= (z1 >> 4); cz++)
-        for (int cx = x0 >> 4; cx <= (x1 >> 4); cx++)
+        for (int cx = x0 >> 4; cx <= (x1 >> 4); cx++) {
+
+            if (!worldChunkInBounds(cx, cz)) continue;
             if (!worldChunkSettled(w, cx, cz)) return false;
+        }
     return true;
 }
 
@@ -466,8 +469,9 @@ bool Level::isInWater(Entity* e, const AABB& box) const {
                 liquidFlow(w, x, y, z, id, &fx, &fy, &fz);
                 cx += fx * 0.5f; cy += fy * 0.5f; cz += fz * 0.5f;
             }
+
     float len = Mth::sqrt(cx * cx + cy * cy + cz * cz);
-    if (len > 0.0f) {
+    if (len > 0.0f && e) {
         float p = 0.004f / len;
         e->xd += cx * p; e->yd += cy * p; e->zd += cz * p;
     }

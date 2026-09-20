@@ -154,6 +154,17 @@ Node* PathFinder::getNode(int x, int y, int z) {
     return node;
 }
 
+bool pathIsHole(const Level* level, int x, int y, int z, unsigned char id) {
+    if (isFenceGate(id)) return (level->getData(x, y, z) & 4) != 0;
+    if (isTrapdoor(id))  return (level->getData(x, y, z) & 4) == 0;
+    if (isDoor(id)) {
+        int d = level->getData(x, y, z);
+        if (d & 8) d = level->getData(x, y - 1, z);
+        return (d & 4) != 0;
+    }
+    return false;
+}
+
 int PathFinder::isFree(Entity* , int x, int y, int z, const Node* size) {
 
     bool sawWater = false;
@@ -163,10 +174,15 @@ int PathFinder::isFree(Entity* , int x, int y, int z, const Node* size) {
                 int id = level->getTile(xx, yy, zz);
                 if (id <= 0) continue;
                 unsigned char b = (unsigned char)id;
+
+                if (pathIsHole(level, xx, yy, zz, b)) {
+
+                    if (isTrapdoor(b)) sawWater = true;
+                    continue;
+                }
                 if (isDoor(b)) {
 
-                    if (!(level->getData(xx, yy, zz) & 4) &&
-                        !(passDoors && b == BLOCK_DOOR_WOOD)) return TYPE_BLOCKED;
+                    if (!(passDoors && b == BLOCK_DOOR_WOOD)) return TYPE_BLOCKED;
                     continue;
                 } else if (isWaterId(b)) {
                     if (avoidWater) return TYPE_WATER;

@@ -463,6 +463,8 @@ void skinPageInput(MenuState& , unsigned int pressed) {
         entryOption(s_center, v, sizeof(v));
         skinOptionSet(v);
 
+        optionsSave();
+
     }
     if ((pressed & PSP_CTRL_TRIANGLE) && key[0]) {
         int at = skinFavoriteFind(key);
@@ -473,6 +475,7 @@ void skinPageInput(MenuState& , unsigned int pressed) {
 
             if (s_pack == PACK_FAVORITES) openPack(PACK_FAVORITES, s_center);
         }
+        optionsSave();
     }
 }
 

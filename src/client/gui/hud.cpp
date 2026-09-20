@@ -1405,7 +1405,7 @@ void gameHintsDraw(MenuState& s) {
         CrosshairTarget t = gameModeCrosshairTarget();
 
         if (g_level.player->riding) n += hudHint(&h[n], PSP_CTRL_START, "Exit");
-        if (g_level.player->isInWater()) n += hudHint(&h[n], PSP_CTRL_START, "Swim Up");
+        if (g_level.player->isInWaterQuiet()) n += hudHint(&h[n], PSP_CTRL_START, "Swim Up");
         if (!g_level.player->inventory->isCreative())
             n += hudHint(&h[n], ACT_CRAFT, "Crafting");
         n += hudHint(&h[n], ACT_INVENTORY, "Inventory");

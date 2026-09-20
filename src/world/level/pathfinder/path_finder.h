@@ -9,6 +9,8 @@ class Path;
 class Entity;
 class Level;
 
+bool pathIsHole(const Level* level, int x, int y, int z, unsigned char id);
+
 class PathFinder {
 public:
     PathFinder();

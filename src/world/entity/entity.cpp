@@ -104,6 +104,8 @@ void Entity::resetPos(bool ) {
 }
 
 bool Entity::isInWater() { return level->isInWater(this, bb.grow(0.0f, -0.4f, 0.0f)); }
+
+bool Entity::isInWaterQuiet() { return level->isInWater(0, bb.grow(0.0f, -0.4f, 0.0f)); }
 bool Entity::isInLava()  { return level->isInLava(bb.grow(-0.1f, -0.4f, -0.1f)); }
 
 bool Entity::isFree(float xa, float ya, float za, float grow) {
