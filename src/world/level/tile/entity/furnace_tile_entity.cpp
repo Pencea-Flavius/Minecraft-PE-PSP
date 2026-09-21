@@ -9,7 +9,7 @@
 
 FurnaceTileEntity::FurnaceTileEntity()
     : super(TE_FURNACE), Container(ContainerType::FURNACE),
-      litTime(0), litDuration(0), tickCount(0) {
+      keepOnRemove(false), litTime(0), litDuration(0), tickCount(0) {
     rendererId = TR_NO_RENDER;
 }
 

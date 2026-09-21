@@ -21,6 +21,9 @@ public:
     virtual bool shouldSave();
     virtual void load(CompoundTag* tag);
 
+    bool keepOnRemove;
+    virtual void setRemoved() { if (!keepOnRemove) TileEntity::setRemoved(); }
+
     virtual ItemInstance* getItem(int slot);
     virtual void          setItem(int slot, ItemInstance* item);
     virtual ItemInstance  removeItem(int slot, int count);
@@ -53,6 +56,8 @@ public:
     int litDuration;
     int tickCount;
 };
+
+extern bool g_furnaceNoDrop;
 
 void furnaceSetLitBlock(Level* level, int x, int y, int z, bool lit);
 

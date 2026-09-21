@@ -325,6 +325,9 @@ extern const signed char kFaceNeighbor[6][3];
 
 extern const unsigned int kFaceShade[6];
 
+extern const unsigned int* g_faceShade;
+void meshUseFaceShade(bool on);
+
 void tileForBlock(unsigned char id, unsigned char data, int f, int* col, int* row, unsigned int* tint);
 
 struct World;

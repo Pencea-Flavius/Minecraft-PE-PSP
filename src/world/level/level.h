@@ -92,6 +92,8 @@ public:
     void setTileEntity(int x, int y, int z, TileEntity* te);
     void tickTileEntities();
     void removeTileEntity(int x, int y, int z);
+
+    TileEntity* findTileEntity(int x, int y, int z);
     void removeAllTileEntities();
 
     bool containsAnyLiquid(const AABB& box) const;

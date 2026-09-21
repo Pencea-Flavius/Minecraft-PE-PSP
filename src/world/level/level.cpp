@@ -11,6 +11,7 @@
 #include "world/level/pathfinder/path_finder.h"
 #include "world/level/mob_spawner.h"
 #include "world/level/tile/tile.h"
+#include "world/level/tile/entity/tile_entity_factory.h"
 #include "platform/audio/sound.h"
 #include "util/mth.h"
 
@@ -390,7 +391,7 @@ void Level::destroyTileProgress(int id, int x, int y, int z, int progress) {
     slot->id = id; slot->x = x; slot->y = y; slot->z = z; slot->progress = progress;
 }
 
-TileEntity* Level::getTileEntity(int x, int y, int z) {
+TileEntity* Level::findTileEntity(int x, int y, int z) {
     for (size_t i = 0; i < tileEntities.size(); i++) {
         TileEntity* te = tileEntities[i];
         if (te && !te->removed && te->x == x && te->y == y && te->z == z) return te;
@@ -398,10 +399,23 @@ TileEntity* Level::getTileEntity(int x, int y, int z) {
     return 0;
 }
 
+TileEntity* Level::getTileEntity(int x, int y, int z) {
+    if (TileEntity* found = findTileEntity(x, y, z)) return found;
+    int id = getTile(x, y, z);
+    if (id <= 0 || !Tile::isEntityTile[id]) return 0;
+    TileEntity* made = TileEntityFactory::createTileEntity(Tile::tiles[id]->getTileEntityType());
+    if (!made) return 0;
+    setTileEntity(x, y, z, made);
+
+    return findTileEntity(x, y, z);
+}
+
 void Level::setTileEntity(int x, int y, int z, TileEntity* te) {
 
     if (!te) return;
     removeTileEntity(x, y, z);
+
+    if (findTileEntity(x, y, z)) { delete te; return; }
     te->setLevelAndPos(this, x, y, z);
     tileEntities.push_back(te);
 }
@@ -410,6 +424,8 @@ void Level::removeTileEntity(int x, int y, int z) {
     for (size_t i = 0; i < tileEntities.size(); ) {
         TileEntity* te = tileEntities[i];
         if (te && te->x == x && te->y == y && te->z == z) {
+            te->setRemoved();
+            if (!te->isRemoved()) { i++; continue; }
             delete te;
             tileEntities[i] = tileEntities.back();
             tileEntities.pop_back();
@@ -440,12 +456,20 @@ void Level::tickTileEntities() {
 }
 
 #include "world/level/tile/entity/furnace_tile_entity.h"
+bool g_furnaceNoDrop = false;
 void furnaceSetLitBlock(Level* level, int x, int y, int z, bool lit) {
     if (!level || !level->w) return;
     unsigned char id = (unsigned char)level->getTile(x, y, z);
     if (id != BLOCK_FURNACE && id != BLOCK_FURNACE_LIT) return;
     unsigned char data = (unsigned char)level->getData(x, y, z);
+
+    TileEntity* te = level->getTileEntity(x, y, z);
+    FurnaceTileEntity* fte = (te && te->type == TE_FURNACE) ? (FurnaceTileEntity*)te : 0;
+    if (fte) fte->keepOnRemove = true;
+    g_furnaceNoDrop = true;
     worldSetBlockAndData(level->w, x, y, z, lit ? BLOCK_FURNACE_LIT : BLOCK_FURNACE, data);
+    g_furnaceNoDrop = false;
+    if (fte) fte->keepOnRemove = false;
     worldRebuildAroundNow(level->w, x, y, z);
 }
 

@@ -92,7 +92,7 @@ void ReactorTileEntity::lightItUp(int x, int y, int z) {
 
 void ReactorTileEntity::tick() {
     if (level->isClientSide) return;
-    if (progress < 0) removed = true;
+    if (progress < 0) setRemoved();
     if (isInitialized && !hasFinished) {
         progress++;
         if (progress % TPS == 0) {
@@ -161,7 +161,8 @@ Vec3 ReactorTileEntity::getSpawnPosition(float minDistance, float variableDistan
 }
 
 void ReactorTileEntity::spawnEnemy() {
-    Mob* mob = MobFactory::createMob(EntityTypes::IdPigZombie, level);
+
+    Mob* mob = MobFactory::createMob(EntityTypes::IdPigZombie, level, 4);
     if (!mob) return;
 
     Vec3 pos = getSpawnPosition(3, 4, -1);
@@ -176,6 +177,8 @@ void ReactorTileEntity::spawnEnemy() {
 }
 
 void ReactorTileEntity::spawnItem() {
+
+    if (Entity::freeSlots() <= 8) return;
     Vec3 pos = getSpawnPosition(3, 4, -1);
     for (int tries = 0; tries < 16 && !level->hasChunksAt(Mth::floor(pos.x), Mth::floor(pos.y), Mth::floor(pos.z), Mth::floor(pos.x), Mth::floor(pos.y), Mth::floor(pos.z)); tries++)
         pos = getSpawnPosition(3, 4, -1);

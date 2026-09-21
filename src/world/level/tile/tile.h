@@ -120,6 +120,11 @@ public:
 
     virtual void setPlacedBy(World* w, int x, int y, int z, Player* placer) {}
 
+    virtual int getTileEntityType() { return 0; }
+
+    virtual void onPlace(World* w, int x, int y, int z) {}
+    virtual void onRemove(World* w, int x, int y, int z) {}
+
     virtual Drop getResource(int data);
     virtual int  getResourceCount(int data, Random& rng);
     virtual void spawnResources(World* w, int x, int y, int z, int data, Random& rng);
@@ -131,6 +136,8 @@ public:
     static void popResource(int x, int y, int z, const ItemInstance& item);
 
     static Tile* tiles[256];
+
+    static bool isEntityTile[256];
     static void  initTiles();
 };
 

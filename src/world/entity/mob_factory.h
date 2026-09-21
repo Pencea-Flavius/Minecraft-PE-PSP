@@ -6,7 +6,8 @@ class Mob;
 class Level;
 
 namespace MobFactory {
-    Mob* createMob(int mobType, Level* level);
+
+    Mob* createMob(int mobType, Level* level, int slotReserve = -1);
 }
 
 #endif

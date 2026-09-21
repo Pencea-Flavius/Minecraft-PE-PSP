@@ -130,7 +130,28 @@ static bool isFlat2DItem(short id) {
 
 void loadCharIfNeeded(void) { skinTexture(); }
 
+static void handEyeToWorld(float camPitch, float camYaw, float out[16]) {
+    const float cp = cosf(camPitch * DEG2RAD), sp = sinf(camPitch * DEG2RAD);
+    const float cy = cosf(camYaw   * DEG2RAD), sy = sinf(camYaw   * DEG2RAD);
+    const float fx = -cp * sy, fy = sp, fz = cp * cy;
+    const float sx = -cy,      sy_ = 0.0f, sz = -sy;
+    const float ux = sy * sp,  uy = cp,    uz = -cy * sp;
+    const float m[16] = {
+        sx,  sy_, sz,  0.0f,
+        ux,  uy,  uz,  0.0f,
+       -fx, -fy, -fz,  0.0f,
+        0.0f, 0.0f, 0.0f, 1.0f,
+    };
+    for (int i = 0; i < 16; i++) out[i] = m[i];
+}
+
+struct ItemShadeOff {
+    ItemShadeOff()  { meshUseFaceShade(false); }
+    ~ItemShadeOff() { meshUseFaceShade(true); }
+};
+
 int itemBuildBlockMesh(short id, unsigned char data, ChunkVertex* out) {
+    ItemShadeOff noWorldShade;
     if (id == BLOCK_AIR) return 0;
     if (isCrossShaped(id))
         return emitCross(out, 0, 0, 150, 0, id, data, 0xFFFFFFFFu, false);
@@ -272,8 +293,8 @@ int itemBuildFlatMesh(short id, unsigned char data, ChunkVertex* out, int bowSta
     const float T  = 1.0f/16.0f;
 
     const unsigned int colFB = eggMul(0xFFFFFFFFu, tileTint);
-    const unsigned int colLR = eggMul(0xFFCCCCCCu, tileTint);
-    const unsigned int colTB = eggMul(0xFF999999u, tileTint);
+    const unsigned int colLR = colFB;
+    const unsigned int colTB = colFB;
 
     const Texture* texPtr = animTex ? animTex : itemFlatTexture(id, data);
     const int basex = (int)sx, basey = (int)sy;
@@ -516,6 +537,9 @@ void itemHandDraw(float a, float bs, float bc) {
         sceGumRotateY((yr - yrr) * 0.1f * DEG2RAD);
     }
 
+    float handToWorld[16];
+    handEyeToWorld(camPitch, camYaw, handToWorld);
+
     if (hasItem) {
 
         if (eating) {
@@ -581,14 +605,14 @@ void itemHandDraw(float a, float bs, float bc) {
             ScePspFVector3 center = { -0.5f, -150.5f, -0.5f };
             sceGumTranslate(&center);
 
-            s_model.draw(brCol, true, true);
+            s_model.draw(brCol, true, true, handToWorld);
         } else {
 
             ItemModelRenderer::applyFlatPreTransform();
 
             sceGuEnable(GU_CULL_FACE);
             sceGuFrontFace(GU_CCW);
-            s_model.draw(brCol, true, true);
+            s_model.draw(brCol, true, true, handToWorld);
         }
     } else {
 
@@ -621,31 +645,19 @@ void itemHandDraw(float a, float bs, float bc) {
         if (Texture* skin = skinTexture()) {
             textureBind(skin);
 
-            const float cp = cosf(camPitch * DEG2RAD), sp = sinf(camPitch * DEG2RAD);
-            const float cy = cosf(camYaw   * DEG2RAD), sy = sinf(camYaw   * DEG2RAD);
-            const float fx = -cp * sy, fy = sp, fz = cp * cy;
-            const float sx = -cy,      sy_ = 0.0f, sz = -sy;
-            const float ux = sy * sp,  uy = cp,    uz = -cy * sp;
-            const float toWorld[16] = {
-                sx,  sy_, sz,  0.0f,
-                ux,  uy,  uz,  0.0f,
-               -fx, -fy, -fz,  0.0f,
-                0.0f, 0.0f, 0.0f, 1.0f,
-            };
-
             if (!(skinAnim() & (1u << SKIN_ANIM_DISABLE_ARM0))) {
                 sceGuTexWrap(GU_REPEAT, GU_REPEAT);
                 if (skin->realW == 64 && skin->realH == 64) {
-                    mobDrawPartLit(s_armMesh64, brCol, toWorld);
-                    mobDrawPartLit(s_sleeveMesh64, brCol, toWorld);
+                    mobDrawPartLit(s_armMesh64, brCol, handToWorld);
+                    mobDrawPartLit(s_sleeveMesh64, brCol, handToWorld);
                 } else {
-                    mobDrawPartLit(s_armMeshBase, brCol, toWorld);
+                    mobDrawPartLit(s_armMeshBase, brCol, handToWorld);
                 }
 
                 sceGumPushMatrix();
                 ScePspFVector3 px = { 1.0f/16.0f, 1.0f/16.0f, 1.0f/16.0f };
                 sceGumScale(&px);
-                playerModelDrawSkinBoxes(2 , brCol, toWorld);
+                playerModelDrawSkinBoxes(2 , brCol, handToWorld);
                 sceGumPopMatrix();
                 sceGuTexWrap(GU_CLAMP, GU_CLAMP);
             }

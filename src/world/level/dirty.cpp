@@ -1,6 +1,7 @@
 #include "world/level/world.h"
 #include "util/prof.h"
 #include "world/level/chunk/chunk.h"
+#include "world/level/tile/tile.h"
 #include <pspkernel.h>
 
 #define PLAYER_EDIT_QUEUE_CAP 128
@@ -98,6 +99,8 @@ bool worldSetBlockAndData(World* w, int x, int y, int z, unsigned char id, unsig
     unsigned char was = worldBlock(w, x, y, z);
 
     if (!blockPut(w, x, y, z, id)) return false;
+
+    if (was && Tile::isEntityTile[was]) Tile::tiles[was]->onRemove(w, x, y, z);
     worldDataPut(w, worldIndex(w, x, y, z), data);
     worldMarkDirty(w, x, y, z);
     if (w->lightReady) {
@@ -105,6 +108,7 @@ bool worldSetBlockAndData(World* w, int x, int y, int z, unsigned char id, unsig
 
         if (lightEmit(was) > 0 && lightEmit(id) == 0) worldRemoveBlockLight(w, x, y, z);
     }
+    if (id && Tile::isEntityTile[id]) Tile::tiles[id]->onPlace(w, x, y, z);
     return true;
 }
 

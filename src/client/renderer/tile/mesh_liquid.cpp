@@ -127,7 +127,7 @@ int emitLiquid(const World* w, int gx, int y, int gz, unsigned char id, ChunkVer
         u0 += TE; u1 -= TE;
         v0 += TE; v1 -= TE;
 
-        unsigned int shade = (lightEmit(id) > 0) ? 0xFFFFFFFFu : kFaceShade[f];
+        unsigned int shade = (lightEmit(id) > 0) ? 0xFFFFFFFFu : g_faceShade[f];
         int faceBr = lightRawAt(w, nx, ny, nz);
         if (lightEmit(id) > faceBr) faceBr = lightEmit(id);
         unsigned int color = mulColor(mulColor(shade, tint),

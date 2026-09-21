@@ -33,6 +33,13 @@ static const signed char kFaceCorner[6][4][3] = {
      { {0,0,1},{1,0,1},{1,1,1},{0,1,1} },
 };
 
+static const unsigned int kFaceShadeNone[6] = {
+    0xFFFFFFFFu, 0xFFFFFFFFu, 0xFFFFFFFFu, 0xFFFFFFFFu, 0xFFFFFFFFu, 0xFFFFFFFFu,
+};
+const unsigned int* g_faceShade = kFaceShade;
+
+void meshUseFaceShade(bool on) { g_faceShade = on ? kFaceShade : kFaceShadeNone; }
+
 #define WATER_TOP 0.889f
 
 static int writeQuadDouble(ChunkVertex* out, int n, const float P[4][3],
@@ -503,7 +510,7 @@ int meshPass(const World* w, int ox, int oz, int y0, int y1, ChunkVertex* out, i
                 unsigned int cc[2][2];
                 faceCornerColors(w, lc, llc,
                                  ((((nx - ox + 1) * 18 + (nz - oz + 1)) * 18) + (ny - y0 + 1)),
-                                 nx, ny, nz, f, id, tint, kFaceShade[f], cc);
+                                 nx, ny, nz, f, id, tint, g_faceShade[f], cc);
                 const int ca = f >> 1, ca1 = (ca + 1) % 3, ca2 = (ca + 2) % 3;
                 for (int t = 0; t < 6; t++) {
                     int k = gtri[t];
@@ -559,7 +566,7 @@ int meshPass(const World* w, int ox, int oz, int y0, int y1, ChunkVertex* out, i
                 unsigned int cc[2][2];
                 faceCornerColors(w, lc, llc,
                                  ((((nx - ox + 1) * 18 + (nz - oz + 1)) * 18) + (ny - y0 + 1)),
-                                 nx, ny, nz, f, id, tint, kFaceShade[f], cc);
+                                 nx, ny, nz, f, id, tint, g_faceShade[f], cc);
                 const int ca = f >> 1, ca1 = (ca + 1) % 3, ca2 = (ca + 2) % 3;
 
                 float th = (id == BLOCK_TOPSNOW) ? 0.125f
@@ -824,7 +831,7 @@ int meshSectionSink(const World* w, int ox, int oz, int y0, int y1,
             unsigned int cc[2][2];
             faceCornerColors(w, lc, llc, nbi, gx + kFaceNeighbor[f][0],
                                               y  + kFaceNeighbor[f][1],
-                                              gz + kFaceNeighbor[f][2], f, id, tint, kFaceShade[f], cc);
+                                              gz + kFaceNeighbor[f][2], f, id, tint, g_faceShade[f], cc);
             const int ca = f >> 1, ca1 = (ca + 1) % 3, ca2 = (ca + 2) % 3;
 
             float th = (id == BLOCK_TOPSNOW) ? 0.125f

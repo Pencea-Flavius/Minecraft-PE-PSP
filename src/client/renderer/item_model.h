@@ -11,7 +11,8 @@ public:
     bool isFlat() const { return m_flat; }
     int  count()  const { return m_count; }
 
-    void draw(unsigned int brCol, bool noMip, bool priority = false);
+    void draw(unsigned int brCol, bool noMip, bool priority = false,
+              const float* toWorld = 0);
 
     bool buildShared(short id, unsigned char data, unsigned int brCol);
     void drawShared(bool noMip);

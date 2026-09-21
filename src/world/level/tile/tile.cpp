@@ -17,6 +17,7 @@
 #include "world/level/tile/entity/furnace_tile_entity.h"
 #include "world/level/tile/entity/sign_tile_entity.h"
 #include "world/level/tile/entity/reactor_tile_entity.h"
+#include "world/level/tile/entity/tile_entity_factory.h"
 #include "world/level/tile/nether_reactor_pattern.h"
 #include "world/level/tile/redstone_ore.h"
 #include "world/level/tile/rail_tile.h"
@@ -46,6 +47,7 @@ static int facingFromYaw(float yawDeg) {
 }
 
 Tile* Tile::tiles[256] = { 0 };
+bool  Tile::isEntityTile[256] = { false };
 
 const SoundType g_tileSounds[SOUND_TYPE_COUNT] = {
      { 0.0f,  0.0f, 0,              0            },
@@ -856,15 +858,40 @@ void chestShapeBox(const World* w, int gx, int y, int gz, float out[6]) {
     else if (dx > 0) out[3] = 1.0f;
 }
 
-struct ChestTile : Tile { ChestTile(unsigned char i) : Tile(i) {}
+static void spillContainer(Container* c, int x, int y, int z) {
+
+    if (g_gameMode && g_gameMode->isCreative()) return;
+    for (int i = 0; i < c->getContainerSize(); i++) {
+        ItemInstance* it = c->getItem(i);
+        if (it && !it->isNull()) Tile::popResource(x, y, z, *it);
+    }
+}
+
+struct EntityTile : Tile {
+    EntityTile(unsigned char i) : Tile(i) {}
+
+    void onPlace(World*, int x, int y, int z) {
+        g_level.setTileEntity(x, y, z, TileEntityFactory::createTileEntity(getTileEntityType()));
+    }
+    void onRemove(World*, int x, int y, int z) { g_level.removeTileEntity(x, y, z); }
+};
+
+struct ChestTile : EntityTile { ChestTile(unsigned char i) : EntityTile(i) {}
+    int getTileEntityType() { return TE_CHEST; }
+
+    void onRemove(World* w, int x, int y, int z) {
+        TileEntity* te = g_level.getTileEntity(x, y, z);
+        if (te && te->type == TE_CHEST) spillContainer(&((ChestTileEntity*)te)->container, x, y, z);
+        EntityTile::onRemove(w, x, y, z);
+    }
 
     void setPlacedBy(World* w, int x, int y, int z, Player* p) {
 
         worldSetData(w, x, y, z, (unsigned char)(p ? facingFromYaw(p->yRot) : 4 ));
 
-        if (g_level.getTileEntity(x, y, z)) return;
-        ChestTileEntity* ce = new ChestTileEntity();
-        g_level.setTileEntity(x, y, z, ce);
+        TileEntity* self = g_level.getTileEntity(x, y, z);
+        if (!self || self->type != TE_CHEST) return;
+        ChestTileEntity* ce = (ChestTileEntity*)self;
 
         static const int D[4][2] = { {-1,0}, {1,0}, {0,-1}, {0,1} };
         for (int k = 0; k < 4; k++) {
@@ -881,11 +908,8 @@ struct ChestTile : Tile { ChestTile(unsigned char i) : Tile(i) {}
     }
 
     bool use(World*, int x, int y, int z, Player*) {
+
         TileEntity* te = g_level.getTileEntity(x, y, z);
-        if (!te) {
-            g_level.setTileEntity(x, y, z, new ChestTileEntity());
-            te = g_level.getTileEntity(x, y, z);
-        }
         if (te && te->type == TE_CHEST) {
             ChestTileEntity* ce = (ChestTileEntity*)te;
             if (ce->canOpen()) ce->openBy();
@@ -893,17 +917,24 @@ struct ChestTile : Tile { ChestTile(unsigned char i) : Tile(i) {}
         return true;
     } };
 
-struct FurnaceTile : Tile { FurnaceTile(unsigned char i) : Tile(i) {}
+struct FurnaceTile : EntityTile { FurnaceTile(unsigned char i) : EntityTile(i) {}
+    int getTileEntityType() { return TE_FURNACE; }
+
+    void onRemove(World* w, int x, int y, int z) {
+        if (!g_furnaceNoDrop) {
+            TileEntity* te = g_level.getTileEntity(x, y, z);
+            if (te && te->type == TE_FURNACE) spillContainer((FurnaceTileEntity*)te, x, y, z);
+        }
+        EntityTile::onRemove(w, x, y, z);
+    }
+
     void setPlacedBy(World* w, int x, int y, int z, Player* p) {
         if (p) worldSetData(w, x, y, z, (unsigned char)facingFromYaw(p->yRot));
-        if (!g_level.getTileEntity(x, y, z)) g_level.setTileEntity(x, y, z, new FurnaceTileEntity());
     }
 
     bool use(World*, int x, int y, int z, Player*) {
         if (g_gameMode && !g_gameMode->isCreative()) {
             TileEntity* te = g_level.getTileEntity(x, y, z);
-            if (!te) { g_level.setTileEntity(x, y, z, new FurnaceTileEntity());
-                       te = g_level.getTileEntity(x, y, z); }
             if (te && te->type == TE_FURNACE) guiOpenFurnace((FurnaceTileEntity*)te);
         }
         return true;
@@ -915,16 +946,12 @@ struct WorkbenchTile : Tile { WorkbenchTile(unsigned char i) : Tile(i) {}
         return true;
     } };
 
-struct ReactorTile : Tile { ReactorTile(unsigned char i) : Tile(i) {}
-    void setPlacedBy(World*, int x, int y, int z, Player*) {
-        if (!g_level.getTileEntity(x, y, z)) g_level.setTileEntity(x, y, z, new ReactorTileEntity());
-    }
+struct ReactorTile : EntityTile { ReactorTile(unsigned char i) : EntityTile(i) {}
+    int getTileEntityType() { return TE_REACTOR; }
     bool use(World*, int x, int y, int z, Player* p) {
-        if (g_gameMode && !g_gameMode->isCreative()) {
-            if (!g_level.getTileEntity(x, y, z))
-                g_level.setTileEntity(x, y, z, new ReactorTileEntity());
+        (void)p;
+        if (g_gameMode && !g_gameMode->isCreative())
             NetherReactor::use(&g_level, x, y, z, g_level.player);
-        }
         return true;
     } };
 
@@ -956,6 +983,11 @@ struct SupportTile : Tile { SupportTile(unsigned char i) : Tile(i) {}
     } };
 
 struct SignTile : SupportTile { SignTile(unsigned char i) : SupportTile(i) {}
+    int getTileEntityType() { return TE_SIGN; }
+    void onPlace(World*, int x, int y, int z) {
+        g_level.setTileEntity(x, y, z, TileEntityFactory::createTileEntity(TE_SIGN));
+    }
+    void onRemove(World*, int x, int y, int z) { g_level.removeTileEntity(x, y, z); }
     bool use(World* w, int x, int y, int z, Player* p) {
         if (p && p->inventory->getSelected() && !p->inventory->getSelected()->isNull())
             return false;
@@ -1591,6 +1623,7 @@ void Tile::initTiles() {
         t->blocksLight   = t->material->blocksLight();
         t->wallConnect   = t->material->isSolidBlocking() && t->cube &&
                            t->material != &Material::vegetable;
+        isEntityTile[id] = (t->getTileEntityType() != 0);
         tiles[id] = t;
     }
 }

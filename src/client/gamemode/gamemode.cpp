@@ -101,14 +101,6 @@ void playerDropSelected(bool all) {
     itemHandItemUsed();
 }
 
-static void spillContainer(Container* c, int x, int y, int z) {
-
-    if (g_gameMode->isCreative()) return;
-    for (int i = 0; i < c->getContainerSize(); i++) {
-        ItemInstance* it = c->getItem(i);
-        if (it && !it->isNull()) Tile::popResource(x, y, z, *it);
-    }
-}
 #include "client/renderer/particle.h"
 #include <cmath>
 #include <pspkernel.h>
@@ -221,16 +213,6 @@ static void breakTargetedBlock(const BlockHit& hit) {
         return;
     }
 
-    if (brokenId == BLOCK_CHEST || brokenId == BLOCK_FURNACE || brokenId == BLOCK_FURNACE_LIT) {
-        TileEntity* te = g_level.getTileEntity(hit.x, hit.y, hit.z);
-        if (te && te->type == TE_CHEST)
-            spillContainer(&((ChestTileEntity*)te)->container, hit.x, hit.y, hit.z);
-        else if (te && te->type == TE_FURNACE)
-            spillContainer((FurnaceTileEntity*)te, hit.x, hit.y, hit.z);
-    }
-    if (isSign(brokenId) || brokenId == BLOCK_CHEST ||
-        brokenId == BLOCK_FURNACE || brokenId == BLOCK_FURNACE_LIT)
-        g_level.removeTileEntity(hit.x, hit.y, hit.z);
     {
 
         ItemInstance* sel = g_level.player->inventory->getSelected();

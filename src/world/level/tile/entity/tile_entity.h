@@ -31,6 +31,9 @@ public:
 
     virtual bool shouldSave() { return true; }
 
+    virtual void setRemoved() { removed = true; }
+    bool isRemoved() const { return removed; }
+
     virtual bool stillValid(class Player* player);
     virtual void load(CompoundTag* tag);
 

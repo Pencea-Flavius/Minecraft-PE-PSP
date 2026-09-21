@@ -229,10 +229,10 @@ void renderAllTileEntities(Level* level, float a) {
         int tile = level->getTile(te->x, te->y, te->z);
         switch (te->rendererId) {
             case TR_SIGN_RENDERER:
-                if (!isSign(tile)) { te->removed = true; continue; }
+                if (!isSign(tile)) { te->setRemoved(); continue; }
                 break;
             case TR_CHEST_RENDERER:
-                if (tile != BLOCK_CHEST) { te->removed = true; continue; }
+                if (tile != BLOCK_CHEST) { te->setRemoved(); continue; }
                 break;
             default: continue;
         }

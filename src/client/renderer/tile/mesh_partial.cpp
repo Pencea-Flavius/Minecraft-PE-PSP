@@ -83,7 +83,7 @@ int emitPartialBox(const World* w, int gx, int y, int gz, unsigned char id, unsi
                      (!g_smoothLighting && f != F_DOWN))) {
                     sx = gx; sy = y; sz = gz;
                 }
-                shade = kFaceShade[f];
+                shade = g_faceShade[f];
                 faceBr = lightRawAt(w, sx, sy, sz);
             }
             if (lightEmit(id) > faceBr) faceBr = lightEmit(id);
@@ -453,11 +453,11 @@ int emitDoor(const World* w, int gx, int y, int gz, unsigned char id, unsigned c
         if (!isOpaque(abv)) {
 
             if (capThinX)
-                emitFace(F_TOP, kFaceShade[F_TOP], true, gx, y+1, gz,
+                emitFace(F_TOP, g_faceShade[F_TOP], true, gx, y+1, gz,
                     bx1,1,bz1, bx1,1,bz0, bx0,1,bz0, bx0,1,bz1,
                     CAP_U0, CAP_V0, CAP_U1, CAP_V1);
             else
-                emitFace(F_TOP, kFaceShade[F_TOP], true, gx, y+1, gz,
+                emitFace(F_TOP, g_faceShade[F_TOP], true, gx, y+1, gz,
                     bx0,1,bz1, bx1,1,bz1, bx1,1,bz0, bx0,1,bz0,
                     CAP_U0, CAP_V0, CAP_U1, CAP_V1);
         }
@@ -467,11 +467,11 @@ int emitDoor(const World* w, int gx, int y, int gz, unsigned char id, unsigned c
         unsigned char blw = worldBlock(w, gx, y-1, gz);
         if (!isOpaque(blw)) {
             if (capThinX)
-                emitFace(F_DOWN, kFaceShade[F_DOWN], true, gx, y-1, gz,
+                emitFace(F_DOWN, g_faceShade[F_DOWN], true, gx, y-1, gz,
                     bx1,0,bz0, bx1,0,bz1, bx0,0,bz1, bx0,0,bz0,
                     CAP_U0, CAP_V0, CAP_U1, CAP_V1);
             else
-                emitFace(F_DOWN, kFaceShade[F_DOWN], true, gx, y-1, gz,
+                emitFace(F_DOWN, g_faceShade[F_DOWN], true, gx, y-1, gz,
                     bx0,0,bz0, bx1,0,bz0, bx1,0,bz1, bx0,0,bz1,
                     CAP_U0, CAP_V0, CAP_U1, CAP_V1);
         }
@@ -488,7 +488,7 @@ int emitDoor(const World* w, int gx, int y, int gz, unsigned char id, unsigned c
         float uA = flipNorth ? bx0 : bx1;
         float uB = flipNorth ? bx1 : bx0;
         if (thinX) { bool hp = !hingeAtHighZ; uA = hp ? 0.0f : 1.0f - CANT_R; uB = hp ? CANT_R : 1.0f; }
-        emitFace(F_BACK, kFaceShade[F_BACK], boundary, gx, y, gz-1,
+        emitFace(F_BACK, g_faceShade[F_BACK], boundary, gx, y, gz-1,
             bx0,1,bz0, bx1,1,bz0, bx1,0,bz0, bx0,0,bz0,
             uA, 0.0f, uB, 1.0f);
     }
@@ -498,7 +498,7 @@ int emitDoor(const World* w, int gx, int y, int gz, unsigned char id, unsigned c
         float uA = flipSouth ? bx0 : bx1;
         float uB = flipSouth ? bx1 : bx0;
         if (thinX) { bool hp = hingeAtHighZ; uA = hp ? 0.0f : 1.0f - CANT_R; uB = hp ? CANT_R : 1.0f; }
-        emitFace(F_FORWARD, kFaceShade[F_FORWARD], boundary, gx, y, gz+1,
+        emitFace(F_FORWARD, g_faceShade[F_FORWARD], boundary, gx, y, gz+1,
             bx1,1,bz1, bx0,1,bz1, bx0,0,bz1, bx1,0,bz1,
             uA, 0.0f, uB, 1.0f);
     }
@@ -509,7 +509,7 @@ int emitDoor(const World* w, int gx, int y, int gz, unsigned char id, unsigned c
         float uA = flipWest ? bz0 : bz1;
         float uB = flipWest ? bz1 : bz0;
         if (thinZ) { bool hp = !hingeAtHighX; uA = hp ? 0.0f : 1.0f - CANT_R; uB = hp ? CANT_R : 1.0f; }
-        emitFace(F_LEFT, kFaceShade[F_LEFT], boundary, gx-1, y, gz,
+        emitFace(F_LEFT, g_faceShade[F_LEFT], boundary, gx-1, y, gz,
             bx0,1,bz1, bx0,1,bz0, bx0,0,bz0, bx0,0,bz1,
             uA, 0.0f, uB, 1.0f);
     }
@@ -520,7 +520,7 @@ int emitDoor(const World* w, int gx, int y, int gz, unsigned char id, unsigned c
         float uA = flipEast ? bz0 : bz1;
         float uB = flipEast ? bz1 : bz0;
         if (thinZ) { bool hp = hingeAtHighX; uA = hp ? 0.0f : 1.0f - CANT_R; uB = hp ? CANT_R : 1.0f; }
-        emitFace(F_RIGHT, kFaceShade[F_RIGHT], boundary, gx+1, y, gz,
+        emitFace(F_RIGHT, g_faceShade[F_RIGHT], boundary, gx+1, y, gz,
             bx1,1,bz0, bx1,1,bz1, bx1,0,bz1, bx1,0,bz0,
             uA, 0.0f, uB, 1.0f);
     }
@@ -708,7 +708,7 @@ int emitBed(const World* w, int gx, int y, int gz, unsigned char id, unsigned ch
         tileForBlock(id, data, f, &col, &row, &tint);
         float u0 = col * TILE_UV, v0 = row * TILE_UV;
 
-        unsigned int shade = kFaceShade[f];
+        unsigned int shade = g_faceShade[f];
 
         int faceBr = (f == F_DOWN) ? lightRawAt(w, gx, y, gz)
                                    : lightRawAt(w, nx, ny, nz);

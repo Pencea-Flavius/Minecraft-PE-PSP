@@ -55,10 +55,9 @@ bool SignItem::useOn(ItemInstance* item, Player* player, World* world,
     worldUpdateLights(world);
     worldRebuildAroundNow(world, nx, ny, nz);
 
-    SignTileEntity* ste = new SignTileEntity();
-    g_level.setTileEntity(nx, ny, nz, ste);
+    TileEntity* te = g_level.getTileEntity(nx, ny, nz);
 
     if (player) player->inventory->consumeSelected();
-    signStartEdit(ste);
+    if (te && te->type == TE_SIGN) signStartEdit((SignTileEntity*)te);
     return true;
 }
