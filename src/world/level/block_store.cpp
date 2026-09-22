@@ -8,7 +8,7 @@ unsigned int g_blockOomDrops = 0;
 const unsigned char* g_edgeColumn = 0;
 int g_edgeSkyFromY = 0;
 const unsigned char* g_seaColumn = 0;
-void (*g_onEdgeSectionBuilt)(int cx, int cz, int si) = 0;
+void (*g_onEdgeBlockChanged)(int x, int y, int z) = 0;
 
 void blockAlloc(World* w) {
 

@@ -448,23 +448,31 @@ static unsigned int skyRadialColor(unsigned int inner, unsigned int outer, float
 }
 
 static void skyBuildDisc(ColorVertex* v, unsigned int inner, unsigned int outer, float yoff) {
-    const float STEP = 6.2831853f / (float)SKY_SECTORS;
+
+    unsigned int rc[SKY_RINGS];
+    for (int ring = 0; ring < SKY_RINGS; ring++)
+        rc[ring] = skyRadialColor(inner, outer, SKY_RING_R[ring], yoff);
+    static float s_cs[SKY_SECTORS + 1], s_sn[SKY_SECTORS + 1];
+    static bool s_anglesReady = false;
+    if (!s_anglesReady) {
+        const float STEP = 6.2831853f / (float)SKY_SECTORS;
+        for (int k = 0; k <= SKY_SECTORS; k++) { s_cs[k] = cosf(k * STEP); s_sn[k] = sinf(k * STEP); }
+        s_anglesReady = true;
+    }
     int i = 0;
     for (int sct = 0; sct < SKY_SECTORS; sct++) {
-        float a0 = (float)sct * STEP, a1 = (float)(sct + 1) * STEP;
-        float c0 = cosf(a0), n0 = sinf(a0), c1 = cosf(a1), n1 = sinf(a1);
+        float c0 = s_cs[sct], n0 = s_sn[sct], c1 = s_cs[sct + 1], n1 = s_sn[sct + 1];
 
         float r1 = SKY_RING_R[1];
-        unsigned int cc = skyRadialColor(inner, outer, 0.0f, yoff);
-        unsigned int c1c = skyRadialColor(inner, outer, r1, yoff);
+        unsigned int cc = rc[0];
+        unsigned int c1c = rc[1];
         v[i].color=cc;  v[i].x=0;       v[i].y=0; v[i].z=0;       i++;
         v[i].color=c1c; v[i].x=r1 * c0; v[i].y=0; v[i].z=r1 * n0; i++;
         v[i].color=c1c; v[i].x=r1 * c1; v[i].y=0; v[i].z=r1 * n1; i++;
         for (int ring = 1; ring + 1 < SKY_RINGS; ring++) {
             float ra = SKY_RING_R[ring], rb = SKY_RING_R[ring + 1];
 
-            unsigned int ca = skyRadialColor(inner, outer, ra, yoff);
-            unsigned int cb = skyRadialColor(inner, outer, rb, yoff);
+            unsigned int ca = rc[ring], cb = rc[ring + 1];
             v[i].color=ca; v[i].x=ra*c0; v[i].y=0; v[i].z=ra*n0; i++;
             v[i].color=cb; v[i].x=rb*c0; v[i].y=0; v[i].z=rb*n0; i++;
             v[i].color=cb; v[i].x=rb*c1; v[i].y=0; v[i].z=rb*n1; i++;

@@ -127,7 +127,7 @@ public:
 
     virtual Drop getResource(int data);
     virtual int  getResourceCount(int data, Random& rng);
-    virtual void spawnResources(World* w, int x, int y, int z, int data, Random& rng);
+    virtual void spawnResources(World* w, int x, int y, int z, int data, Random& rng, float odds = 1.0f);
 
     virtual bool playerDestroy(World* w, int x, int y, int z, int data, const ItemInstance* held);
 

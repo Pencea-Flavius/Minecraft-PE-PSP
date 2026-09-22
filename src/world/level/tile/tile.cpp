@@ -198,26 +198,38 @@ static void dropItem(int x, int y, int z, short id, short aux, Random&) {
     Tile::popResource(x, y, z, ItemInstance(id, 1, aux));
 }
 
-void Tile::spawnResources(World* , int x, int y, int z, int data, Random& rng) {
+void Tile::spawnResources(World* , int x, int y, int z, int data, Random& rng, float odds) {
+
+    if (id == BLOCK_LEAVES) {
+        Drop ld = getResource(data);
+        if (ld.id > 0 && getResourceCount(data, rng) > 0)
+            dropItem(x, y, z, ld.id, ld.aux, rng);
+        if ((data & 3) == 0 && rng.nextInt(200) == 0)
+            dropItem(x, y, z, ITEM_APPLE, 0, rng);
+        return;
+    }
 
     if (id == BLOCK_GRAVEL) {
-        dropItem(x, y, z, (rng.nextInt(10) == 0) ? (int)ITEM_FLINT : (int)BLOCK_GRAVEL, 0, rng);
+        if (odds >= 1.0f || rng.nextFloat() <= odds)
+            dropItem(x, y, z, (rng.nextInt(10) == 0) ? (int)ITEM_FLINT : (int)BLOCK_GRAVEL, 0, rng);
         return;
     }
     if (id == BLOCK_ORE_LAPIS) {
         int n = 4 + rng.nextInt(5);
-        for (int i = 0; i < n; i++) dropItem(x, y, z, ITEM_BONEMEAL, 4, rng);
+        for (int i = 0; i < n; i++) {
+            if (odds < 1.0f && rng.nextFloat() > odds) continue;
+            dropItem(x, y, z, ITEM_BONEMEAL, 4, rng);
+        }
         return;
     }
 
     Drop d = getResource(data);
     int count = (d.count <= 0) ? 0 : getResourceCount(data, rng);
     if (d.id > 0 && count > 0)
-        for (int i = 0; i < count; i++)
+        for (int i = 0; i < count; i++) {
+            if (odds < 1.0f && rng.nextFloat() > odds) continue;
             dropItem(x, y, z, d.id, d.aux, rng);
-
-    if (id == BLOCK_LEAVES && (data & 3) == 0 && rng.nextInt(200) == 0)
-        dropItem(x, y, z, ITEM_APPLE, 0, rng);
+        }
 }
 
 void Tile::getTexture(unsigned char data, int f, int* col, int* row, unsigned int* tint) {
@@ -1100,8 +1112,8 @@ struct BushTile : GrowerTile { BushTile(unsigned char i) : GrowerTile(i) {}
         }
         return false; }
 
-    void spawnResources(World* w, int x, int y, int z, int data, Random& rng) {
-        Tile::spawnResources(w, x, y, z, data, rng);
+    void spawnResources(World* w, int x, int y, int z, int data, Random& rng, float odds = 1.0f) {
+        Tile::spawnResources(w, x, y, z, data, rng, odds);
         short seed = (id == BLOCK_WHEAT)        ? ITEM_SEEDS_WHEAT
                    : (id == BLOCK_MELON_STEM)   ? ITEM_SEEDS_MELON
                    : (id == BLOCK_PUMPKIN_STEM) ? ITEM_SEEDS_PUMPKIN
@@ -1114,8 +1126,9 @@ struct BushTile : GrowerTile { BushTile(unsigned char i) : GrowerTile(i) {}
     } };
 
 struct BeetrootTile : BushTile { BeetrootTile(unsigned char i) : BushTile(i) {}
-    void spawnResources(World* w, int x, int y, int z, int data, Random& rng) {
-        (void)w;
+
+    void spawnResources(World* w, int x, int y, int z, int data, Random& rng, float odds = 1.0f) {
+        (void)w; (void)odds;
         if (data <= 1) return;
         if (data <= 6) { dropItem(x, y, z, ITEM_SEEDS_BEETROOT, 0, rng); return; }
         int seeds = rng.nextInt(3);

@@ -20,11 +20,11 @@ void Tile::popResource(int x, int y, int z, const ItemInstance& item) {
     g_level.addEntity(e);
 }
 
-void worldSpawnResources(World* w, int x, int y, int z, unsigned char id, int data) {
+void worldSpawnResources(World* w, int x, int y, int z, unsigned char id, int data, float odds) {
 
     if (g_level.isClientSide) return;
 
     if (g_level.player->inventory->isCreative()) return;
     static Random rng((long)sceKernelGetSystemTimeLow());
-    Tile::tiles[id]->spawnResources(w, x, y, z, data, rng);
+    Tile::tiles[id]->spawnResources(w, x, y, z, data, rng, odds);
 }

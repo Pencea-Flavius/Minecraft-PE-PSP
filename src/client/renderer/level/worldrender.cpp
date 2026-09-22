@@ -75,8 +75,7 @@ int seaCellQuarter(int cx, int cz) {
     return (int)(h & 3u);
 }
 
-#define EDGE_SEA 1
-#if EDGE_SEA && WORLD_SIZE_CHUNKS
+#if WORLD_SIZE_CHUNKS
 static const int SEA_RING_N = WORLD_CHUNKS_X + 2;
 static unsigned char s_seaCol[WORLD_H];
 static ChunkMesh s_seaTmpl;
@@ -103,16 +102,16 @@ static bool seaSectionHasBlocks(int si) {
     return false;
 }
 
-template <typename F> static void seaForRingNeighbours(int cx, int cz, F f) {
+static void seaOnEdgeBlockChanged(int x, int y, int z) {
     for (int dx = -1; dx <= 1; dx++)
     for (int dz = -1; dz <= 1; dz++) {
-        const int r = seaRingIndex(cx + dx, cz + dz);
-        if (r >= 0 && !worldChunkInBounds(cx + dx, cz + dz)) f(r);
+        const int r = seaRingIndex((x + dx) >> 4, (z + dz) >> 4);
+        if (r < 0) continue;
+        for (int dy = -1; dy <= 1; dy++) {
+            const int yy = y + dy;
+            if (yy >= 0 && yy < WORLD_H) s_seaRing[r].sec[yy / SECTION_SY].dirty = true;
+        }
     }
-}
-
-static void seaOnEdgeSectionBuilt(int cx, int cz, int si) {
-    seaForRingNeighbours(cx, cz, [&](int r) { s_seaRing[r].sec[si].dirty = true; });
 }
 
 static void seaRefresh(World* w) {
@@ -124,7 +123,7 @@ static void seaRefresh(World* w) {
         memcpy(s_seaCol, col, WORLD_H);
         g_edgeSkyFromY = sky;
         g_seaColumn    = s_seaCol;
-        g_onEdgeSectionBuilt = seaOnEdgeSectionBuilt;
+        g_onEdgeBlockChanged = seaOnEdgeBlockChanged;
         s_seaDarken    = g_skyDarken;
 
         const int nRing = (int)(sizeof(s_seaRing) / sizeof(s_seaRing[0]));
@@ -240,7 +239,7 @@ void worldRebuildStep(const World* cw, float camX, float camY, float camZ, float
     World* w = (World*)cw;
 
     chunkMeshHeapProbe();
-#if EDGE_SEA && WORLD_SIZE_CHUNKS
+#if WORLD_SIZE_CHUNKS
     seaRefresh(w);
 #endif
 
@@ -370,7 +369,7 @@ void worldDraw(const World* cw, float camX, float camY, float camZ, float viewDi
         }
         if (!off) g_visChunks[g_nVisChunks++] = c;
     }
-#if EDGE_SEA && WORLD_SIZE_CHUNKS
+#if WORLD_SIZE_CHUNKS
     seaCollect(w, camX, camZ, drawCull(viewDist));
 #endif
     profEnd(PROF_CULL);
@@ -408,7 +407,7 @@ void worldDraw(const World* cw, float camX, float camY, float camZ, float viewDi
         }
         chunkDrawSection(g_opaqueList[i].s);
     }
-#if EDGE_SEA && WORLD_SIZE_CHUNKS
+#if WORLD_SIZE_CHUNKS
     seaDraw(false, distMip, maxLvl);
 #endif
 
@@ -560,7 +559,7 @@ void worldDrawWater(const World* w, float camX, float camY, float camZ, float vi
     extern int g_noMipmap;
     bool distMip = !g_noMipmap && s_terrainMipCount > 0;
     float maxLvl = (float)s_terrainMipCount;
-#if EDGE_SEA && WORLD_SIZE_CHUNKS
+#if WORLD_SIZE_CHUNKS
 
     seaDraw(true, distMip, maxLvl);
 #endif

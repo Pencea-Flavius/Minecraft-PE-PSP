@@ -227,7 +227,7 @@ extern int g_edgeSkyFromY;
 
 extern const unsigned char* g_seaColumn;
 
-extern void (*g_onEdgeSectionBuilt)(int cx, int cz, int si);
+extern void (*g_onEdgeBlockChanged)(int x, int y, int z);
 
 static inline bool edgeColumnTopRotates(const unsigned char* col) {
     for (int y = WORLD_H - 1; y >= 0; y--)
@@ -613,7 +613,7 @@ void heavyTileTick(World* w, int x, int y, int z, unsigned char id);
 void leafFlagNeighbors(World* w, int x, int y, int z);
 void leafDecayTick(World* w, int x, int y, int z);
 
-void worldSpawnResources(World* w, int x, int y, int z, unsigned char id, int data);
+void worldSpawnResources(World* w, int x, int y, int z, unsigned char id, int data, float odds = 1.0f);
 
 void worldSetFrustumCamera(float ex, float ey, float ez, float fx, float fy, float fz,
                            float yawDeg, float fovyDeg, float aspect, float nearD, float farD);

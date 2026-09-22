@@ -71,6 +71,10 @@ void worldMarkAllDirty(World* w) {
 
 void worldMarkDirty(World* w, int x, int y, int z) {
 
+    if (g_onEdgeBlockChanged && (x <= 0 || z <= 0 || x >= WORLD_W - 1 || z >= WORLD_D - 1) &&
+        worldChunkSettled(w, x >> 4, z >> 4))
+        g_onEdgeBlockChanged(x, y, z);
+
     int cx[2], cz[2], sy[2], ncx = 1, ncz = 1, nsy = 1;
     cx[0] = (x - 1) >> 4;  if (((x + 1) >> 4) != cx[0]) cx[ncx++] = (x + 1) >> 4;
     cz[0] = (z - 1) >> 4;  if (((z + 1) >> 4) != cz[0]) cz[ncz++] = (z + 1) >> 4;
