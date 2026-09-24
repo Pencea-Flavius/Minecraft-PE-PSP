@@ -23,7 +23,7 @@ public:
 
 protected:
     Zombie(Level* level, int rendererId);
-    void addZombieGoals();
+    void addZombieGoals(float speed);
 };
 
 #endif

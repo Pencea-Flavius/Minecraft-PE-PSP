@@ -10,7 +10,20 @@
 #include "util/mth.h"
 #include <cmath>
 
-#define SMOKE_BACK 0.6f
+#define SMOKE_UP   5.0f
+#define SMOKE_BACK 2.0f
+
+static void smokeSpot(const TripodCamera* c, float yUp, float* ox, float* oy, float* oz) {
+    const float D2R = Mth::PI / 180.0f;
+    float ly = (SMOKE_UP + yUp) / 16.0f, lz = SMOKE_BACK / 16.0f;
+    float a = c->xRot * 0.5f * D2R;
+    float y1 = ly * cosf(a) - lz * sinf(a);
+    float z1 = ly * sinf(a) + lz * cosf(a);
+    float b = (180.0f - c->yRot) * D2R;
+    *ox = c->x + z1 * sinf(b);
+    *oz = c->z + z1 * cosf(b);
+    *oy = (c->y - c->heightOffset) + 18.0f / 16.0f + y1;
+}
 
 bool  g_photoPending = false;
 float g_photoX, g_photoY, g_photoZ, g_photoYaw, g_photoPitch;
@@ -114,16 +127,15 @@ void TripodCamera::tick() {
             g_photoZ = z;
             g_photoYaw = yRot; g_photoPitch = xRot;
 
-            float sx = x + sinf(yRot * Mth::PI / 180.0f) * SMOKE_BACK;
-            float sz = z - cosf(yRot * Mth::PI / 180.0f) * SMOKE_BACK;
-
-            particlesLargeSmoke(sx, y + 0.9f, sz);
-            particlesLargeSmoke(sx, y + 1.05f, sz);
-            particlesLargeSmoke(sx, y + 1.2f, sz);
+            float sx, sy, sz;
+            for (int i = 0; i < 3; i++) {
+                smokeSpot(this, i * 2.5f, &sx, &sy, &sz);
+                particlesLargeSmoke(sx, sy, sz);
+            }
         } else if (life > 8) {
-            float sx = x + sinf(yRot * Mth::PI / 180.0f) * SMOKE_BACK;
-            float sz = z - cosf(yRot * Mth::PI / 180.0f) * SMOKE_BACK;
-            particlesSmoke(sx, y + 0.95f, sz);
+            float sx, sy, sz;
+            smokeSpot(this, 0.0f, &sx, &sy, &sz);
+            particlesSmoke(sx, sy, sz);
         }
     }
 }

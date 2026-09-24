@@ -25,9 +25,10 @@ Skeleton::Skeleton(Level* level) : Monster(level) {
 
     goalSelector.addGoal(1, new FloatGoal(this));
     goalSelector.addGoal(2, new RestrictSunGoal(this));
-    goalSelector.addGoal(3, new FleeSunGoal(this, 1.0f));
-    goalSelector.addGoal(4, new ArrowAttackGoal(this, 1.0f, ArrowAttackGoal::ATTACK_ARROW, 60));
-    goalSelector.addGoal(5, new RandomStrollGoal(this, 1.0f));
+
+    goalSelector.addGoal(3, new FleeSunGoal(this, 0.25f));
+    goalSelector.addGoal(4, new ArrowAttackGoal(this, 0.25f, ArrowAttackGoal::ATTACK_ARROW, 60));
+    goalSelector.addGoal(5, new RandomStrollGoal(this, 0.25f));
     goalSelector.addGoal(6, new LookAtPlayerGoal(this, 8.0f));
     goalSelector.addGoal(6, new RandomLookAroundGoal(this));
     goalSelector2.addGoal(1, new HurtByTargetGoal(this, 16.0f));

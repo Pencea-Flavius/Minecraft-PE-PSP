@@ -24,11 +24,12 @@ Pig::Pig(Level* level) : Animal(level) {
     health = getMaxHealth();
 
     goalSelector.addGoal(0, new FloatGoal(this));
-    goalSelector.addGoal(1, new PanicGoal(this, 1.5f));
-    goalSelector.addGoal(2, new BreedGoal(this, 1.0f));
-    goalSelector.addGoal(3, new TemptGoal(this, 1.0f, PIG_FOODS, 3));
-    goalSelector.addGoal(4, new FollowParentGoal(this, 1.1f));
-    goalSelector.addGoal(5, new RandomStrollGoal(this, 1.0f));
+
+    goalSelector.addGoal(1, new PanicGoal(this, 0.38f));
+    goalSelector.addGoal(2, new BreedGoal(this, 0.25f));
+    goalSelector.addGoal(3, new TemptGoal(this, 0.25f, PIG_FOODS, 3));
+    goalSelector.addGoal(4, new FollowParentGoal(this, 0.28f));
+    goalSelector.addGoal(5, new RandomStrollGoal(this, 0.25f));
     goalSelector.addGoal(6, new LookAtPlayerGoal(this, 6.0f));
     goalSelector.addGoal(7, new RandomLookAroundGoal(this));
 }

@@ -9,6 +9,7 @@ extern float g_camX, g_camY, g_camZ;
 #include "world/level/level.h"
 #include "world/entity/entity.h"
 
+#include "world/entity/tripod_camera.h"
 #include "gpu/gu.h"
 #include <pspgu.h>
 #include <pspgum.h>
@@ -612,6 +613,11 @@ void particlesRender(World* w, float yawDeg, float pitchDeg, float alpha,
             if (!p->active) continue;
             int pp = p->itemsAtlas ? 2 : p->terrainAtlas ? 1 : 0;
             if (pp != pass) continue;
+
+            if (p->kind == K_SMOKE && g_photoPending && !g_photoIsIcon) {
+                float dx = p->x - g_photoX, dz = p->z - g_photoZ;
+                if (dx * dx + dz * dz < 1.0f && p->y > g_photoY - 0.5f) continue;
+            }
 
             float sz = p->size;
             float sfrac = (p->age + alpha) / (float)p->lifetime;

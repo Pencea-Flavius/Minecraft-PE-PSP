@@ -27,8 +27,9 @@ Creeper::Creeper(Level* level)
 
     goalSelector.addGoal(1, new FloatGoal(this));
     goalSelector.addGoal(2, new SwellGoal(this));
-    goalSelector.addGoal(4, new MeleeAttackGoal(this, 1.25f, false));
-    goalSelector.addGoal(5, new RandomStrollGoal(this, 1.0f));
+
+    goalSelector.addGoal(4, new MeleeAttackGoal(this, 0.25f, false));
+    goalSelector.addGoal(5, new RandomStrollGoal(this, 0.20f));
     goalSelector.addGoal(6, new LookAtPlayerGoal(this, 8.0f));
     goalSelector.addGoal(6, new RandomLookAroundGoal(this));
     goalSelector2.addGoal(2, new NearestAttackableTargetGoal(this, 16.0f));

@@ -30,7 +30,7 @@ void MoveControl::tick() {
     float want = atan2f(dz, dx) * 180.0f / Mth::PI - 90.0f;
     mob->yRot = Mth::clampRotate(mob->yRot, want, (float)Mob::STEER_TURN_RATE);
 
-    mob->setSpeed(speedMultiplier * mob->getBaseSpeed());
+    mob->setSpeed(speedMultiplier);
 
     if (dy > 0.0f && (dx * dx + dz * dz) < 1.0f) mob->getJumpControl()->jump();
 }

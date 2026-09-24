@@ -132,7 +132,7 @@ void Mob::travel(float xs, float yf) {
     bool inWater = isInWater(), inLava = inWater ? false : isInLava();
     if (inWater) {
         float yo = y;
-        moveRelative(xs, yf, 0.02f);
+        moveRelative(xs, yf, useNewAi() ? 0.04f : 0.02f);
         move(xd, yd, zd);
         xd *= 0.80f; yd *= 0.80f; zd *= 0.80f;
         yd -= 0.02f;
@@ -158,7 +158,7 @@ void Mob::travel(float xs, float yf) {
         float f3 = friction * friction * friction;
         float friction2 = (0.6f * 0.6f * 0.91f * 0.91f * 0.6f * 0.91f) / f3;
 
-        moveRelative(xs, yf, onGround ? getSpeed() * getWalkingSpeedModifier() * friction2
+        moveRelative(xs, yf, onGround ? (useNewAi() ? getSpeed() : 0.1f) * getWalkingSpeedModifier() * friction2
                                       : flyingSpeed);
 
         bool ladder = onLadder();

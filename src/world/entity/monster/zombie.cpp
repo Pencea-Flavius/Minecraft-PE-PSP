@@ -11,11 +11,11 @@
 #include "world/entity/ai/goals/hurt_by_target_goal.h"
 #include "world/entity/ai/goals/nearest_attackable_target_goal.h"
 
-void Zombie::addZombieGoals() {
+void Zombie::addZombieGoals(float speed) {
     goalSelector.addGoal(0, new FloatGoal(this));
 
-    goalSelector.addGoal(2, new MeleeAttackGoal(this, 1.0f, false));
-    goalSelector.addGoal(6, new RandomStrollGoal(this, 1.0f));
+    goalSelector.addGoal(2, new MeleeAttackGoal(this, speed, false));
+    goalSelector.addGoal(6, new RandomStrollGoal(this, speed));
     goalSelector.addGoal(7, new LookAtPlayerGoal(this, 8.0f));
     goalSelector.addGoal(7, new RandomLookAroundGoal(this));
     goalSelector2.addGoal(1, new HurtByTargetGoal(this, 16.0f));
@@ -28,7 +28,7 @@ Zombie::Zombie(Level* level) : Monster(level) {
     runSpeed = 0.23f;
     attackDamage = 4;
     health = getMaxHealth();
-    addZombieGoals();
+    addZombieGoals(0.23f);
 
     getNavigation()->setCanOpenDoors(true);
     goalSelector.addGoal(1, new BreakDoorGoal(this));
@@ -40,7 +40,8 @@ Zombie::Zombie(Level* level, int rendererId) : Monster(level) {
     runSpeed = 0.23f;
     attackDamage = 4;
     health = getMaxHealth();
-    addZombieGoals();
+
+    addZombieGoals(0.21f);
 }
 
 void Zombie::aiStep() {
