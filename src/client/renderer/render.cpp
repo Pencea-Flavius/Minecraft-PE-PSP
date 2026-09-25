@@ -587,6 +587,8 @@ static void renderSkyVoid(float px, float py, float pz) {
     sceGuDepthMask(GU_FALSE);
     sceGuEnable(GU_DEPTH_TEST);
     sceGuEnable(GU_TEXTURE_2D);
+
+    sceGuEnable(GU_CULL_FACE);
 }
 
 int g_cloudMode = 1;
