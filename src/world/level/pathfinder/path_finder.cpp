@@ -23,10 +23,13 @@ bool PathFinder::findPathTo(Path& path, Entity* e, float xt, float yt, float zt,
     memset(_table, 0, sizeof(_table));
     _nodeIndex = 0;
 
+    const bool resetAvoidWater = avoidWater;
     int startY;
     if (e->isInWater()) {
         startY = (int)(e->bb.y0);
         while (isWaterId((unsigned char)level->getTile(Mth::floor(e->x), startY, Mth::floor(e->z)))) ++startY;
+
+        avoidWater = false;
     } else {
         startY = Mth::floor(e->bb.y0 + 0.5f);
     }
@@ -54,7 +57,9 @@ bool PathFinder::findPathTo(Path& path, Entity* e, float xt, float yt, float zt,
     }
 
     Node size(Mth::floor(e->bbWidth + 1), Mth::floor(e->bbHeight + 1), Mth::floor(e->bbWidth + 1));
-    return findPathNodes(path, e, from, to, &size, maxDist);
+    const bool found = findPathNodes(path, e, from, to, &size, maxDist);
+    avoidWater = resetAvoidWater;
+    return found;
 }
 
 bool PathFinder::findPathNodes(Path& path, Entity* e, Node* from, Node* to, const Node* size, float maxDist) {

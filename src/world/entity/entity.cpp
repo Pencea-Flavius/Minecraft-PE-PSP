@@ -317,8 +317,6 @@ void Entity::interpolateTurn(float xo, float yo) {
 void Entity::doWaterSplashEffect() {
     float speed = sqrtf(xd * xd * 0.2f + yd * yd + zd * zd * 0.2f) * 0.2f;
     if (speed > 1.0f) speed = 1.0f;
-
-    if (speed < 0.5f) speed = 0.5f;
     level->playSound(this, "random.splash", speed,
                      1.0f + (sharedRandom.nextFloat() - sharedRandom.nextFloat()) * 0.4f);
 
