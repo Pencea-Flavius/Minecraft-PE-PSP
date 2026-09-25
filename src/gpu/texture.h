@@ -58,6 +58,8 @@ void textureBind(const Texture* tex);
 
 void textureBindNoMip(const Texture* tex);
 
+void textureBindLastBoundReset();
+
 void textureMipAuto();
 
 #endif

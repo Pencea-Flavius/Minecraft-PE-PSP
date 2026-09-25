@@ -372,6 +372,11 @@ bool menuOskUpdate(MenuState& s) {
 
     guDialogBegin(0xFF000000u);
 
+    guOrtho();
+    sceGuDisable(GU_DEPTH_TEST);
+
+    textureBindLastBoundReset();
+    drawDirtBackground(s);
     guDialogEnd();
     if (status == PSP_UTILITY_DIALOG_VISIBLE) {
         sceUtilityOskUpdate(1);

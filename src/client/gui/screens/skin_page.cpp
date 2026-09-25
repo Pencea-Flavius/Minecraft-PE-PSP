@@ -1,6 +1,7 @@
 
 #include <pspctrl.h>
 #include <pspgu.h>
+#include "gpu/gu.h"
 #include <pspiofilemgr.h>
 #include <cmath>
 #include <cstdio>
@@ -550,10 +551,11 @@ void skinPageRender(MenuState& s) {
 
     sceGuDisable(GU_DEPTH_TEST);
 
-    s_ws += (0.1f - s_ws) * 0.4f;
-    s_wp += s_ws;
+    const int steps = guFrameSteps();
+    s_ws += (0.1f - s_ws) * (1.0f - powf(0.6f, (float)steps));
+    s_wp += s_ws * steps;
 
-    if (s_pose == SKIN_POSE_ATTACK && ++s_swingT >= SWING_FRAMES) s_swingT = 0.0f;
+    if (s_pose == SKIN_POSE_ATTACK && (s_swingT += steps) >= SWING_FRAMES) s_swingT = 0.0f;
 
     const bool onPacks = (s_focus == FOCUS_PACKS);
     drawRect(0.0f, SK_TINT_Y, 480.0f, SK_TINT_H, SK_TINT);
@@ -596,7 +598,8 @@ void skinPageRender(MenuState& s) {
         Slot* sl = findSlot(idx);
         if (!sl) continue;
         if (sl->frame < CHANGING_SKIN_FRAMES) {
-            sl->frame++;
+            sl->frame += steps;
+            if (sl->frame > CHANGING_SKIN_FRAMES) sl->frame = CHANGING_SKIN_FRAMES;
             sl->rot = sl->rotFrom + sl->frame * ((sl->rotTo - sl->rotFrom) / CHANGING_SKIN_FRAMES);
         }
         SkinDraw d;

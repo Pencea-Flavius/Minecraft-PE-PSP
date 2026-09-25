@@ -1,6 +1,7 @@
 
 #include <pspctrl.h>
 #include <pspgu.h>
+#include "gpu/gu.h"
 #include <cstdio>
 #include <cstring>
 #include <cmath>
@@ -93,7 +94,8 @@ void WorldsScreen::renderContent(MenuState& s) {
         const float listText = 2.0f;
         const float itemWidthV = 120.0f * listScale;
         float targetScrollX = worldSelected * itemWidthV;
-        listScrollX += (targetScrollX - listScrollX) * 0.3f;
+
+        listScrollX += (targetScrollX - listScrollX) * (1.0f - powf(0.7f, (float)guFrameSteps()));
         if (listScrollX > targetScrollX - 0.5f && listScrollX < targetScrollX + 0.5f) {
             listScrollX = targetScrollX;
         }

@@ -519,6 +519,20 @@ static void renderSky(float px, float py, float pz) {
                     SKY_MESH_VERTS, 0, v);
     sceGuEnable(GU_FOG);
 
+    sceGuDepthMask(GU_FALSE);
+    sceGuEnable(GU_DEPTH_TEST);
+    sceGuEnable(GU_TEXTURE_2D);
+}
+
+static void renderSkyVoid(float px, float py, float pz) {
+    sceGuDisable(GU_TEXTURE_2D);
+    sceGuDisable(GU_BLEND);
+    sceGuDisable(GU_CULL_FACE);
+    sceGuDisable(GU_DEPTH_TEST);
+    sceGuDepthMask(GU_TRUE);
+    sceGumMatrixMode(GU_MODEL);
+    const unsigned int fc = g_skyColorNow;
+
     {
 
         if (py > VOID_PLANE_Y) {
@@ -1829,6 +1843,7 @@ void gameRender(MenuState& s) {
         renderSunOrMoon(a, true,  px0, py0, pz0);
         renderSunOrMoon(a, false, px0, py0, pz0);
         renderStars(a, px0, py0, pz0);
+        if (!eyeSubmerged) renderSkyVoid(px0, py0, pz0);
         sceGumMatrixMode(GU_PROJECTION);
         sceGumPopMatrix();
 

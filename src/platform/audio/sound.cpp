@@ -151,8 +151,7 @@ static int findFirst(const char* name) {
 }
 
 void soundMixBlock(short* out) {
-
-    bool any = (g_musPlaying && !g_guDialogActive);
+    bool any = g_musPlaying;
     for (int v = 0; v < MAX_VOICES && !any; v++) {
         if (g_voices[v].playing) any = true;
     }
@@ -186,7 +185,7 @@ void soundMixBlock(short* out) {
         s->frame = frame; s->frac = frac;
     }
 
-    if (g_musPlaying && !g_guDialogActive) {
+    if (g_musPlaying) {
         int vol = (int)(g_catVol[SND_CAT_MUSIC] * 4096.0f);
         unsigned int pos = g_musPos, halfN = MUSIC_HALF_SAMPLES;
         int half = g_musHalf;
@@ -243,18 +242,17 @@ void soundMixBlock(short* out) {
 
 static int mixerThread(SceSize , void* ) {
 
-    static short out[2][SAMPLE_COUNT * 2];
+    static short __attribute__((aligned(64))) out[2][SAMPLE_COUNT * 2];
     int buf = 0;
 
-    static const int MIX_PRIO_GAME   = 0x12;
-    static const int MIX_PRIO_DIALOG = 0x22;
-    bool loweredForDialog = false;
+    static const int MIX_PRIO_GAME   = 0x1A;
+    static const int MIX_PRIO_DIALOG = 0x10;
+    bool raisedForDialog = false;
 
     while (!g_mixerQuit) {
-        if (g_guDialogActive != loweredForDialog) {
-            loweredForDialog = g_guDialogActive;
-            sceKernelChangeThreadPriority(0, loweredForDialog ? MIX_PRIO_DIALOG
-                                                              : MIX_PRIO_GAME);
+        if (g_guDialogActive != raisedForDialog) {
+            raisedForDialog = g_guDialogActive;
+            sceKernelChangeThreadPriority(0, raisedForDialog ? MIX_PRIO_DIALOG : MIX_PRIO_GAME);
         }
         soundMixBlock(out[buf]);
 
@@ -723,8 +721,6 @@ void soundMusicUpdate(void) {
     if (!g_musCount || g_channel < 0) return;
     if (g_catVol[SND_CAT_MUSIC] <= 0.0f) return;
 
-    if (g_guDialogActive) return;
-
     if (g_musPlaying) {
 
         bool starving = !g_musReady[g_musHalf] ||
@@ -749,7 +745,13 @@ void soundMusicUpdate(void) {
 }
 
 static int musicThread(SceSize, void*) {
+
+    bool raisedForDialog = false;
     while (!g_musQuit) {
+        if (g_guDialogActive != raisedForDialog) {
+            raisedForDialog = g_guDialogActive;
+            sceKernelChangeThreadPriority(0, raisedForDialog ? 0x14 : 0x21);
+        }
         musicLock();
         soundMusicUpdate();
         musicUnlock();

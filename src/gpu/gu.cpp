@@ -20,15 +20,18 @@
 #define GU_LIST_KB 448
 #endif
 #define GU_LIST_BYTES ((unsigned)GU_LIST_KB * 1024u)
-static unsigned int __attribute__((aligned(16)))
+
+static unsigned int __attribute__((aligned(64)))
     g_list[GU_LIST_COUNT][GU_LIST_BYTES / 4 + CANARY_WORDS];
+static_assert(sizeof(g_list[0]) % 64 == 0, "a list row must be whole cache lines -- see above");
 static void*    g_listUncached[GU_LIST_COUNT] = { 0, 0 };
 static int      g_listIdx = 0;
 
 #define GU_CALL_LIST_WORDS 256
 
-static unsigned int __attribute__((aligned(16)))
+static unsigned int __attribute__((aligned(64)))
     g_callList[GU_CALL_LIST_WORDS + CANARY_WORDS];
+static_assert(sizeof(g_callList) % 64 == 0, "whole cache lines -- see g_list");
 unsigned int g_callCanaryBroken = 0;
 
 static void* g_callListUncached = 0;
@@ -66,7 +69,10 @@ static void guFlushDeferredFrees(void) {
 }
 
 static inline volatile unsigned int* guListCanary(int i) {
-    return (volatile unsigned int*)&g_list[i][GU_LIST_BYTES / 4];
+    return (volatile unsigned int*)((unsigned int)&g_list[i][GU_LIST_BYTES / 4] | 0x40000000u);
+}
+static inline volatile unsigned int* guCallCanary(void) {
+    return (volatile unsigned int*)((unsigned int)&g_callList[GU_CALL_LIST_WORDS] | 0x40000000u);
 }
 static inline void* guListCur(void) { return g_listUncached[g_listIdx]; }
 
@@ -228,6 +234,8 @@ static inline void* guFbAddr(int idx) {
 unsigned int g_vcSameRefresh = 0;
 unsigned int g_vcDrops       = 0;
 int g_vcLast = 0, g_vcMin = 9999, g_vcMax = 0;
+
+int guFrameSteps(void) { return g_vcLast < 1 ? 1 : (g_vcLast > 4 ? 4 : g_vcLast); }
 unsigned int g_postLate = 0;
 static int s_vcPrev = -1;
 unsigned int g_drawLiveHits = 0;
@@ -352,7 +360,7 @@ void guInit(void) {
         g_listUncached[i] = (void*)((unsigned int)g_list[i] | 0x40000000u);
 
         canaryArm(guListCanary(i));
-    canaryArm((volatile unsigned int*)&g_callList[GU_CALL_LIST_WORDS]);
+    canaryArm(guCallCanary());
     }
 
     g_callListUncached = (void*)((unsigned int)g_callList | 0x40000000u);
@@ -501,7 +509,7 @@ void guPresent(void) {
     }
 
     const int prio = sceKernelGetThreadCurrentPriority();
-    sceKernelChangeThreadPriority(0, 0x10);
+    sceKernelChangeThreadPriority(0, 0x0F);
     profBegin(PROF_VBLANK);
     sceDisplayWaitVblankStart();
     profEnd(PROF_VBLANK);
@@ -562,7 +570,7 @@ void guResumeFromDialog(void) {
     if (used >= GU_CALL_LIST_WORDS * 4) g_listOverruns++;
 
     {
-        const int c = canaryCheck((const volatile unsigned int*)&g_callList[GU_CALL_LIST_WORDS]);
+        const int c = canaryCheck(guCallCanary());
         if (c) g_callCanaryBroken = (unsigned)c;
     }
 
@@ -605,6 +613,8 @@ void guDialogBegin(unsigned int clearColor) {
 
     guSelectDrawBuffer();
 
+    guApplyPersistentState();
+    guApplyFrameBaseline();
     sceGuClearColor(clearColor);
     sceGuClearDepth(0);
     sceGuClear(GU_COLOR_BUFFER_BIT | GU_DEPTH_BUFFER_BIT);

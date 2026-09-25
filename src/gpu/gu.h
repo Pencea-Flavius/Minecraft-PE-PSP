@@ -89,6 +89,8 @@ void guPerspective(float fovDeg, float nearZ, float farZ);
 
 void guOrtho(void);
 
+int guFrameSteps(void);
+
 #ifdef __cplusplus
 }
 #endif
